@@ -4,6 +4,7 @@ import { signOut } from 'firebase/auth';
 import { collection, addDoc, getDocs, query, where, doc, updateDoc, deleteDoc, getDoc, writeBatch } from 'firebase/firestore';
 import { ref, uploadBytes, getDownloadURL, deleteObject } from 'firebase/storage';
 import { auth, db, storage } from '../../firebase';
+import { notifyNewProduct } from '../../utils/notifications';
 
 const STITCHED_CATEGORIES = ['Kurti', 'Co-ord Set'];
 const CHUDIDAR_CATEGORY = '3pc Chudidar';
@@ -328,7 +329,10 @@ function SupplierDashboard() {
         createdAt: new Date(),
         totalSets: NIGHTY_CATEGORIES.includes(productForm.category) ? totalSets : 0,
         imageUrl: productForm.photos[0]?.url || '',
-        imageUrls: productForm.photos.map(p => p.url),
+        imageUrls: productForm.photos.map(p => ({
+          url: p.url,
+          dnNumber: p.dnNumber || ''
+        })),
       };
 
       if (NIGHTY_CATEGORIES.includes(productForm.category)) productData.cut = productForm.cut;
@@ -364,6 +368,11 @@ function SupplierDashboard() {
           });
         }
       }
+
+      // Admin + saare buyers ko notify karo
+      const adminSnap = await getDocs(query(collection(db, 'users'), where('role', '==', 'admin')));
+      const adminId = adminSnap.docs[0]?.id;
+      if (adminId) await notifyNewProduct(adminId, productForm.name, freshProfile?.firmName || '');
 
       setProductForm(emptyForm);
       setActiveTab('products');
@@ -404,13 +413,10 @@ function SupplierDashboard() {
 
       <div style={styles.main}>
 
-        {/* Edit Product Modal */}
         {editingProduct && (
           <div style={styles.modalOverlay}>
             <div style={styles.modal}>
               <h3 style={styles.modalTitle}>Edit — {editingProduct.name}</h3>
-
-              {/* Basic Details */}
               <div style={styles.section}>
                 <label style={styles.sectionTitle}>Basic Details</label>
                 <input style={styles.input} placeholder="Product Name" value={editingProduct.name}
@@ -434,7 +440,6 @@ function SupplierDashboard() {
                   onChange={e => setEditingProduct({...editingProduct, description: e.target.value})} />
               </div>
 
-              {/* Nighty Cut */}
               {NIGHTY_CATEGORIES.includes(editingProduct.category) && (
                 <div style={styles.section}>
                   <label style={styles.sectionTitle}>Cut</label>
@@ -450,7 +455,6 @@ function SupplierDashboard() {
                 </div>
               )}
 
-              {/* Stitched categories */}
               {STITCHED_CATEGORIES.includes(editingProduct.category) && (
                 <div style={styles.section}>
                   <label style={styles.sectionTitle}>Sizes & Material</label>
@@ -467,7 +471,6 @@ function SupplierDashboard() {
                 </div>
               )}
 
-              {/* Chudidar */}
               {editingProduct.category === CHUDIDAR_CATEGORY && (
                 <div style={styles.section}>
                   <label style={styles.sectionTitle}>Product Type & Details</label>
@@ -507,7 +510,6 @@ function SupplierDashboard() {
                 </div>
               )}
 
-              {/* Photos for non-Nighty */}
               {!NIGHTY_CATEGORIES.includes(editingProduct.category) && (
                 <div style={styles.section}>
                   <label style={styles.sectionTitle}>Photos</label>
@@ -528,7 +530,6 @@ function SupplierDashboard() {
                 </div>
               )}
 
-              {/* Designs for Nighty */}
               {NIGHTY_CATEGORIES.includes(editingProduct.category) && (
                 <div style={styles.section}>
                   <label style={styles.sectionTitle}>Designs — Total Sets: {editingProduct.totalSets || 0}</label>
@@ -567,7 +568,6 @@ function SupplierDashboard() {
           </div>
         )}
 
-        {/* My Products */}
         {activeTab === 'products' && (
           <div>
             <h2 style={styles.heading}>My Products</h2>
@@ -602,7 +602,6 @@ function SupplierDashboard() {
           </div>
         )}
 
-        {/* Add Product */}
         {activeTab === 'addProduct' && (
           <div>
             <h2 style={styles.heading}>Add New Product</h2>
@@ -800,7 +799,6 @@ function SupplierDashboard() {
           </div>
         )}
 
-        {/* Orders */}
         {activeTab === 'orders' && (
           <div>
             <h2 style={styles.heading}>My Orders</h2>
@@ -821,7 +819,6 @@ function SupplierDashboard() {
           </div>
         )}
 
-        {/* Profile */}
         {activeTab === 'profile' && userProfile && (
           <div>
             <h2 style={styles.heading}>My Profile</h2>

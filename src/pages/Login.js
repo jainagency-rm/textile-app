@@ -1,6 +1,6 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
-import { signInWithEmailAndPassword } from 'firebase/auth';
+import { signInWithEmailAndPassword, onAuthStateChanged } from 'firebase/auth';
 import { doc, getDoc } from 'firebase/firestore';
 import { auth, db } from '../firebase';
 
@@ -13,6 +13,38 @@ function Login() {
   const [showAdmin, setShowAdmin] = useState(false);
   const navigate = useNavigate();
 
+  // === AUTO REDIRECT LOGIC ===
+  // Jab page load hoga, ye check karega agar koi user already logged in hai ya nahi
+  useEffect(() => {
+    setLoading(true);
+    const unsubscribe = onAuthStateChanged(auth, async (user) => {
+      if (user) {
+        try {
+          const userDoc = await getDoc(doc(db, 'users', user.uid));
+          if (userDoc.exists()) {
+            const userData = userDoc.data();
+            
+            // Role ke basis par automatic redirection
+            if (userData.role === 'admin') {
+              navigate('/admin');
+            } else if (userData.status === 'pending') {
+              navigate('/pending');
+            } else if (userData.role === 'buyer') {
+              navigate('/buyer'); // Agar browse page ka path alag hai toh change kar lena
+            } else if (userData.role === 'supplier') {
+              navigate('/supplier');
+            }
+          }
+        } catch (err) {
+          console.error("Auto-login error:", err);
+        }
+      }
+      setLoading(false);
+    });
+
+    return () => unsubscribe();
+  }, [navigate]);
+
   const handleLogin = async (e) => {
     e.preventDefault();
     if (!role) { setError('Please select Buyer or Supplier'); return; }
@@ -23,9 +55,11 @@ function Login() {
       const userDoc = await getDoc(doc(db, 'users', userCred.user.uid));
       if (!userDoc.exists()) { setError('User not found'); setLoading(false); return; }
       const userData = userDoc.data();
+      
       if (userData.role === 'admin') { navigate('/admin'); return; }
       if (userData.role !== role) { setError('Invalid role selected'); setLoading(false); return; }
       if (userData.status === 'pending') { navigate('/pending'); return; }
+      
       if (userData.role === 'buyer') navigate('/buyer');
       else if (userData.role === 'supplier') navigate('/supplier');
     } catch (err) {
@@ -44,6 +78,8 @@ function Login() {
       if (!userDoc.exists()) { setError('User not found'); setLoading(false); return; }
       const userData = userDoc.data();
       if (userData.role !== 'admin') { setError('Not an admin account'); setLoading(false); return; }
+      
+      // Admin dashboard par redirect
       navigate('/admin');
     } catch (err) {
       setError('Invalid email or password');
@@ -64,7 +100,9 @@ function Login() {
           </button>
         </div>
 
-        {!showAdmin ? (
+        {loading ? (
+          <p style={{ textAlign: 'center', color: '#666' }}>Checking session...</p>
+        ) : !showAdmin ? (
           <>
             <div style={styles.roleContainer}>
               <button style={role === 'buyer' ? styles.roleButtonActive : styles.roleButton} onClick={() => setRole('buyer')}>Buyer Login</button>
@@ -79,7 +117,7 @@ function Login() {
                   onChange={(e) => setPassword(e.target.value)} required />
                 {error && <p style={styles.error}>{error}</p>}
                 <button style={styles.loginButton} type="submit" disabled={loading}>
-                  {loading ? 'Logging in...' : 'Login'}
+                  Login
                 </button>
                 <p style={styles.registerText}>
                   Don't have an account?{' '}
@@ -97,7 +135,7 @@ function Login() {
               onChange={(e) => setPassword(e.target.value)} required />
             {error && <p style={styles.error}>{error}</p>}
             <button style={styles.loginButton} type="submit" disabled={loading}>
-              {loading ? 'Logging in...' : 'Admin Login'}
+              Admin Login
             </button>
             <button style={styles.backBtn} type="button" onClick={() => { setShowAdmin(false); setError(''); }}>
               Back

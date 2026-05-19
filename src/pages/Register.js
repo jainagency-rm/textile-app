@@ -1,8 +1,9 @@
 import React, { useState } from 'react';
 import { useNavigate, useSearchParams, Link } from 'react-router-dom';
 import { createUserWithEmailAndPassword } from 'firebase/auth';
-import { doc, setDoc } from 'firebase/firestore';
+import { doc, setDoc, getDocs, query, where, collection } from 'firebase/firestore';
 import { auth, db } from '../firebase';
+import { notifyNewUser } from '../utils/notifications';
 
 function Register() {
   const [searchParams] = useSearchParams();
@@ -52,6 +53,12 @@ function Register() {
         createdAt: new Date(),
         ...formData,
       });
+
+      // Admin ko notify karo
+      const adminSnap = await getDocs(query(collection(db, 'users'), where('role', '==', 'admin')));
+      const adminId = adminSnap.docs[0]?.id;
+      if (adminId) await notifyNewUser(adminId, formData.firmName, role);
+
       navigate('/pending');
     } catch (err) {
       if (err.code === 'auth/email-already-in-use') setError('Email already registered');
