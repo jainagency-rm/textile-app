@@ -8,6 +8,21 @@ import { notifyNewOrder } from '../../utils/notifications';
 
 const NIGHTY_CATEGORIES = ['Nighty', 'Nighty with Dupatta'];
 
+const D = {
+  navy: '#031632',
+  navyMid: '#1a2b48',
+  gold: '#775a19',
+  goldLight: '#fed488',
+  bg: '#f8f9fa',
+  surface: '#ffffff',
+  textPrimary: '#191c1d',
+  textSecondary: '#44474d',
+  border: '#c5c6ce',
+  borderLight: '#e7e8e9',
+  error: '#ba1a1a',
+  success: '#1a6b3c',
+};
+
 function ProfileEdit({ userProfile, onSave }) {
   const [editing, setEditing] = useState(false);
   const [form, setForm] = useState(userProfile);
@@ -26,34 +41,47 @@ function ProfileEdit({ userProfile, onSave }) {
 
   if (!editing) {
     return (
-      <div style={styles.profileCard}>
-        <p><b>Firm Name:</b> {userProfile.firmName}</p>
-        <p><b>GST:</b> {userProfile.gstNumber}</p>
-        <p><b>Contact:</b> {userProfile.contactPerson}</p>
-        <p><b>Mobile:</b> {userProfile.mobile}</p>
-        <p><b>Address:</b> {userProfile.address}</p>
-        <p><b>City:</b> {userProfile.city}</p>
-        <p><b>District:</b> {userProfile.district}</p>
-        <p><b>State:</b> {userProfile.state}</p>
-        <p><b>Pincode:</b> {userProfile.pincode}</p>
-        <button style={styles.editBtn} onClick={() => setEditing(true)}>Edit Profile</button>
+      <div style={S.profileCard}>
+        <div style={S.profileAvatar}>
+          <span style={{ fontSize: 28, color: D.navy, fontWeight: 700 }}>{userProfile.firmName?.[0]?.toUpperCase()}</span>
+        </div>
+        <h3 style={{ margin: '12px 0 4px', color: D.textPrimary, fontSize: 18, fontWeight: 700 }}>{userProfile.firmName}</h3>
+        <p style={{ margin: '0 0 20px', color: D.textSecondary, fontSize: 13 }}>{userProfile.email}</p>
+        {[
+          ['GST Number', userProfile.gstNumber],
+          ['Contact Person', userProfile.contactPerson],
+          ['Mobile', userProfile.mobile],
+          ['Address', userProfile.address],
+          ['City', userProfile.city],
+          ['District', userProfile.district],
+          ['State', userProfile.state],
+          ['Pincode', userProfile.pincode],
+        ].map(([label, val]) => (
+          <div key={label} style={S.profileRow}>
+            <span style={S.profileLabel}>{label}</span>
+            <span style={S.profileValue}>{val || '—'}</span>
+          </div>
+        ))}
+        <button style={S.btnPrimary} onClick={() => setEditing(true)}>Edit Profile</button>
       </div>
     );
   }
 
   return (
-    <div style={styles.profileCard}>
-      <input style={styles.input} value={form.firmName} onChange={e => setForm({...form, firmName: e.target.value})} placeholder="Firm Name" />
-      <input style={styles.input} value={form.contactPerson} onChange={e => setForm({...form, contactPerson: e.target.value})} placeholder="Contact Person" />
-      <input style={styles.input} value={form.mobile} onChange={e => setForm({...form, mobile: e.target.value})} placeholder="Mobile" />
-      <input style={styles.input} value={form.address} onChange={e => setForm({...form, address: e.target.value})} placeholder="Address" />
-      <input style={styles.input} value={form.city} onChange={e => setForm({...form, city: e.target.value})} placeholder="City" />
-      <input style={styles.input} value={form.district} onChange={e => setForm({...form, district: e.target.value})} placeholder="District" />
-      <input style={styles.input} value={form.state} onChange={e => setForm({...form, state: e.target.value})} placeholder="State" />
-      <input style={styles.input} value={form.pincode} onChange={e => setForm({...form, pincode: e.target.value})} placeholder="Pincode" />
-      <div style={{display:'flex', gap:'10px', marginTop:'10px'}}>
-        <button style={styles.editBtn} onClick={handleSave} disabled={loading}>{loading ? 'Saving...' : 'Save'}</button>
-        <button style={{...styles.editBtn, backgroundColor:'#999'}} onClick={() => setEditing(false)}>Cancel</button>
+    <div style={S.profileCard}>
+      <h3 style={{ margin: '0 0 16px', color: D.textPrimary }}>Edit Profile</h3>
+      {[
+        ['firmName', 'Firm Name'], ['contactPerson', 'Contact Person'],
+        ['mobile', 'Mobile'], ['address', 'Address'],
+        ['city', 'City'], ['district', 'District'],
+        ['state', 'State'], ['pincode', 'Pincode'],
+      ].map(([key, placeholder]) => (
+        <input key={key} style={S.input} value={form[key] || ''} placeholder={placeholder}
+          onChange={e => setForm({ ...form, [key]: e.target.value })} />
+      ))}
+      <div style={{ display: 'flex', gap: 10, marginTop: 8 }}>
+        <button style={S.btnPrimary} onClick={handleSave} disabled={loading}>{loading ? 'Saving...' : 'Save'}</button>
+        <button style={S.btnGhost} onClick={() => setEditing(false)}>Cancel</button>
       </div>
     </div>
   );
@@ -62,94 +90,216 @@ function ProfileEdit({ userProfile, onSave }) {
 function NightyCheckout({ nightyBySupplier, onConfirm, onCancel }) {
   const [packingTypes, setPackingTypes] = useState({});
   const [error, setError] = useState('');
-
   const suppliers = Object.keys(nightyBySupplier);
 
   const handleConfirm = () => {
     let tempPackingDetails = {};
     let hasError = false;
-
     for (const sId of suppliers) {
       const group = nightyBySupplier[sId];
       const totalSets = group.items.reduce((sum, item) => sum + (item.sets || 0), 0);
       const pType = packingTypes[sId];
-
-      if (!pType) {
-        setError(`Please select packing type for ${group.supplierFirm}`);
-        hasError = true;
-        break;
-      }
-
+      if (!pType) { setError(`Select packing for ${group.supplierFirm}`); hasError = true; break; }
       const typeNum = Number(pType);
       if (totalSets % typeNum !== 0) {
-        setError(`${group.supplierFirm} has ${totalSets} sets. It cannot make complete bales of ${pType}. Need multiple of ${pType}.`);
-        hasError = true;
-        break;
+        setError(`${group.supplierFirm}: ${totalSets} sets not divisible by ${pType}`);
+        hasError = true; break;
       }
-
-      tempPackingDetails[sId] = {
-        packingType: typeNum,
-        totalBales: totalSets / typeNum,
-        totalSets: totalSets,
-        totalPcs: totalSets * (group.items[0]?.pcsPerSet || 30)
-      };
+      tempPackingDetails[sId] = { packingType: typeNum, totalBales: totalSets / typeNum, totalSets, totalPcs: totalSets * (group.items[0]?.pcsPerSet || 30) };
     }
-
-    if (!hasError) {
-      onConfirm(tempPackingDetails);
-    }
-  };
-
-  const handleSelectType = (supplierId, type) => {
-    setPackingTypes({ ...packingTypes, [supplierId]: type });
-    setError('');
+    if (!hasError) onConfirm(tempPackingDetails);
   };
 
   return (
-    <div style={styles.modalOverlay}>
-      <div style={{ ...styles.modal, maxWidth: '550px' }}>
-        <h3 style={styles.modalTitle}>Nighty Bale Selection (Per Supplier)</h3>
-        
+    <div style={S.modalOverlay} onClick={onCancel}>
+      <div style={S.fullModal} onClick={e => e.stopPropagation()}>
+        <div style={S.modalHandle} />
+        <h3 style={S.modalHeading}>Bale Packing Selection</h3>
         {suppliers.map(sId => {
           const group = nightyBySupplier[sId];
-          const totalSets = group.items.reduce((sum, item) => sum + (item.sets || 0), 0);
-          const currentType = packingTypes[sId];
-          const isValid = currentType ? totalSets % Number(currentType) === 0 : false;
-
+          const totalSets = group.items.reduce((sum, i) => sum + (i.sets || 0), 0);
+          const cur = packingTypes[sId];
+          const isValid = cur ? totalSets % Number(cur) === 0 : false;
           return (
-            <div key={sId} style={{ borderBottom: '1px solid #eee', paddingBottom: '15px', marginBottom: '15px' }}>
-              <p style={{ fontWeight: 'bold', color: '#1a1a2e', margin: '0 0 5px 0' }}>{group.supplierFirm}</p>
-              <p style={{ margin: '0 0 10px 0', fontSize: '14px', color: '#555' }}>Total Sets: <b>{totalSets}</b></p>
-              
-              <div style={styles.typeRow}>
-                <button type="button" style={currentType === '8' ? styles.typeActive : styles.typeBtn}
-                  onClick={() => handleSelectType(sId, '8')}>8 Sets/Bale</button>
-                <button type="button" style={currentType === '10' ? styles.typeActive : styles.typeBtn}
-                  onClick={() => handleSelectType(sId, '10')}>10 Sets/Bale</button>
+            <div key={sId} style={{ marginBottom: 20, paddingBottom: 20, borderBottom: `1px solid ${D.borderLight}` }}>
+              <p style={{ fontWeight: 700, color: D.navy, margin: '0 0 4px' }}>{group.supplierFirm}</p>
+              <p style={{ margin: '0 0 12px', fontSize: 13, color: D.textSecondary }}>Total: <b>{totalSets} sets</b></p>
+              <div style={{ display: 'flex', gap: 10 }}>
+                {['8', '10'].map(t => (
+                  <button key={t} onClick={() => { setPackingTypes({ ...packingTypes, [sId]: t }); setError(''); }}
+                    style={cur === t ? S.packActive : S.packBtn}>
+                    <span style={{ fontSize: 20, fontWeight: 700 }}>{t}</span>
+                    <span style={{ fontSize: 11 }}>Sets/Bale</span>
+                  </button>
+                ))}
               </div>
-
-              {currentType && (
-                <div style={styles.baleCalc}>
-                  {isValid 
-                    ? <p style={styles.validMsg}>✓ {totalSets / Number(currentType)} complete bale(s)</p>
-                    : <p style={styles.invalidMsg}>✗ Need multiple of {currentType}. Current: {totalSets} sets</p>
-                  }
-                </div>
+              {cur && (
+                <p style={{ marginTop: 8, fontSize: 13, fontWeight: 600, color: isValid ? D.success : D.error }}>
+                  {isValid ? `✓ ${totalSets / Number(cur)} complete bale(s)` : `✗ Need multiple of ${cur}`}
+                </p>
               )}
             </div>
           );
         })}
-
-        {error && <p style={styles.errorMsg}>{error}</p>}
-        <div style={{ display: 'flex', gap: '10px', marginTop: '20px' }}>
-          <button style={styles.confirmBtn} onClick={handleConfirm}>Confirm & Place Orders</button>
-          <button style={{ ...styles.confirmBtn, backgroundColor: '#999' }} onClick={onCancel}>Cancel</button>
-        </div>
+        {error && <p style={{ color: D.error, fontSize: 13, marginBottom: 12 }}>{error}</p>}
+        <button style={S.btnPrimary} onClick={handleConfirm}>Confirm & Place Order</button>
+        <button style={{ ...S.btnGhost, marginTop: 10 }} onClick={onCancel}>Cancel</button>
       </div>
     </div>
   );
 }
 
+// ── OrderCard ───────────────────────────────────────────────
+function OrderCard({ order }) {
+  const [expanded, setExpanded] = useState(false);
+  const [showDispatch, setShowDispatch] = useState(false);
+
+  // Admin saves: paymentStatus = 'Cleared' (Paid) or 'Advance Received' (Part Paid)
+  const isPaid = order.paymentStatus === 'Cleared' || order.paymentStatus === 'Advance Received';
+  const totalItems = order.items?.length || 0;
+  const firstItem = order.items?.[0];
+
+  const paymentLabel = () => {
+    if (order.paymentStatus === 'Cleared') return { text: '✓ Paid', color: D.success, bg: '#e6f4ea' };
+    if (order.paymentStatus === 'Advance Received') return { text: '◑ Part Paid', color: '#7a5200', bg: '#fef7e0' };
+    return null;
+  };
+  const pLabel = paymentLabel();
+
+  return (
+    <>
+      {/* Dispatch Details Modal */}
+      {showDispatch && (
+        <div style={S.modalOverlay} onClick={() => setShowDispatch(false)}>
+          <div style={S.fullModal} onClick={e => e.stopPropagation()}>
+            <div style={S.modalHandle} />
+            <h3 style={S.modalHeading}>Dispatch Details</h3>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 0 }}>
+              {[
+                ['Order ID', `#${order.id.slice(0, 8)}`],
+                ['Payment', order.paymentStatus === 'Cleared' ? '✓ Fully Paid' : '◑ Part Paid (Advance)'],
+                ['Bill No', order.billNo || '—'],
+                ['Bill Date', order.billDate || '—'],
+                ['Transport', order.transport || '—'],
+                ['LR No', order.lrNo || '—'],
+                ['LR Date', order.lrDate || '—'],
+              ].map(([label, val]) => (
+                <div key={label} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '11px 0', borderBottom: `1px solid ${D.borderLight}` }}>
+                  <span style={{ fontSize: 13, color: D.textSecondary, fontWeight: 500 }}>{label}</span>
+                  <span style={{
+                    fontSize: 13,
+                    color: label === 'Payment'
+                      ? (order.paymentStatus === 'Cleared' ? D.success : '#7a5200')
+                      : D.textPrimary,
+                    fontWeight: 600, textAlign: 'right', maxWidth: '60%'
+                  }}>{val}</span>
+                </div>
+              ))}
+              {/* Size-wise payment if exists */}
+              {order.sizeWisePayment && Object.keys(order.sizeWisePayment).length > 0 && (
+                <div style={{ paddingTop: 12 }}>
+                  <p style={{ margin: '0 0 8px', fontSize: 12, fontWeight: 600, color: D.textSecondary, textTransform: 'uppercase', letterSpacing: '0.05em' }}>Size-wise Qty</p>
+                  {Object.entries(order.sizeWisePayment).map(([size, qty]) => (
+                    <div key={size} style={{ display: 'flex', justifyContent: 'space-between', padding: '6px 0', borderBottom: `1px solid ${D.borderLight}` }}>
+                      <span style={{ fontSize: 13, color: D.textSecondary }}>Size {size}</span>
+                      <span style={{ fontSize: 13, fontWeight: 600, color: D.textPrimary }}>{qty} pcs</span>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+            <button style={{ ...S.btnGhost, marginTop: 20 }} onClick={() => setShowDispatch(false)}>Close</button>
+          </div>
+        </div>
+      )}
+
+      {/* Compact Order Card */}
+      <div style={{ backgroundColor: D.surface, borderRadius: 10, marginBottom: 10, boxShadow: '0 1px 4px rgba(3,22,50,0.06)', overflow: 'hidden', border: `1px solid ${D.borderLight}` }}>
+
+        {/* Header row — always visible, click to expand */}
+        <div style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '12px 14px', cursor: 'pointer' }}
+          onClick={() => setExpanded(!expanded)}>
+
+          {/* Thumbnail */}
+          {firstItem?.photoUrl ? (
+            <img src={firstItem.photoUrl} alt="" style={{ width: 44, height: 44, objectFit: 'cover', borderRadius: 6, flexShrink: 0, border: `1px solid ${D.borderLight}` }} />
+          ) : (
+            <div style={{ width: 44, height: 44, borderRadius: 6, backgroundColor: D.bg, flexShrink: 0, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke={D.border} strokeWidth="2">
+                <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/>
+              </svg>
+            </div>
+          )}
+
+          {/* Info */}
+          <div style={{ flex: 1, minWidth: 0 }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginBottom: 2, flexWrap: 'wrap' }}>
+              <span style={{ fontSize: 12, fontWeight: 700, color: D.navy }}>#{order.id.slice(0, 8)}</span>
+              <span style={{ ...S.statusBadge, ...getStatusStyle(order.status), fontSize: 10, padding: '2px 7px' }}>{order.status || 'Pending'}</span>
+              {pLabel && (
+                <span style={{ fontSize: 10, fontWeight: 700, padding: '2px 7px', borderRadius: 20, backgroundColor: pLabel.bg, color: pLabel.color }}>{pLabel.text}</span>
+              )}
+            </div>
+            <p style={{ margin: 0, fontSize: 12, color: D.textSecondary, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+              {order.supplierFirm} · {totalItems} item{totalItems !== 1 ? 's' : ''}
+            </p>
+            <p style={{ margin: '2px 0 0', fontSize: 11, color: D.textSecondary }}>
+              {order.createdAt?.toDate?.()?.toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: 'numeric' })}
+            </p>
+          </div>
+
+          {/* Chevron */}
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke={D.textSecondary} strokeWidth="2"
+            style={{ flexShrink: 0, transform: expanded ? 'rotate(180deg)' : 'rotate(0deg)', transition: 'transform 0.2s' }}>
+            <polyline points="6 9 12 15 18 9"/>
+          </svg>
+        </div>
+
+        {/* Expanded items */}
+        {expanded && (
+          <div style={{ borderTop: `1px solid ${D.borderLight}`, padding: '10px 14px 14px' }}>
+            {order.items?.map((item, idx) => (
+              <div key={idx} style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '7px 0', borderBottom: `1px solid ${D.borderLight}` }}>
+                {item.photoUrl && <img src={item.photoUrl} alt="" style={{ width: 32, height: 32, objectFit: 'cover', borderRadius: 4, flexShrink: 0 }} />}
+                <div style={{ flex: 1, minWidth: 0 }}>
+                  <span style={{ fontSize: 12, color: D.textPrimary, fontWeight: 600 }}>{item.productName}</span>
+                  {item.designNo && <span style={{ fontSize: 11, color: D.textSecondary }}> · DN{item.designNo}</span>}
+                  {item.size && <span style={{ fontSize: 11, color: D.textSecondary }}> · Size {item.size}</span>}
+                </div>
+                <span style={{ fontSize: 11, color: D.textSecondary, flexShrink: 0 }}>
+                  {item.sets ? `${item.sets} sets = ${item.pcs} pcs` : `${item.quantity} ${item.unit || 'pc'}`}
+                </span>
+              </div>
+            ))}
+
+            {order.nightyDetails && (
+              <p style={{ margin: '8px 0 0', fontSize: 12, color: D.textSecondary }}>
+                {order.nightyDetails.totalSets} sets · {order.nightyDetails.packingType} sets/bale · <b style={{ color: D.navy }}>{order.nightyDetails.totalBales} bale(s)</b>
+              </p>
+            )}
+
+            {/* Dispatch button — show if paid */}
+            {isPaid && (
+              <button style={{ ...S.btnPrimary, marginTop: 12, padding: '10px', fontSize: 13, backgroundColor: D.navyMid }}
+                onClick={() => setShowDispatch(true)}>
+                📦 View Dispatch Details
+              </button>
+            )}
+
+            {/* Unpaid badge */}
+            {!isPaid && (
+              <div style={{ marginTop: 10, padding: '8px 12px', backgroundColor: '#fce8e6', borderRadius: 6, fontSize: 12, color: D.error, fontWeight: 600 }}>
+                ⏳ Payment pending
+              </div>
+            )}
+          </div>
+        )}
+      </div>
+    </>
+  );
+}
+
+// ── BuyerDashboard ──────────────────────────────────────────
 function BuyerDashboard() {
   const [activeTab, setActiveTab] = useState('browse');
   const [products, setProducts] = useState([]);
@@ -162,101 +312,61 @@ function BuyerDashboard() {
   const [showNightyCheckout, setShowNightyCheckout] = useState(false);
   const [selectedCategory, setSelectedCategory] = useState('');
   const [viewingProduct, setViewingProduct] = useState(null);
-
   const [searchTerm, setSearchTerm] = useState('');
   const [minPrice, setMinPrice] = useState('');
   const [maxPrice, setMaxPrice] = useState('');
-  
   const [selectedProductDetails, setSelectedProductDetails] = useState(null);
   const [sizeQuantities, setSizeQuantities] = useState({});
   const [modalDesignIdx, setModalDesignIdx] = useState(0);
   const [cardDesignIndices, setCardDesignIndices] = useState({});
-
-  // Notification states
   const [notifications, setNotifications] = useState([]);
   const [showNotifications, setShowNotifications] = useState(false);
+  const [showSearch, setShowSearch] = useState(false);
   const notifRef = useRef(null);
-
   const buyerId = auth.currentUser?.uid;
   const navigate = useNavigate();
 
-  const handleLogout = async () => {
-    await signOut(auth);
-    navigate('/');
-  };
+  const handleLogout = async () => { await signOut(auth); navigate('/'); };
 
-  // Real-time notification listener
   useEffect(() => {
     if (!buyerId) return;
-    const q = query(
-      collection(db, 'notifications'),
-      where('userId', '==', buyerId),
-      orderBy('createdAt', 'desc')
-    );
-    const unsubscribe = onSnapshot(q, (snap) => {
-      setNotifications(snap.docs.map(d => ({ id: d.id, ...d.data() })));
-    });
+    const q = query(collection(db, 'notifications'), where('userId', '==', buyerId), orderBy('createdAt', 'desc'));
+    const unsubscribe = onSnapshot(q, snap => setNotifications(snap.docs.map(d => ({ id: d.id, ...d.data() }))));
     return () => unsubscribe();
   }, [buyerId]);
 
-  // Close dropdown on outside click
   useEffect(() => {
-    const handleClickOutside = (e) => {
-      if (notifRef.current && !notifRef.current.contains(e.target)) {
-        setShowNotifications(false);
-      }
+    const handler = () => { setSelectedProductDetails(null); setShowNotifications(false); };
+    window.addEventListener('closeModal', handler);
+    return () => window.removeEventListener('closeModal', handler);
+  }, []);
+
+  useEffect(() => {
+    const handleClickOutside = e => {
+      if (notifRef.current && !notifRef.current.contains(e.target)) setShowNotifications(false);
     };
     document.addEventListener('mousedown', handleClickOutside);
     return () => document.removeEventListener('mousedown', handleClickOutside);
   }, []);
 
+  useEffect(() => {
+    const unsubscribe = auth.onAuthStateChanged((user) => {
+      if (user) {
+        fetchProfile();
+        fetchProducts();
+        fetchOrders();
+      }
+    });
+    return () => unsubscribe();
+  }, []);
+
   const markAllRead = async () => {
     const unread = notifications.filter(n => !n.read);
-    if (unread.length === 0) return;
+    if (!unread.length) return;
     const batch = writeBatch(db);
     unread.forEach(n => batch.update(doc(db, 'notifications', n.id), { read: true }));
     await batch.commit();
   };
-
-  const unreadCount = notifications.filter(n => !n.read).length;
-
-  const notifIcon = (type) => {
-    if (type === 'new_order') return '🛒';
-    if (type === 'new_product') return '📦';
-    if (type === 'new_user') return '👤';
-    return '🔔';
-  };
-
-  const formatTime = (timestamp) => {
-    if (!timestamp) return '';
-    const date = timestamp.toDate?.() || new Date(timestamp);
-    return date.toLocaleString('en-IN', { day: '2-digit', month: 'short', hour: '2-digit', minute: '2-digit' });
-  };
-
-  useEffect(() => {
-    if (selectedProductDetails) {
-      window.history.pushState({ modalOpen: true }, '');
-    }
-    const handlePopState = () => {
-      if (selectedProductDetails) setSelectedProductDetails(null);
-    };
-    window.addEventListener('popstate', handlePopState);
-    return () => window.removeEventListener('popstate', handlePopState);
-  }, [selectedProductDetails]);
-
-  useEffect(() => {
-    const handleKeyDown = (e) => {
-      if (e.key === 'Escape' && selectedProductDetails) setSelectedProductDetails(null);
-    };
-    window.addEventListener('keydown', handleKeyDown);
-    return () => window.removeEventListener('keydown', handleKeyDown);
-  }, [selectedProductDetails]);
-
-  useEffect(() => {
-    fetchProfile();
-    fetchProducts();
-    fetchOrders();
-  }, []);
 
   const fetchProfile = async () => {
     const user = auth.currentUser;
@@ -270,7 +380,6 @@ function BuyerDashboard() {
     const snap = await getDocs(q);
     const prods = snap.docs.map(d => ({ id: d.id, ...d.data() }));
     setProducts(prods);
-
     const designMap = {};
     for (const prod of prods) {
       const dSnap = await getDocs(collection(db, 'products', prod.id, 'designs'));
@@ -289,577 +398,433 @@ function BuyerDashboard() {
 
   const categories = [...new Set(products.map(p => p.category))];
   const categoryFiltered = selectedCategory ? products.filter(p => p.category === selectedCategory) : products;
-
   const searchedAndFilteredProducts = categoryFiltered.filter(product => {
-    const searchLower = searchTerm.toLowerCase();
-    const currentProductDesigns = productDesigns[product.id] || [];
-    const matchesDesignNo = currentProductDesigns.some(d => {
-      const dNoStr = d.designNo ? String(d.designNo).toLowerCase() : '';
-      const dnNumStr = d.dnNumber ? String(d.dnNumber).toLowerCase() : '';
-      return dNoStr.includes(searchLower) || dnNumStr.includes(searchLower);
-    });
-
-    const matchesSearch = 
-      product.name?.toLowerCase().includes(searchLower) ||
-      product.category?.toLowerCase().includes(searchLower) ||
-      product.supplierFirm?.toLowerCase().includes(searchLower) ||
-      product.material?.toLowerCase().includes(searchLower) ||
-      product.cut?.toLowerCase().includes(searchLower) ||
-      product.productType?.toLowerCase().includes(searchLower) ||
-      matchesDesignNo;
-
-    const matchesMinPrice = minPrice ? Number(product.price) >= Number(minPrice) : true;
-    const matchesMaxPrice = maxPrice ? Number(product.price) <= Number(maxPrice) : true;
-
-    return matchesSearch && matchesMinPrice && matchesMaxPrice;
+    const sl = searchTerm.toLowerCase();
+    const designs = productDesigns[product.id] || [];
+    const matchDesign = designs.some(d =>
+      String(d.designNo || '').toLowerCase().includes(sl) ||
+      String(d.dnNumber || '').toLowerCase().includes(sl)
+    );
+    const matchSearch = !sl || product.name?.toLowerCase().includes(sl) ||
+      product.category?.toLowerCase().includes(sl) ||
+      product.supplierFirm?.toLowerCase().includes(sl) ||
+      product.material?.toLowerCase().includes(sl) ||
+      matchDesign;
+    const matchMin = minPrice ? Number(product.price) >= Number(minPrice) : true;
+    const matchMax = maxPrice ? Number(product.price) <= Number(maxPrice) : true;
+    return matchSearch && matchMin && matchMax;
   });
+
+  const getProductDesignsList = (product) => {
+    const sub = productDesigns[product.id] || [];
+    if (sub.length > 0) return sub;
+    const arr = product.imageUrls || product.photos || [];
+    if (arr.length > 0) return arr.map((item, idx) => ({
+      photoUrl: item.photoUrl || item.url || (typeof item === 'string' ? item : product.imageUrl),
+      designNo: item.dnNumber || item.designNo || `${idx + 1}`,
+      dnNumber: item.dnNumber || ''
+    }));
+    if (product.imageUrl) return [{ photoUrl: product.imageUrl, designNo: '1' }];
+    return [];
+  };
 
   const addDesignToCart = (product, design) => {
     const cartKey = `${product.id}_${design.id}`;
-    const existing = cart.find(item => item.cartKey === cartKey);
+    const existing = cart.find(i => i.cartKey === cartKey);
     const pcsPerSet = product.category === 'Nighty with Dupatta' ? 20 : 30;
-    if (existing) {
-      setCart(cart.map(item => item.cartKey === cartKey ? { ...item, sets: item.sets + 1 } : item));
-    } else {
-      setCart([...cart, {
-        cartKey, productId: product.id, designId: design.id,
-        productName: product.name, designNo: design.designNo, dnNumber: design.dnNumber || '',
-        photoUrl: design.photoUrl, sets: 1, availableSets: design.sets,
-        price: product.price, supplierId: product.supplierId, supplierFirm: product.supplierFirm,
-        category: product.category, pcsPerSet,
-      }]);
-    }
+    if (existing) setCart(cart.map(i => i.cartKey === cartKey ? { ...i, sets: i.sets + 1 } : i));
+    else setCart([...cart, { cartKey, productId: product.id, designId: design.id, productName: product.name, designNo: design.designNo, dnNumber: design.dnNumber || '', photoUrl: design.photoUrl, sets: 1, availableSets: design.sets, price: product.price, supplierId: product.supplierId, supplierFirm: product.supplierFirm, category: product.category, pcsPerSet }]);
   };
 
   const removeDesignFromCart = (cartKey) => {
-    setCart(cart.map(item => item.cartKey === cartKey ? { ...item, sets: Math.max(0, item.sets - 1) } : item)
-      .filter(item => item.sets > 0 || item.quantity));
+    setCart(cart.map(i => i.cartKey === cartKey ? { ...i, sets: Math.max(0, i.sets - 1) } : i).filter(i => i.sets > 0 || i.quantity));
   };
 
   const addSizesToCart = (product) => {
-    let newCartItems = [...cart];
+    let items = [...cart];
     Object.keys(sizeQuantities).forEach(size => {
       const qty = Number(sizeQuantities[size]);
       if (qty > 0) {
         const cartKey = `${product.id}_${size}`;
-        const existingIdx = newCartItems.findIndex(item => item.cartKey === cartKey);
-        if (existingIdx > -1) {
-          newCartItems[existingIdx].quantity += qty;
-        } else {
-          newCartItems.push({
-            cartKey, productId: product.id, productName: product.name,
-            quantity: qty, price: product.price, unit: product.unit || 'pc',
-            supplierId: product.supplierId, supplierFirm: product.supplierFirm, category: product.category,
-            size: size
-          });
-        }
+        const idx = items.findIndex(i => i.cartKey === cartKey);
+        if (idx > -1) items[idx].quantity += qty;
+        else items.push({ cartKey, productId: product.id, productName: product.name, quantity: qty, price: product.price, unit: product.unit || 'pc', supplierId: product.supplierId, supplierFirm: product.supplierFirm, category: product.category, size });
       }
     });
-    setCart(newCartItems);
+    setCart(items);
     setSelectedProductDetails(null);
     setSizeQuantities({});
   };
 
-  const updateQuantity = (cartKey, quantity) => {
-    setCart(cart.map(item => item.cartKey === cartKey ? { ...item, quantity: Number(quantity) } : item));
-  };
+  const removeFromCart = (cartKey) => setCart(cart.filter(i => i.cartKey !== cartKey));
+  const updateQuantity = (cartKey, qty) => setCart(cart.map(i => i.cartKey === cartKey ? { ...i, quantity: Number(qty) } : i));
 
-  const removeFromCart = (cartKey) => setCart(cart.filter(item => item.cartKey !== cartKey));
-
-  const nightyCart = cart.filter(item => NIGHTY_CATEGORIES.includes(item.category));
-  const nonNightyCart = cart.filter(item => !NIGHTY_CATEGORIES.includes(item.category));
-
-  const nightyBySupplier = nightyCart.reduce((acc, item) => {
-    if (!acc[item.supplierId]) acc[item.supplierId] = { supplierFirm: item.supplierFirm, items: [], category: item.category };
-    acc[item.supplierId].items.push(item);
-    return acc;
+  const nightyCart = cart.filter(i => NIGHTY_CATEGORIES.includes(i.category));
+  const nonNightyCart = cart.filter(i => !NIGHTY_CATEGORIES.includes(i.category));
+  const nightyBySupplier = nightyCart.reduce((acc, i) => {
+    if (!acc[i.supplierId]) acc[i.supplierId] = { supplierFirm: i.supplierFirm, items: [], category: i.category };
+    acc[i.supplierId].items.push(i); return acc;
   }, {});
-
-  const nonNightyBySupplier = nonNightyCart.reduce((acc, item) => {
-    if (!acc[item.supplierId]) acc[item.supplierId] = { supplierFirm: item.supplierFirm, items: [] };
-    acc[item.supplierId].items.push(item);
-    return acc;
+  const nonNightyBySupplier = nonNightyCart.reduce((acc, i) => {
+    if (!acc[i.supplierId]) acc[i.supplierId] = { supplierFirm: i.supplierFirm, items: [] };
+    acc[i.supplierId].items.push(i); return acc;
   }, {});
 
   const placeOrder = async (supplierBaleDetails) => {
     setLoading(true);
     try {
       const user = auth.currentUser;
-
-      // Admin ID fetch karo (notification ke liye)
       const adminSnap = await getDocs(query(collection(db, 'users'), where('role', '==', 'admin')));
       const adminId = adminSnap.docs[0]?.id;
 
       for (const supplierId of Object.keys(nonNightyBySupplier)) {
         const sc = nonNightyBySupplier[supplierId];
-        await addDoc(collection(db, 'orders'), {
-          buyerId: user.uid, buyerFirm: userProfile?.firmName || '',
-          supplierId, supplierFirm: sc.supplierFirm,
-          items: sc.items.map(i => ({ productId: i.productId, productName: i.productName, quantity: i.quantity, price: i.price, unit: i.unit, size: i.size || '' })),
-          status: 'Pending', createdAt: new Date(),
-        });
-
-        // Admin + supplier ko notify karo
+        await addDoc(collection(db, 'orders'), { buyerId: user.uid, buyerFirm: userProfile?.firmName || '', supplierId, supplierFirm: sc.supplierFirm, items: sc.items.map(i => ({ productId: i.productId, productName: i.productName, quantity: i.quantity, price: i.price, unit: i.unit, size: i.size || '' })), status: 'Pending', createdAt: new Date() });
         if (adminId) await notifyNewOrder(adminId, supplierId, userProfile?.firmName || '');
       }
 
       for (const supplierId of Object.keys(nightyBySupplier)) {
         const sc = nightyBySupplier[supplierId];
-        const totalSets = sc.items.reduce((s, i) => s + i.sets, 0);
-        const pcsPerSet = sc.items[0]?.pcsPerSet || 30;
-        const currentBaleDetail = supplierBaleDetails ? supplierBaleDetails[supplierId] : null;
-
-        await addDoc(collection(db, 'orders'), {
-          buyerId: user.uid, buyerFirm: userProfile?.firmName || '',
-          supplierId, supplierFirm: sc.supplierFirm,
-          items: sc.items.map(i => ({
-            productId: i.productId, productName: i.productName,
-            designNo: i.designNo, dnNumber: i.dnNumber,
-            photoUrl: i.photoUrl, sets: i.sets, pcs: i.sets * i.pcsPerSet, price: i.price,
-          })),
-          nightyDetails: currentBaleDetail ? {
-            totalSets: currentBaleDetail.totalSets,
-            totalPcs: currentBaleDetail.totalPcs,
-            packingType: currentBaleDetail.packingType,
-            totalBales: currentBaleDetail.totalBales,
-          } : null,
-          status: 'Pending', createdAt: new Date(),
-        });
-
-        // Admin + supplier ko notify karo
+        const currentBaleDetail = supplierBaleDetails?.[supplierId] || null;
+        await addDoc(collection(db, 'orders'), { buyerId: user.uid, buyerFirm: userProfile?.firmName || '', supplierId, supplierFirm: sc.supplierFirm, items: sc.items.map(i => ({ productId: i.productId, productName: i.productName, designNo: i.designNo, dnNumber: i.dnNumber, photoUrl: i.photoUrl, sets: i.sets, pcs: i.sets * i.pcsPerSet, price: i.price })), nightyDetails: currentBaleDetail ? { totalSets: currentBaleDetail.totalSets, totalPcs: currentBaleDetail.totalPcs, packingType: currentBaleDetail.packingType, totalBales: currentBaleDetail.totalBales } : null, status: 'Pending', createdAt: new Date() });
         if (adminId) await notifyNewOrder(adminId, supplierId, userProfile?.firmName || '');
-
         for (const item of sc.items) {
-          const designRef = doc(db, 'products', item.productId, 'designs', item.designId);
-          const designSnap = await getDoc(designRef);
-          if (designSnap.exists()) {
-            await updateDoc(designRef, { sets: Math.max(0, designSnap.data().sets - item.sets) });
-          }
-          const productRef = doc(db, 'products', item.productId);
-          const productSnap = await getDoc(productRef);
-          if (productSnap.exists()) {
-            await updateDoc(productRef, { totalSets: Math.max(0, productSnap.data().totalSets - item.sets) });
-          }
+          const dRef = doc(db, 'products', item.productId, 'designs', item.designId);
+          const dSnap = await getDoc(dRef);
+          if (dSnap.exists()) await updateDoc(dRef, { sets: Math.max(0, dSnap.data().sets - item.sets) });
+          const pRef = doc(db, 'products', item.productId);
+          const pSnap = await getDoc(pRef);
+          if (pSnap.exists()) await updateDoc(pRef, { totalSets: Math.max(0, pSnap.data().totalSets - item.sets) });
         }
       }
 
-      setCart([]);
-      setShowNightyCheckout(false);
-      setOrderSuccess(true);
-      fetchOrders();
-      fetchProducts();
+      setCart([]); setShowNightyCheckout(false); setOrderSuccess(true);
+      fetchOrders(); fetchProducts();
       setTimeout(() => setOrderSuccess(false), 3000);
     } catch (err) { console.error(err); }
     setLoading(false);
   };
 
-  const handleCheckout = () => {
-    if (nightyCart.length > 0) {
-      setShowNightyCheckout(true);
-    } else {
-      placeOrder(null);
-    }
-  };
-
-  const handleNextCardDesign = (e, productId, total) => {
-    e.stopPropagation();
-    setCardDesignIndices(prev => ({ ...prev, [productId]: ((prev[productId] || 0) + 1) % total }));
-  };
-
-  const handlePrevCardDesign = (e, productId, total) => {
-    e.stopPropagation();
-    setCardDesignIndices(prev => ({ ...prev, [productId]: ((prev[productId] || 0) - 1 + total) % total }));
-  };
-
-  const getProductDesignsList = (product) => {
-    const subCollection = productDesigns[product.id] || [];
-    if (subCollection.length > 0) return subCollection;
-    
-    const arrayPhotos = product.imageUrls || product.photos || [];
-    if (arrayPhotos.length > 0) {
-      return arrayPhotos.map((item, idx) => {
-        const imgUrl = item.photoUrl || item.url || (typeof item === 'string' ? item : product.imageUrl);
-        const dNo = item.dnNumber || item.designNo || `${idx + 1}`;
-        return { photoUrl: imgUrl, designNo: dNo, dnNumber: item.dnNumber || '' };
-      });
-    }
-    
-    if (product.imageUrl) return [{ photoUrl: product.imageUrl, designNo: '1' }];
-    return [];
-  };
+  const handleCheckout = () => nightyCart.length > 0 ? setShowNightyCheckout(true) : placeOrder(null);
+  const unreadCount = notifications.filter(n => !n.read).length;
+  const totalCartItems = cart.reduce((sum, i) => sum + (i.sets || i.quantity || 0), 0);
 
   if (viewingProduct) {
     return (
-      <div style={styles.container}>
-        <div style={styles.sidebar}>
-          <h2 style={styles.logo}>Buyer Panel</h2>
-          {userProfile && <p style={styles.firmName}>{userProfile.firmName}</p>}
-          <button style={styles.tab} onClick={() => { setViewingProduct(null); setActiveTab('browse'); }}>Browse Products</button>
-          <button style={styles.tab} onClick={() => { setViewingProduct(null); setActiveTab('cart'); }}>
-            Cart {cart.length > 0 && `(${cart.length})`}
+      <div style={S.appShell}>
+        <div style={S.topBar}>
+          <button style={S.backBtn} onClick={() => setViewingProduct(null)}>
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><path d="M19 12H5M12 5l-7 7 7 7"/></svg>
           </button>
-          <button style={styles.tab} onClick={() => { setViewingProduct(null); setActiveTab('orders'); }}>All Orders ({orders.length})</button>
-          <button style={styles.tab} onClick={() => { setViewingProduct(null); setActiveTab('profile'); }}>My Profile</button>
-          <button style={styles.logoutBtn} onClick={handleLogout}>Logout</button>
+          <span style={S.topBarTitle}>{viewingProduct.name}</span>
+          <div style={{ width: 40 }} />
         </div>
-        <ProductDesigns
-          product={viewingProduct}
-          designs={productDesigns[viewingProduct.id] || []}
-          cart={cart}
-          onAddSet={addDesignToCart}
-          onRemoveSet={removeDesignFromCart}
-          onBack={() => setViewingProduct(null)}
-        />
+        <div style={{ flex: 1, overflowY: 'auto', paddingBottom: 90 }}>
+          <ProductDesigns
+            product={viewingProduct}
+            designs={productDesigns[viewingProduct.id] || []}
+            cart={cart}
+            onAddSet={addDesignToCart}
+            onRemoveSet={removeDesignFromCart}
+            onBack={() => setViewingProduct(null)}
+          />
+        </div>
+        <BottomNav activeTab={activeTab} setActiveTab={t => { setViewingProduct(null); setActiveTab(t); }} cartCount={totalCartItems} />
       </div>
     );
   }
 
   return (
-    <div style={styles.container}>
+    <div style={S.appShell}>
       {showNightyCheckout && (
-        <NightyCheckout
-          nightyBySupplier={nightyBySupplier}
-          onConfirm={details => placeOrder(details)}
-          onCancel={() => setShowNightyCheckout(false)}
-        />
+        <NightyCheckout nightyBySupplier={nightyBySupplier} onConfirm={placeOrder} onCancel={() => setShowNightyCheckout(false)} />
       )}
 
-      <div style={styles.sidebar}>
-        <h2 style={styles.logo}>Buyer Panel</h2>
-        {userProfile && <p style={styles.firmName}>{userProfile.firmName}</p>}
-        <button style={activeTab === 'browse' ? styles.activeTab : styles.tab} onClick={() => setActiveTab('browse')}>Browse Products</button>
-        <button style={activeTab === 'cart' ? styles.activeTab : styles.tab} onClick={() => setActiveTab('cart')}>
-          Cart {cart.length > 0 && `(${cart.length})`}
-        </button>
-        <button style={activeTab === 'orders' ? styles.activeTab : styles.tab} onClick={() => setActiveTab('orders')}>All Orders ({orders.length})</button>
-        <button style={activeTab === 'profile' ? styles.activeTab : styles.tab} onClick={() => setActiveTab('profile')}>My Profile</button>
-        <button style={styles.logoutBtn} onClick={handleLogout}>Logout</button>
-      </div>
-
-      <div style={styles.main}>
-        <div style={styles.topHeader}>
-          <h2 style={{ color: '#1a1a2e', margin: 0 }}>Jain Agency Marketplace</h2>
-
-          <div style={{ display: 'flex', alignItems: 'center', gap: '15px' }}>
-            {/* NOTIFICATION BELL */}
-            <div style={styles.bellWrapper} ref={notifRef}>
-              <button style={styles.bellBtn} onClick={() => { setShowNotifications(!showNotifications); if (!showNotifications) markAllRead(); }}>
-                🔔
-                {unreadCount > 0 && <span style={styles.badge}>{unreadCount > 99 ? '99+' : unreadCount}</span>}
-              </button>
-
-              {showNotifications && (
-                <div style={styles.notifDropdown}>
-                  <div style={styles.notifHeader}>
-                    <span style={{ fontWeight: 'bold', fontSize: '14px' }}>Notifications</span>
-                    <span style={{ fontSize: '12px', color: '#64748b' }}>{notifications.length} total</span>
-                  </div>
-                  {notifications.length === 0 ? (
-                    <div style={styles.notifEmpty}>No notifications yet</div>
-                  ) : (
-                    <div style={styles.notifList}>
-                      {notifications.slice(0, 20).map(n => (
-                        <div key={n.id} style={{ ...styles.notifItem, backgroundColor: n.read ? 'white' : '#eff6ff' }}>
-                          <span style={{ fontSize: '18px', marginRight: '10px' }}>{notifIcon(n.type)}</span>
-                          <div style={{ flex: 1 }}>
-                            <p style={styles.notifMsg}>{n.message}</p>
-                            <p style={styles.notifTime}>{formatTime(n.createdAt)}</p>
-                          </div>
-                          {!n.read && <span style={styles.unreadDot} />}
-                        </div>
-                      ))}
-                    </div>
-                  )}
+      {/* TOP BAR */}
+      <div style={S.topBar}>
+        <div style={{ display: 'flex', flexDirection: 'column' }}>
+          <span style={{ fontSize: 11, color: D.gold, fontWeight: 600, letterSpacing: '0.08em', textTransform: 'uppercase' }}>Jain Agency</span>
+          <span style={{ fontSize: 16, fontWeight: 700, color: D.navy, lineHeight: 1.2 }}>
+            {activeTab === 'browse' ? 'Marketplace' : activeTab === 'cart' ? 'My Cart' : activeTab === 'orders' ? 'My Orders' : 'Profile'}
+          </span>
+        </div>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+          {activeTab === 'browse' && (
+            <button style={S.iconBtn} onClick={() => setShowSearch(!showSearch)}>
+              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke={D.navy} strokeWidth="2"><circle cx="11" cy="11" r="8"/><path d="M21 21l-4.35-4.35"/></svg>
+            </button>
+          )}
+          <div ref={notifRef} style={{ position: 'relative' }}>
+            <button style={S.iconBtn} onClick={() => { setShowNotifications(!showNotifications); if (!showNotifications) markAllRead(); }}>
+              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke={D.navy} strokeWidth="2"><path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9M13.73 21a2 2 0 0 1-3.46 0"/></svg>
+              {unreadCount > 0 && <span style={S.notifBadge}>{unreadCount > 9 ? '9+' : unreadCount}</span>}
+            </button>
+            {showNotifications && (
+              <div style={S.notifDropdown}>
+                <div style={S.notifDropHead}>
+                  <span style={{ fontWeight: 700, fontSize: 14, color: D.navy }}>Notifications</span>
+                  <span style={{ fontSize: 12, color: D.textSecondary }}>{notifications.length} total</span>
                 </div>
-              )}
-            </div>
-
-            {/* CART ICON */}
-            <div style={styles.cartIconContainer} onClick={() => setActiveTab('cart')}>
-              <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="#1a1a2e" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                <path d="M6 2L3 6v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2V6l-3-4z"></path>
-                <line x1="3" y1="6" x2="21" y2="6"></line>
-                <path d="M16 10a4 4 0 0 1-8 0"></path>
-              </svg>
-              {cart.length > 0 && <span style={styles.cartBadge}>{cart.length}</span>}
-            </div>
+                {notifications.length === 0 ? (
+                  <div style={{ padding: '30px 16px', textAlign: 'center', color: D.textSecondary, fontSize: 13 }}>No notifications yet</div>
+                ) : (
+                  <div style={{ maxHeight: 320, overflowY: 'auto' }}>
+                    {notifications.slice(0, 20).map(n => (
+                      <div key={n.id} style={{ ...S.notifItem, backgroundColor: n.read ? D.surface : '#f0f4ff' }}>
+                        <span style={{ fontSize: 16, marginRight: 10 }}>{n.type === 'new_product' ? '📦' : '🔔'}</span>
+                        <div style={{ flex: 1 }}>
+                          <p style={{ margin: 0, fontSize: 13, color: D.textPrimary, lineHeight: 1.4 }}>{n.message}</p>
+                          <p style={{ margin: '3px 0 0', fontSize: 11, color: D.textSecondary }}>
+                            {n.createdAt?.toDate?.()?.toLocaleString('en-IN', { day: '2-digit', month: 'short', hour: '2-digit', minute: '2-digit' })}
+                          </p>
+                        </div>
+                        {!n.read && <div style={{ width: 7, height: 7, borderRadius: '50%', backgroundColor: D.navy, flexShrink: 0 }} />}
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </div>
+            )}
           </div>
         </div>
+      </div>
 
+      {/* MAIN CONTENT */}
+      <div style={S.mainContent}>
+
+        {/* BROWSE TAB */}
         {activeTab === 'browse' && (
           <div>
-            <div style={styles.searchFilterRow}>
-              <input 
-                type="text" 
-                placeholder="Search by name, category, material, cut, design no..." 
-                value={searchTerm} 
-                onChange={(e) => setSearchTerm(e.target.value)} 
-                style={styles.searchInput}
-              />
-              <div style={styles.priceFilterGroup}>
-                <input type="number" placeholder="Min Price" value={minPrice} onChange={(e) => setMinPrice(e.target.value)} style={styles.priceInput}/>
-                <span style={{ color: '#666' }}>to</span>
-                <input type="number" placeholder="Max Price" value={maxPrice} onChange={(e) => setMaxPrice(e.target.value)} style={styles.priceInput}/>
+            {showSearch && (
+              <div style={{ padding: '0 16px 12px' }}>
+                <div style={S.searchBox}>
+                  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke={D.textSecondary} strokeWidth="2" style={{ flexShrink: 0 }}><circle cx="11" cy="11" r="8"/><path d="M21 21l-4.35-4.35"/></svg>
+                  <input autoFocus style={S.searchInput} placeholder="Search products, designs, suppliers..." value={searchTerm} onChange={e => setSearchTerm(e.target.value)} />
+                  {searchTerm && <button style={{ background: 'none', border: 'none', cursor: 'pointer', padding: 0, color: D.textSecondary }} onClick={() => setSearchTerm('')}>✕</button>}
+                </div>
+                <div style={{ display: 'flex', gap: 8, marginTop: 8 }}>
+                  <input style={{ ...S.priceInput, flex: 1 }} type="number" placeholder="Min ₹" value={minPrice} onChange={e => setMinPrice(e.target.value)} />
+                  <span style={{ color: D.textSecondary, alignSelf: 'center' }}>—</span>
+                  <input style={{ ...S.priceInput, flex: 1 }} type="number" placeholder="Max ₹" value={maxPrice} onChange={e => setMaxPrice(e.target.value)} />
+                </div>
               </div>
-            </div>
-
-            <div style={styles.filterRow}>
-              <button style={!selectedCategory ? styles.filterActive : styles.filterBtn} onClick={() => setSelectedCategory('')}>All</button>
+            )}
+            <div style={S.chipRow}>
+              <button style={!selectedCategory ? S.chipActive : S.chip} onClick={() => setSelectedCategory('')}>All</button>
               {categories.map(cat => (
-                <button key={cat} style={selectedCategory === cat ? styles.filterActive : styles.filterBtn} onClick={() => setSelectedCategory(cat)}>{cat}</button>
+                <button key={cat} style={selectedCategory === cat ? S.chipActive : S.chip} onClick={() => setSelectedCategory(cat)}>{cat}</button>
               ))}
             </div>
-
-            {searchedAndFilteredProducts.length === 0 ? <p style={styles.empty}>No products available matching criteria</p> :
-              <div style={styles.grid}>
+            {searchedAndFilteredProducts.length === 0 ? (
+              <div style={{ padding: '60px 16px', textAlign: 'center', color: D.textSecondary }}>
+                <p style={{ fontSize: 15 }}>No products found</p>
+              </div>
+            ) : (
+              <div style={S.productGrid}>
                 {searchedAndFilteredProducts.map(product => {
-                  const designsList = getProductDesignsList(product);
-                  const currentIdx = cardDesignIndices[product.id] || 0;
-                  const currentImg = designsList[currentIdx]?.photoUrl || 'https://via.placeholder.com/200';
-
+                  const designs = getProductDesignsList(product);
+                  const idx = cardDesignIndices[product.id] || 0;
+                  const img = designs[idx]?.photoUrl || 'https://via.placeholder.com/200';
                   return (
-                    <div 
-                      key={product.id} 
-                      onClick={() => {
-                        setSelectedProductDetails(product);
-                        setModalDesignIdx(currentIdx);
-                        setSizeQuantities({});
-                      }}
-                      style={styles.productCard}
-                    >
-                      <div style={styles.cardImageContainer}>
-                        <img src={currentImg} alt={product.name} style={styles.productImage} />
-                        {designsList.length > 1 && (
+                    <div key={product.id} style={S.productCard}
+                      onClick={() => { setSelectedProductDetails(product); setModalDesignIdx(idx); setSizeQuantities({}); }}>
+                      <div style={S.cardImgWrap}>
+                        <img src={img} alt={product.name} style={S.cardImg} />
+                        {designs.length > 1 && (
                           <>
-                            <button style={styles.cardArrowLeft} onClick={(e) => handlePrevCardDesign(e, product.id, designsList.length)}>‹</button>
-                            <button style={styles.cardArrowRight} onClick={(e) => handleNextCardDesign(e, product.id, designsList.length)}>›</button>
-                            <div style={styles.cardDesignBadge}>{currentIdx + 1}/{designsList.length} Designs</div>
+                            <button style={S.cardArrow('left')} onClick={e => { e.stopPropagation(); setCardDesignIndices(p => ({ ...p, [product.id]: ((p[product.id] || 0) - 1 + designs.length) % designs.length })); }}>‹</button>
+                            <button style={S.cardArrow('right')} onClick={e => { e.stopPropagation(); setCardDesignIndices(p => ({ ...p, [product.id]: ((p[product.id] || 0) + 1) % designs.length })); }}>›</button>
+                            <div style={S.designCountBadge}>{idx + 1}/{designs.length}</div>
                           </>
                         )}
                       </div>
-                      <div style={styles.productInfo}>
-                        <span style={styles.cardCategoryLabel}>{product.category}</span>
-                        <p style={styles.productName}>{product.name}</p>
-                        <p style={styles.productDetail}>Supplier: <b>{product.supplierFirm}</b></p>
-                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginTop: '10px' }}>
-                          <span style={styles.cardPrice}>₹{product.price}/pc</span>
-                          <span style={styles.viewDetailBadge}>Details →</span>
+                      <div style={S.cardInfo}>
+                        <span style={S.cardCategory}>{product.category}</span>
+                        <p style={S.cardName}>{product.name}</p>
+                        <p style={S.cardSupplier}>{product.supplierFirm}</p>
+                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginTop: 8 }}>
+                          <span style={S.cardPrice}>₹{product.price}<span style={{ fontSize: 11, fontWeight: 400, color: D.textSecondary }}>/pc</span></span>
+                          <span style={S.detailsTag}>View →</span>
                         </div>
                       </div>
                     </div>
                   );
                 })}
               </div>
-            }
-          </div>
-        )}
-
-        {activeTab === 'cart' && (
-          <div>
-            <h2 style={styles.heading}>My Cart</h2>
-            {cart.length === 0 ? <p style={styles.empty}>Cart is empty</p> : (
-              <div>
-                {Object.keys(nonNightyBySupplier).map(supplierId => (
-                  <div key={supplierId} style={styles.supplierGroup}>
-                    <h3 style={styles.supplierName}>{nonNightyBySupplier[supplierId].supplierFirm}</h3>
-                    {nonNightyBySupplier[supplierId].items.map(item => (
-                      <div key={item.cartKey} style={styles.cartItem}>
-                        <div style={styles.cartItemInfo}>
-                          <p style={styles.cartItemName}>{item.productName} {item.size && `(Size: ${item.size})`}</p>
-                          <p style={styles.cartItemDetail}>₹{item.price}/pc</p>
-                        </div>
-                        <div style={styles.cartItemActions}>
-                          <input type="number" value={item.quantity} min={1}
-                            onChange={e => updateQuantity(item.cartKey, e.target.value)} style={styles.quantityInput} />
-                          <p style={styles.itemTotal}>₹{(item.price * item.quantity).toLocaleString()}</p>
-                          <button style={styles.removeBtn} onClick={() => removeFromCart(item.cartKey)}>Remove</button>
-                        </div>
-                      </div>
-                    ))}
-                  </div>
-                ))}
-
-                {Object.keys(nightyBySupplier).map(supplierId => (
-                  <div key={supplierId} style={styles.supplierGroup}>
-                    <h3 style={styles.supplierName}>{nightyBySupplier[supplierId].supplierFirm} — {nightyBySupplier[supplierId].category}</h3>
-                    {nightyBySupplier[supplierId].items.map(item => (
-                      <div key={item.cartKey} style={styles.cartItem}>
-                        <img src={item.photoUrl} alt="" style={styles.cartDesignImg} />
-                        <div style={styles.cartItemInfo}>
-                          <p style={styles.cartItemName}>{item.productName} — DN {item.designNo}{item.dnNumber ? ` (${item.dnNumber})` : ''}</p>
-                          <p style={styles.cartItemDetail}>₹{item.price}/pc | 1 set = {item.pcsPerSet} pcs</p>
-                        </div>
-                        <div style={styles.cartItemActions}>
-                          <button style={styles.qtyBtn} onClick={() => removeDesignFromCart(item.cartKey)}>−</button>
-                          <span style={styles.setsCount}>{item.sets} sets</span>
-                          <button style={styles.qtyBtn} onClick={() => addDesignToCart(
-                            products.find(p => p.id === item.productId),
-                            { id: item.designId, designNo: item.designNo, dnNumber: item.dnNumber, photoUrl: item.photoUrl, sets: item.availableSets }
-                          )}>+</button>
-                          <p style={styles.itemTotal}>{item.sets * item.pcsPerSet} pcs</p>
-                          <button style={styles.removeBtn} onClick={() => removeFromCart(item.cartKey)}>Remove</button>
-                        </div>
-                      </div>
-                    ))}
-                  </div>
-                ))}
-
-                <div style={styles.cartSummary}>
-                  {nightyCart.length > 0 && <p style={styles.nightyNote}>* Nighty bale packing will be confirmed at checkout</p>}
-                  {orderSuccess && <p style={styles.successMsg}>Order placed successfully!</p>}
-                  <button style={styles.placeOrderBtn} onClick={handleCheckout} disabled={loading}>
-                    {loading ? 'Placing Order...' : 'Checkout'}
-                  </button>
-                </div>
-              </div>
             )}
           </div>
         )}
 
-        {activeTab === 'orders' && (
-          <div>
-            <h2 style={styles.heading}>My Orders</h2>
-            {orders.length === 0 ? <p style={styles.empty}>No orders yet</p> :
-              orders.map(order => (
-                <div key={order.id} style={styles.orderCard}>
-                  <p><b>Order ID:</b> {order.id}</p>
-                  <p><b>Supplier:</b> {order.supplierFirm}</p>
-                  <div>
-                    <b>Items:</b>
-                    {order.items?.map((i, idx) => (
-                      <div key={idx} style={styles.orderItem}>
-                        {i.photoUrl && <img src={i.photoUrl} alt="" style={styles.orderDesignImg} />}
-                        <span>{i.productName}{i.size ? ` (Size: ${i.size})` : ''}{i.designNo ? ` DN${i.designNo}` : ''}{i.dnNumber ? ` (${i.dnNumber})` : ''} — {i.sets ? `${i.sets} sets = ${i.pcs} pcs` : `${i.quantity} ${i.unit}`}</span>
+        {/* CART TAB */}
+        {activeTab === 'cart' && (
+          <div style={{ padding: '0 16px' }}>
+            {cart.length === 0 ? (
+              <div style={{ padding: '80px 0', textAlign: 'center' }}>
+                <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke={D.border} strokeWidth="1.5" style={{ display: 'block', margin: '0 auto 12px' }}><path d="M6 2L3 6v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2V6l-3-4z"/><line x1="3" y1="6" x2="21" y2="6"/><path d="M16 10a4 4 0 0 1-8 0"/></svg>
+                <p style={{ color: D.textSecondary, fontSize: 15 }}>Your cart is empty</p>
+                <button style={{ ...S.btnPrimary, marginTop: 16, width: 'auto', padding: '12px 24px' }} onClick={() => setActiveTab('browse')}>Browse Products</button>
+              </div>
+            ) : (
+              <>
+                {Object.keys(nonNightyBySupplier).map(sid => (
+                  <div key={sid} style={S.supplierSection}>
+                    <p style={S.supplierLabel}>{nonNightyBySupplier[sid].supplierFirm}</p>
+                    {nonNightyBySupplier[sid].items.map(item => (
+                      <div key={item.cartKey} style={S.cartItem}>
+                        <div style={{ flex: 1 }}>
+                          <p style={{ margin: '0 0 2px', fontWeight: 600, fontSize: 14, color: D.textPrimary }}>{item.productName} {item.size && <span style={S.sizeBadge}>{item.size}</span>}</p>
+                          <p style={{ margin: 0, fontSize: 12, color: D.textSecondary }}>₹{item.price}/pc</p>
+                        </div>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                          <input type="number" min={1} value={item.quantity} onChange={e => updateQuantity(item.cartKey, e.target.value)} style={S.qtyInput} />
+                          <span style={{ fontSize: 13, fontWeight: 600, color: D.navy, minWidth: 60, textAlign: 'right' }}>₹{(item.price * item.quantity).toLocaleString()}</span>
+                          <button style={S.removeBtn} onClick={() => removeFromCart(item.cartKey)}>✕</button>
+                        </div>
                       </div>
                     ))}
                   </div>
-                  {order.nightyDetails && (
-                    <p><b>Packing:</b> {order.nightyDetails.totalSets} sets | {order.nightyDetails.packingType} sets/bale | {order.nightyDetails.totalBales} bale(s) | {order.nightyDetails.totalPcs} pcs</p>
-                  )}
-                  <p><b>Status:</b> <span style={styles.statusBadge}>{order.status}</span></p>
-                  <p><b>Date:</b> {order.createdAt?.toDate?.()?.toLocaleDateString()}</p>
+                ))}
+                {Object.keys(nightyBySupplier).map(sid => (
+                  <div key={sid} style={S.supplierSection}>
+                    <p style={S.supplierLabel}>{nightyBySupplier[sid].supplierFirm} · {nightyBySupplier[sid].category}</p>
+                    {nightyBySupplier[sid].items.map(item => (
+                      <div key={item.cartKey} style={S.cartItem}>
+                        <img src={item.photoUrl} alt="" style={{ width: 44, height: 44, objectFit: 'cover', borderRadius: 6, flexShrink: 0 }} />
+                        <div style={{ flex: 1 }}>
+                          <p style={{ margin: '0 0 2px', fontWeight: 600, fontSize: 13, color: D.textPrimary }}>{item.productName}</p>
+                          <p style={{ margin: 0, fontSize: 12, color: D.textSecondary }}>DN {item.designNo}{item.dnNumber ? ` (${item.dnNumber})` : ''} · {item.pcsPerSet} pcs/set</p>
+                        </div>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+                          <button style={S.qtyCircleBtn} onClick={() => removeDesignFromCart(item.cartKey)}>−</button>
+                          <span style={{ fontSize: 14, fontWeight: 700, minWidth: 24, textAlign: 'center', color: D.navy }}>{item.sets}</span>
+                          <button style={S.qtyCircleBtn} onClick={() => addDesignToCart(products.find(p => p.id === item.productId), { id: item.designId, designNo: item.designNo, dnNumber: item.dnNumber, photoUrl: item.photoUrl, sets: item.availableSets })}>+</button>
+                          <button style={S.removeBtn} onClick={() => removeFromCart(item.cartKey)}>✕</button>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                ))}
+                <div style={{ padding: '16px 0 100px' }}>
+                  {nightyCart.length > 0 && <p style={{ fontSize: 12, color: D.textSecondary, marginBottom: 12 }}>* Bale packing will be confirmed at checkout</p>}
+                  {orderSuccess && <p style={{ color: D.success, fontWeight: 600, marginBottom: 12, fontSize: 14 }}>✓ Order placed successfully!</p>}
+                  <button style={S.btnPrimary} onClick={handleCheckout} disabled={loading}>
+                    {loading ? 'Placing Order...' : 'Proceed to Checkout'}
+                  </button>
                 </div>
-              ))
-            }
+              </>
+            )}
           </div>
         )}
 
+        {/* ORDERS TAB */}
+        {activeTab === 'orders' && (
+          <div style={{ padding: '8px 16px' }}>
+            {orders.length === 0 ? (
+              <div style={{ padding: '80px 0', textAlign: 'center', color: D.textSecondary }}>
+                <p style={{ fontSize: 15 }}>No orders yet</p>
+              </div>
+            ) : orders.map(order => (
+              <OrderCard key={order.id} order={order} />
+            ))}
+          </div>
+        )}
+
+        {/* PROFILE TAB */}
         {activeTab === 'profile' && userProfile && (
-          <div>
-            <h2 style={styles.heading}>My Profile</h2>
+          <div style={{ padding: '0 16px' }}>
             <ProfileEdit userProfile={userProfile} onSave={fetchProfile} />
+            <button style={{ ...S.btnGhost, marginTop: 12, borderColor: D.error, color: D.error }} onClick={handleLogout}>Logout</button>
           </div>
         )}
       </div>
 
+      {/* BOTTOM NAV */}
+      <BottomNav activeTab={activeTab} setActiveTab={setActiveTab} cartCount={totalCartItems} />
+
+      {/* PRODUCT DETAIL MODAL — bottom sheet */}
       {selectedProductDetails && (
-        <div style={styles.modalOverlay} onClick={() => setSelectedProductDetails(null)}>
-          <div style={styles.richModal} onClick={(e) => e.stopPropagation()}>
-            <button style={styles.closeModalCircle} onClick={() => setSelectedProductDetails(null)}>✕</button>
-            
-            <div style={styles.modalBodyLayout}>
-              <div style={styles.modalBodyLeft}>
-                {(() => {
-                  const modalDesigns = getProductDesignsList(selectedProductDetails);
-                  const activeModalImg = modalDesigns[modalDesignIdx]?.photoUrl || 'https://via.placeholder.com/300';
-                  return (
-                    <div style={{ position: 'relative', width: '100%', height: '380px', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-                      <img src={activeModalImg} alt="" style={styles.modalMainImg} />
-                      {modalDesigns.length > 1 && (
-                        <>
-                          <button style={styles.sliderArrowLeft} onClick={() => setModalDesignIdx(prev => (prev - 1 + modalDesigns.length) % modalDesigns.length)}>‹</button>
-                          <button style={styles.sliderArrowRight} onClick={() => setModalDesignIdx(prev => (prev + 1) % modalDesigns.length)}>›</button>
-                          <div style={styles.sliderDotBadge}>{modalDesignIdx + 1} / {modalDesigns.length}</div>
-                        </>
-                      )}
-                    </div>
-                  );
-                })()}
-              </div>
-
-              <div style={styles.modalBodyRight}>
-                <div>
-                  <span style={styles.tagCategory}>{selectedProductDetails.category}</span>
-                  <h2 style={styles.modalProductTitle}>{selectedProductDetails.name}</h2>
-                  <p style={styles.modalSupplierSub}>Supplier: <b>{selectedProductDetails.supplierFirm}</b></p>
-                  <div style={styles.specsGrid}>
-                    <p style={{ margin: 0 }}>Material: <b>{selectedProductDetails.material || 'N/A'}</b></p>
-                    {selectedProductDetails.cut && selectedProductDetails.cut !== 'N/A' && selectedProductDetails.cut !== '' && (
-                      <p style={{ margin: 0 }}>Cut: <b>{selectedProductDetails.cut}</b></p>
-                    )}
-                    <p style={{ margin: 0 }}>Rate: <b style={{ color: '#e63946' }}>₹{selectedProductDetails.price}/pc</b></p>
-                    <p style={{ margin: 0 }}>Bale Size (MOQ): <b>{selectedProductDetails.moq} pcs</b></p>
-                  </div>
-
-                  {selectedProductDetails.sizes && selectedProductDetails.sizes.length > 0 && !NIGHTY_CATEGORIES.includes(selectedProductDetails.category) && (
-                    <div style={{ marginBottom: '15px' }}>
-                      <label style={styles.dropdownLabel}>Enter Quantities Per Size (Multiple of Bale packing):</label>
-                      <div style={styles.sizeMatrixBox}>
-                        {selectedProductDetails.sizes.map(size => (
-                          <div key={size} style={styles.matrixRow}>
-                            <span style={{ fontWeight: 'bold', fontSize: '14px', color: '#334155' }}>Size {size}:</span>
-                            <input 
-                              type="number" min="0" placeholder="0"
-                              value={sizeQuantities[size] || ''}
-                              onChange={(e) => setSizeQuantities({ ...sizeQuantities, [size]: e.target.value })}
-                              style={styles.matrixSizeInput}
-                            />
-                          </div>
-                        ))}
-                      </div>
-                    </div>
-                  )}
-                </div>
-
-                {(() => {
-                  if (NIGHTY_CATEGORIES.includes(selectedProductDetails.category)) {
-                    return (
-                      <button onClick={() => { setSelectedProductDetails(null); setViewingProduct(selectedProductDetails); }} style={styles.addCartSubmitBtn}>
-                        Select Design Sets & Pack Bales
-                      </button>
-                    );
-                  }
-                  const currentTotalInputQty = Object.values(sizeQuantities).reduce((sum, q) => sum + Number(q || 0), 0);
-                  const supplierMoqPack = Number(selectedProductDetails.moq || 1);
-                  const isValidBalePack = currentTotalInputQty > 0 && currentTotalInputQty % supplierMoqPack === 0;
-                  return (
-                    <div>
-                      {currentTotalInputQty > 0 && !isValidBalePack && (
-                        <p style={{ color: '#e63946', fontSize: '12px', margin: '0 0 8px 0', fontWeight: 'bold' }}>
-                          ⚠️ Total Qty ({currentTotalInputQty} pcs) must be multiple of Bale size ({supplierMoqPack} pcs).
-                        </p>
-                      )}
-                      <button 
-                        onClick={() => addSizesToCart(selectedProductDetails)}
-                        disabled={selectedProductDetails.sizes?.length > 0 && !isValidBalePack}
-                        style={{ ...styles.addCartSubmitBtn, backgroundColor: (selectedProductDetails.sizes?.length > 0 && !isValidBalePack) ? '#cbd5e1' : '#1a1a2e', cursor: (selectedProductDetails.sizes?.length > 0 && !isValidBalePack) ? 'not-allowed' : 'pointer' }}
-                      >
-                        Add Total {currentTotalInputQty > 0 ? `(${currentTotalInputQty} pcs)` : ''} to Cart
-                      </button>
-                    </div>
-                  );
-                })()}
-              </div>
-            </div>
-
+        <div style={S.modalOverlay} onClick={() => setSelectedProductDetails(null)}>
+          <div style={S.productModal} onClick={e => e.stopPropagation()}>
+            <div style={S.modalHandle} />
+            <button style={S.modalClose} onClick={() => setSelectedProductDetails(null)}>✕</button>
             {(() => {
-              const bottomStripDesigns = getProductDesignsList(selectedProductDetails);
-              if (bottomStripDesigns.length <= 1) return null;
+              const designs = getProductDesignsList(selectedProductDetails);
+              const img = designs[modalDesignIdx]?.photoUrl || 'https://via.placeholder.com/300';
               return (
-                <div style={styles.subDesignSection}>
-                  <h4 style={{ margin: '0 0 10px 0', color: '#1a1a2e' }}>All Catalog Prints</h4>
-                  <div style={styles.subDesignRowSlider}>
-                    {bottomStripDesigns.map((design, idx) => (
-                      <div key={idx} onClick={() => setModalDesignIdx(idx)}
-                        style={{ ...styles.miniDesignCard, border: modalDesignIdx === idx ? '2px solid #e63946' : '1px solid #e2e8f0' }}>
-                        <img src={design.photoUrl} alt="" style={styles.miniDesignImg} />
-                        <p style={{ margin: '5px 0 0 0', fontSize: '11px', fontWeight: 'bold' }}>DN: {design.designNo}</p>
-                      </div>
-                    ))}
-                  </div>
+                <div style={{ position: 'relative', width: '100%', aspectRatio: '4/5', backgroundColor: D.bg, overflow: 'hidden' }}>
+                  <img src={img} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+                  {designs.length > 1 && (
+                    <>
+                      <button style={S.slideArrow('left')} onClick={() => setModalDesignIdx(p => (p - 1 + designs.length) % designs.length)}>‹</button>
+                      <button style={S.slideArrow('right')} onClick={() => setModalDesignIdx(p => (p + 1) % designs.length)}>›</button>
+                      <div style={{ position: 'absolute', bottom: 10, right: 10, backgroundColor: 'rgba(0,0,0,0.6)', color: 'white', padding: '3px 8px', borderRadius: 20, fontSize: 11 }}>{modalDesignIdx + 1}/{designs.length}</div>
+                    </>
+                  )}
                 </div>
               );
             })()}
+            <div style={{ padding: 16, overflowY: 'auto' }}>
+              <span style={S.modalCategory}>{selectedProductDetails.category}</span>
+              <h2 style={{ margin: '6px 0 4px', fontSize: 20, fontWeight: 700, color: D.navy }}>{selectedProductDetails.name}</h2>
+              <p style={{ margin: '0 0 12px', fontSize: 13, color: D.textSecondary }}>{selectedProductDetails.supplierFirm}</p>
+              <div style={S.specsRow}>
+                <div style={S.specItem}><span style={S.specLabel}>Rate</span><span style={S.specValue}>₹{selectedProductDetails.price}/pc</span></div>
+                <div style={S.specItem}><span style={S.specLabel}>MOQ</span><span style={S.specValue}>{selectedProductDetails.moq} pcs</span></div>
+                {selectedProductDetails.material && <div style={S.specItem}><span style={S.specLabel}>Material</span><span style={S.specValue}>{selectedProductDetails.material}</span></div>}
+                {selectedProductDetails.cut && <div style={S.specItem}><span style={S.specLabel}>Cut</span><span style={S.specValue}>{selectedProductDetails.cut}</span></div>}
+              </div>
+              {selectedProductDetails.sizes?.length > 0 && !NIGHTY_CATEGORIES.includes(selectedProductDetails.category) && (
+                <div style={{ marginBottom: 16 }}>
+                  <p style={{ fontSize: 13, fontWeight: 600, color: D.navy, margin: '0 0 10px' }}>Qty per Size <span style={{ fontWeight: 400, color: D.textSecondary }}>(must be multiple of {selectedProductDetails.moq})</span></p>
+                  {selectedProductDetails.sizes.map(size => (
+                    <div key={size} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '8px 0', borderBottom: `1px solid ${D.borderLight}` }}>
+                      <span style={{ fontSize: 14, fontWeight: 600, color: D.textPrimary }}>Size {size}</span>
+                      <input type="number" min="0" placeholder="0" value={sizeQuantities[size] || ''}
+                        onChange={e => setSizeQuantities({ ...sizeQuantities, [size]: e.target.value })}
+                        style={{ width: 80, padding: '6px 10px', border: `1px solid ${D.border}`, borderRadius: 6, textAlign: 'center', fontSize: 14 }} />
+                    </div>
+                  ))}
+                </div>
+              )}
+              {(() => {
+                const designs = getProductDesignsList(selectedProductDetails);
+                if (designs.length <= 1) return null;
+                return (
+                  <div style={{ marginBottom: 16 }}>
+                    <p style={{ fontSize: 12, fontWeight: 600, color: D.textSecondary, margin: '0 0 8px', textTransform: 'uppercase', letterSpacing: '0.05em' }}>All Designs</p>
+                    <div style={{ display: 'flex', gap: 8, overflowX: 'auto', paddingBottom: 4 }}>
+                      {designs.map((d, idx) => (
+                        <div key={idx} onClick={() => setModalDesignIdx(idx)} style={{ flexShrink: 0, width: 64, cursor: 'pointer', borderRadius: 6, overflow: 'hidden', border: `2px solid ${modalDesignIdx === idx ? D.gold : D.borderLight}` }}>
+                          <img src={d.photoUrl} alt="" style={{ width: '100%', height: 64, objectFit: 'cover' }} />
+                          <p style={{ margin: 0, fontSize: 10, textAlign: 'center', padding: '2px 0', color: D.textSecondary }}>DN{d.designNo}</p>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                );
+              })()}
+              {NIGHTY_CATEGORIES.includes(selectedProductDetails.category) ? (
+                <button style={S.btnPrimary} onClick={() => { setSelectedProductDetails(null); setViewingProduct(selectedProductDetails); }}>
+                  Select Designs & Bales
+                </button>
+              ) : (() => {
+                const total = Object.values(sizeQuantities).reduce((s, q) => s + Number(q || 0), 0);
+                const moq = Number(selectedProductDetails.moq || 1);
+                const valid = total > 0 && total % moq === 0;
+                return (
+                  <>
+                    {total > 0 && !valid && (
+                      <p style={{ fontSize: 12, color: D.error, margin: '0 0 8px', fontWeight: 600 }}>⚠ Total {total} pcs must be multiple of {moq}</p>
+                    )}
+                    <button style={{ ...S.btnPrimary, backgroundColor: (selectedProductDetails.sizes?.length > 0 && !valid) ? D.border : D.navy }}
+                      onClick={() => addSizesToCart(selectedProductDetails)}
+                      disabled={selectedProductDetails.sizes?.length > 0 && !valid}>
+                      Add to Cart {total > 0 ? `(${total} pcs)` : ''}
+                    </button>
+                  </>
+                );
+              })()}
+            </div>
           </div>
         </div>
       )}
@@ -867,108 +832,102 @@ function BuyerDashboard() {
   );
 }
 
-const styles = {
-  container: { display: 'flex', minHeight: '100vh', backgroundColor: '#f8fafc' },
-  sidebar: { width: '220px', backgroundColor: '#1a1a2e', padding: '20px', display: 'flex', flexDirection: 'column', gap: '10px', position: 'sticky', top: 0, height: '100vh', flexShrink: 0 },
-  logo: { color: 'white', marginBottom: '5px', fontSize: '18px' },
-  firmName: { color: '#aaa', fontSize: '12px', marginBottom: '15px' },
-  tab: { padding: '12px', backgroundColor: 'transparent', color: '#aaa', border: 'none', borderRadius: '8px', cursor: 'pointer', textAlign: 'left', fontSize: '14px' },
-  activeTab: { padding: '12px', backgroundColor: '#e63946', color: 'white', border: 'none', borderRadius: '8px', cursor: 'pointer', textAlign: 'left', fontSize: '14px' },
-  logoutBtn: { marginTop: 'auto', padding: '12px', backgroundColor: '#333', color: 'white', border: 'none', borderRadius: '8px', cursor: 'pointer' },
-  main: { flex: 1, padding: '30px', display: 'flex', flexDirection: 'column', gap: '20px', overflowY: 'auto' },
-  topHeader: { display: 'flex', justifyContent: 'space-between', alignItems: 'center', backgroundColor: 'white', padding: '15px 25px', borderRadius: '12px', boxShadow: '0 2px 10px rgba(0,0,0,0.03)' },
-  cartIconContainer: { position: 'relative', cursor: 'pointer', display: 'flex', alignItems: 'center', padding: '5px' },
-  cartBadge: { position: 'absolute', top: '-5px', right: '-8px', backgroundColor: '#e63946', color: 'white', borderRadius: '50%', padding: '2px 6px', fontSize: '11px', fontWeight: 'bold' },
-  bellWrapper: { position: 'relative' },
-  bellBtn: { background: 'white', border: '1px solid #e2e8f0', borderRadius: '50%', width: '44px', height: '44px', fontSize: '20px', cursor: 'pointer', position: 'relative', boxShadow: '0 2px 4px rgba(0,0,0,0.08)' },
-  badge: { position: 'absolute', top: '-4px', right: '-4px', backgroundColor: '#ef4444', color: 'white', fontSize: '10px', fontWeight: 'bold', borderRadius: '10px', padding: '2px 5px', minWidth: '16px', textAlign: 'center' },
-  notifDropdown: { position: 'absolute', top: '52px', right: 0, width: '360px', backgroundColor: 'white', borderRadius: '10px', boxShadow: '0 8px 30px rgba(0,0,0,0.15)', zIndex: 1000, overflow: 'hidden', border: '1px solid #e2e8f0' },
-  notifHeader: { display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '14px 16px', borderBottom: '1px solid #f1f5f9', backgroundColor: '#f8fafc' },
-  notifList: { maxHeight: '400px', overflowY: 'auto' },
-  notifEmpty: { padding: '30px', textAlign: 'center', color: '#94a3b8', fontSize: '14px' },
-  notifItem: { display: 'flex', alignItems: 'flex-start', padding: '12px 16px', borderBottom: '1px solid #f1f5f9' },
-  notifMsg: { margin: 0, fontSize: '13px', color: '#1e293b', lineHeight: '1.4' },
-  notifTime: { margin: '4px 0 0 0', fontSize: '11px', color: '#94a3b8' },
-  unreadDot: { width: '8px', height: '8px', borderRadius: '50%', backgroundColor: '#3b82f6', marginTop: '4px', flexShrink: 0 },
-  heading: { color: '#1a1a2e', marginBottom: '20px' },
-  empty: { color: '#999' },
-  searchFilterRow: { display: 'flex', gap: '15px', marginBottom: '5px', flexWrap: 'wrap', alignItems: 'center' },
-  searchInput: { flex: 1, minWidth: '250px', padding: '12px 15px', border: '1px solid #e2e8f0', borderRadius: '8px', fontSize: '14px', outline: 'none', backgroundColor: 'white' },
-  priceFilterGroup: { display: 'flex', alignItems: 'center', gap: '8px' },
-  priceInput: { width: '100px', padding: '12px', border: '1px solid #e2e8f0', borderRadius: '8px', fontSize: '14px', outline: 'none', backgroundColor: 'white' },
-  filterRow: { display: 'flex', gap: '8px', flexWrap: 'wrap', marginBottom: '5px' },
-  filterBtn: { padding: '8px 16px', border: '1px solid #e2e8f0', borderRadius: '20px', cursor: 'pointer', backgroundColor: 'white', fontSize: '13px', color: '#4a5568' },
-  filterActive: { padding: '8px 16px', border: '1px solid #e63946', borderRadius: '20px', cursor: 'pointer', backgroundColor: '#e63946', color: 'white', fontSize: '13px', fontWeight: 'bold' },
-  grid: { display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(230px, 1fr))', gap: '25px', alignItems: 'start' },
-  productCard: { backgroundColor: 'white', borderRadius: '12px', overflow: 'hidden', boxShadow: '0 4px 6px -1px rgba(0,0,0,0.05)', cursor: 'pointer', border: '1px solid #e2e8f0', display: 'flex', flexDirection: 'column' },
-  cardImageContainer: { position: 'relative', width: '100%', backgroundColor: '#f8fafc', display: 'flex', justifyContent: 'center', alignItems: 'center' },
-  productImage: { width: '100%', height: 'auto', maxHeight: '350px', objectFit: 'contain', display: 'block' },
-  productInfo: { padding: '15px', display: 'flex', flexDirection: 'column', gap: '5px' },
-  cardCategoryLabel: { fontSize: '11px', fontWeight: 'bold', color: '#718096', textTransform: 'uppercase' },
-  productName: { fontWeight: 'bold', fontSize: '15px', color: '#1a202c', margin: 0 },
-  productDetail: { color: '#4a5568', fontSize: '13px', margin: 0 },
-  cardPrice: { fontSize: '15px', fontWeight: 'bold', color: '#2b6cb0' },
-  viewDetailBadge: { fontSize: '12px', color: '#edf2f7', fontWeight: 'bold', backgroundColor: '#1a1a2e', padding: '6px 12px', borderRadius: '6px' },
-  cardArrowLeft: { position: 'absolute', top: '50%', left: '8px', transform: 'translateY(-50%)', backgroundColor: 'rgba(255,255,255,0.9)', color: '#333', border: 'none', width: '26px', height: '26px', borderRadius: '50%', cursor: 'pointer', fontSize: '16px', fontWeight: 'bold', boxShadow: '0 2px 4px rgba(0,0,0,0.15)', zIndex: 5 },
-  cardArrowRight: { position: 'absolute', top: '50%', right: '8px', transform: 'translateY(-50%)', backgroundColor: 'rgba(255,255,255,0.9)', color: '#333', border: 'none', width: '26px', height: '26px', borderRadius: '50%', cursor: 'pointer', fontSize: '16px', fontWeight: 'bold', boxShadow: '0 2px 4px rgba(0,0,0,0.15)', zIndex: 5 },
-  cardDesignBadge: { position: 'absolute', bottom: '8px', left: '8px', backgroundColor: 'rgba(0,0,0,0.6)', color: 'white', padding: '3px 6px', borderRadius: '4px', fontSize: '11px' },
-  supplierGroup: { backgroundColor: 'white', padding: '20px', borderRadius: '10px', marginBottom: '20px', boxShadow: '0 2px 8px rgba(0,0,0,0.08)' },
-  supplierName: { color: '#1a1a2e', borderBottom: '1px solid #eee', paddingBottom: '10px', marginBottom: '15px' },
-  cartItem: { display: 'flex', alignItems: 'center', gap: '10px', padding: '10px 0', borderBottom: '1px solid #f5f5f5' },
-  cartDesignImg: { width: '50px', height: '50px', objectFit: 'cover', borderRadius: '4px', flexShrink: 0 },
-  cartItemInfo: { flex: 1 },
-  cartItemName: { fontWeight: 'bold', fontSize: '14px' },
-  cartItemDetail: { color: '#666', fontSize: '13px' },
-  cartItemActions: { display: 'flex', alignItems: 'center', gap: '8px' },
-  quantityInput: { width: '70px', padding: '6px', border: '1px solid #ddd', borderRadius: '6px', textAlign: 'center' },
-  qtyBtn: { width: '28px', height: '28px', border: '1px solid #ddd', borderRadius: '6px', cursor: 'pointer', backgroundColor: 'white', fontSize: '14px' },
-  setsCount: { fontWeight: 'bold', minWidth: '50px', textAlign: 'center' },
-  itemTotal: { fontWeight: 'bold', minWidth: '70px', textAlign: 'right', fontSize: '13px' },
-  removeBtn: { padding: '6px 10px', backgroundColor: '#e63946', color: 'white', border: 'none', borderRadius: '6px', cursor: 'pointer', fontSize: '12px' },
-  cartSummary: { backgroundColor: 'white', padding: '20px', borderRadius: '10px', marginTop: '20px', boxShadow: '0 2px 8px rgba(0,0,0,0.08)' },
-  nightyNote: { color: '#888', fontSize: '13px', marginBottom: '10px' },
-  successMsg: { color: '#2ecc71', fontWeight: 'bold', marginBottom: '10px' },
-  placeOrderBtn: { width: '100%', padding: '14px', backgroundColor: '#1a1a2e', color: 'white', border: 'none', borderRadius: '8px', fontWeight: 'bold', cursor: 'pointer', fontSize: '15px' },
-  orderCard: { backgroundColor: 'white', padding: '20px', borderRadius: '10px', marginBottom: '15px', boxShadow: '0 2px 8px rgba(0,0,0,0.08)' },
-  orderItem: { display: 'flex', alignItems: 'center', gap: '10px', padding: '5px 0' },
-  orderDesignImg: { width: '40px', height: '40px', objectFit: 'cover', borderRadius: '4px' },
-  statusBadge: { backgroundColor: '#e0f2fe', color: '#0369a1', padding: '3px 10px', borderRadius: '20px', fontSize: '13px', fontWeight: 'bold' },
-  profileCard: { backgroundColor: 'white', padding: '25px', borderRadius: '10px', boxShadow: '0 2px 8px rgba(0,0,0,0.08)', lineHeight: '2' },
-  editBtn: { padding: '10px 20px', backgroundColor: '#e63946', color: 'white', border: 'none', borderRadius: '8px', cursor: 'pointer', marginTop: '15px' },
-  input: { padding: '12px', border: '1px solid #ddd', borderRadius: '8px', fontSize: '14px', width: '100%', boxSizing: 'border-box', marginBottom: '8px' },
-  modalOverlay: { position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, backgroundColor: 'rgba(0,0,0,0.5)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 1000 },
-  modal: { backgroundColor: 'white', padding: '30px', borderRadius: '12px', width: '90%', maxWidth: '450px' },
-  modalTitle: { color: '#1a1a2e', marginBottom: '15px', fontSize: '20px' },
-  baleCalc: { backgroundColor: '#f9f9f9', padding: '12px', borderRadius: '8px', marginTop: '10px' },
-  validMsg: { color: '#2ecc71', fontWeight: 'bold' },
-  invalidMsg: { color: '#e63946', fontWeight: 'bold' },
-  errorMsg: { color: '#e63946', fontSize: '13px', marginTop: '8px' },
-  confirmBtn: { padding: '12px 24px', backgroundColor: '#2ecc71', color: 'white', border: 'none', borderRadius: '8px', cursor: 'pointer', fontSize: '15px' },
-  typeRow: { display: 'flex', gap: '10px', flexWrap: 'wrap' },
-  typeBtn: { padding: '8px 16px', border: '2px solid #ddd', borderRadius: '8px', cursor: 'pointer', backgroundColor: 'white', fontSize: '14px' },
-  typeActive: { padding: '8px 16px', border: '2px solid #1a1a2e', borderRadius: '8px', cursor: 'pointer', backgroundColor: '#1a1a2e', color: 'white', fontSize: '14px' },
-  richModal: { backgroundColor: 'white', borderRadius: '16px', width: '90%', maxWidth: '780px', maxHeight: '92vh', overflowY: 'auto', boxShadow: '0 20px 25px -5px rgba(0,0,0,0.1)', position: 'relative', display: 'flex', flexDirection: 'column', padding: '25px', gap: '20px' },
-  closeModalCircle: { position: 'absolute', top: '15px', right: '15px', border: 'none', backgroundColor: '#edf2f7', borderRadius: '50%', width: '32px', height: '32px', cursor: 'pointer', fontSize: '14px', fontWeight: 'bold', color: '#4a5568', zIndex: 10 },
-  modalBodyLayout: { display: 'flex', flexWrap: 'wrap', gap: '25px' },
-  modalBodyLeft: { flex: '1 1 300px', display: 'flex', justifyContent: 'center', alignItems: 'center', backgroundColor: '#f8fafc', borderRadius: '12px', overflow: 'hidden' },
-  modalMainImg: { width: '100%', height: '100%', maxHeight: '380px', objectFit: 'contain' },
-  modalBodyRight: { flex: '1 1 320px', display: 'flex', flexDirection: 'column', justifyContent: 'space-between' },
-  tagCategory: { backgroundColor: '#f1f5f9', padding: '4px 10px', borderRadius: '20px', fontSize: '12px', fontWeight: 'bold', color: '#475569', display: 'inline-block', width: 'fit-content' },
-  modalProductTitle: { margin: '10px 0 5px 0', fontSize: '22px', color: '#1e293b' },
-  modalSupplierSub: { margin: '0 0 15px 0', color: '#64748b', fontSize: '14px' },
-  specsGrid: { display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '10px', backgroundColor: '#f8fafc', padding: '12px', borderRadius: '8px', marginBottom: '15px', fontSize: '14px', color: '#334155' },
-  dropdownLabel: { display: 'block', fontWeight: 'bold', marginBottom: '8px', fontSize: '13px', color: '#475569' },
-  sizeMatrixBox: { display: 'flex', flexDirection: 'column', gap: '8px', backgroundColor: '#f8fafc', padding: '12px', borderRadius: '8px' },
-  matrixRow: { display: 'flex', justifyContent: 'space-between', alignItems: 'center' },
-  matrixSizeInput: { width: '80px', padding: '6px 10px', border: '1px solid #cbd5e1', borderRadius: '6px', textAlign: 'center', outline: 'none', fontSize: '14px', backgroundColor: 'white' },
-  addCartSubmitBtn: { width: '100%', padding: '14px', backgroundColor: '#1a1a2e', color: 'white', border: 'none', borderRadius: '8px', fontWeight: 'bold', cursor: 'pointer', fontSize: '15px' },
-  subDesignSection: { borderTop: '1px solid #e2e8f0', paddingTop: '15px' },
-  subDesignRowSlider: { display: 'flex', gap: '15px', overflowX: 'auto', paddingBottom: '8px' },
-  miniDesignCard: { flex: '0 0 100px', borderRadius: '8px', padding: '6px', textAlign: 'center', backgroundColor: '#f8fafc', cursor: 'pointer' },
-  miniDesignImg: { width: '100%', height: '75px', objectFit: 'cover', borderRadius: '6px' },
-  sliderArrowLeft: { position: 'absolute', top: '50%', left: '10px', transform: 'translateY(-50%)', backgroundColor: 'rgba(0,0,0,0.6)', color: 'white', border: 'none', width: '32px', height: '32px', borderRadius: '50%', cursor: 'pointer', fontSize: '20px', fontWeight: 'bold', zIndex: 5 },
-  sliderArrowRight: { position: 'absolute', top: '50%', right: '10px', transform: 'translateY(-50%)', backgroundColor: 'rgba(0,0,0,0.6)', color: 'white', border: 'none', width: '32px', height: '32px', borderRadius: '50%', cursor: 'pointer', fontSize: '20px', fontWeight: 'bold', zIndex: 5 },
-  sliderDotBadge: { position: 'absolute', bottom: '10px', right: '10px', backgroundColor: 'rgba(0,0,0,0.7)', color: 'white', padding: '4px 8px', borderRadius: '12px', fontSize: '12px' },
+// ── BottomNav ───────────────────────────────────────────────
+function BottomNav({ activeTab, setActiveTab, cartCount }) {
+  const tabs = [
+    { id: 'browse', label: 'Home', icon: <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/><polyline points="9 22 9 12 15 12 15 22"/></svg> },
+    { id: 'orders', label: 'Orders', icon: <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/></svg> },
+    { id: 'cart', label: 'Cart', icon: <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M6 2L3 6v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2V6l-3-4z"/><line x1="3" y1="6" x2="21" y2="6"/><path d="M16 10a4 4 0 0 1-8 0"/></svg> },
+    { id: 'profile', label: 'Profile', icon: <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg> },
+  ];
+  return (
+    <div style={S.bottomNav}>
+      {tabs.map(tab => (
+        <button key={tab.id} style={{ ...S.navBtn, color: activeTab === tab.id ? D.navy : D.textSecondary }} onClick={() => setActiveTab(tab.id)}>
+          <div style={{ position: 'relative' }}>
+            {React.cloneElement(tab.icon, { stroke: activeTab === tab.id ? D.navy : D.textSecondary, strokeWidth: activeTab === tab.id ? 2.5 : 1.8 })}
+            {tab.id === 'cart' && cartCount > 0 && (
+              <span style={{ position: 'absolute', top: -6, right: -8, backgroundColor: D.gold, color: 'white', fontSize: 9, fontWeight: 700, borderRadius: 20, padding: '1px 5px', minWidth: 14, textAlign: 'center' }}>{cartCount > 99 ? '99+' : cartCount}</span>
+            )}
+          </div>
+          <span style={{ fontSize: 10, fontWeight: activeTab === tab.id ? 700 : 500, marginTop: 2 }}>{tab.label}</span>
+        </button>
+      ))}
+    </div>
+  );
+}
+
+function getStatusStyle(status) {
+  if (status === 'Delivered') return { backgroundColor: '#e6f4ea', color: '#1a6b3c' };
+  if (status === 'Shipped') return { backgroundColor: '#e8f0fe', color: '#1a3a8f' };
+  if (status === 'Processing') return { backgroundColor: '#fef7e0', color: '#7a5200' };
+  if (status === 'Cancelled') return { backgroundColor: '#fce8e6', color: '#ba1a1a' };
+  return { backgroundColor: '#f1f3f4', color: '#44474d' };
+}
+
+const S = {
+  appShell: { display: 'flex', flexDirection: 'column', height: '100vh', maxWidth: 480, margin: '0 auto', backgroundColor: D.bg, fontFamily: "'Inter', sans-serif", position: 'relative', overflow: 'hidden' },
+  topBar: { display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '12px 16px', backgroundColor: D.surface, borderBottom: `1px solid ${D.borderLight}`, flexShrink: 0, zIndex: 10 },
+  topBarTitle: { fontSize: 16, fontWeight: 700, color: D.navy },
+  mainContent: { flex: 1, overflowY: 'auto', paddingBottom: 80 },
+  backBtn: { width: 36, height: 36, borderRadius: 8, border: `1px solid ${D.borderLight}`, backgroundColor: D.surface, cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', color: D.navy },
+  iconBtn: { width: 40, height: 40, borderRadius: 20, border: 'none', backgroundColor: 'transparent', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', position: 'relative' },
+  notifBadge: { position: 'absolute', top: 4, right: 4, width: 8, height: 8, borderRadius: '50%', backgroundColor: D.error },
+  notifDropdown: { position: 'absolute', top: 48, right: 0, width: 300, backgroundColor: D.surface, borderRadius: 12, boxShadow: '0 8px 24px rgba(3,22,50,0.12)', zIndex: 100, overflow: 'hidden', border: `1px solid ${D.borderLight}` },
+  notifDropHead: { display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '12px 16px', borderBottom: `1px solid ${D.borderLight}`, backgroundColor: D.bg },
+  notifItem: { display: 'flex', alignItems: 'flex-start', padding: '12px 16px', borderBottom: `1px solid ${D.borderLight}` },
+  searchBox: { display: 'flex', alignItems: 'center', gap: 10, backgroundColor: D.surface, border: `1px solid ${D.border}`, borderRadius: 10, padding: '10px 14px' },
+  searchInput: { flex: 1, border: 'none', outline: 'none', fontSize: 14, color: D.textPrimary, backgroundColor: 'transparent' },
+  priceInput: { padding: '8px 12px', border: `1px solid ${D.border}`, borderRadius: 8, fontSize: 13, color: D.textPrimary, outline: 'none', backgroundColor: D.surface },
+  chipRow: { display: 'flex', gap: 8, overflowX: 'auto', padding: '12px 16px', scrollbarWidth: 'none' },
+  chip: { flexShrink: 0, padding: '7px 14px', border: `1px solid ${D.border}`, borderRadius: 20, backgroundColor: D.surface, fontSize: 13, color: D.textSecondary, cursor: 'pointer', whiteSpace: 'nowrap' },
+  chipActive: { flexShrink: 0, padding: '7px 14px', border: `1px solid ${D.navy}`, borderRadius: 20, backgroundColor: D.navy, fontSize: 13, color: 'white', cursor: 'pointer', whiteSpace: 'nowrap', fontWeight: 600 },
+  productGrid: { display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12, padding: '0 12px 12px' },
+  productCard: { backgroundColor: D.surface, borderRadius: 10, overflow: 'hidden', boxShadow: '0 2px 8px rgba(3,22,50,0.06)', cursor: 'pointer', border: `1px solid ${D.borderLight}` },
+  cardImgWrap: { position: 'relative', width: '100%', aspectRatio: '3/4', backgroundColor: D.bg, overflow: 'hidden' },
+  cardImg: { width: '100%', height: '100%', objectFit: 'cover', display: 'block' },
+  cardArrow: (side) => ({ position: 'absolute', top: '50%', [side]: 6, transform: 'translateY(-50%)', backgroundColor: 'rgba(255,255,255,0.9)', border: 'none', width: 24, height: 24, borderRadius: '50%', cursor: 'pointer', fontSize: 14, fontWeight: 700, display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 2 }),
+  designCountBadge: { position: 'absolute', bottom: 6, left: 6, backgroundColor: 'rgba(3,22,50,0.7)', color: 'white', padding: '2px 6px', borderRadius: 10, fontSize: 10 },
+  cardInfo: { padding: '10px 10px 12px' },
+  cardCategory: { fontSize: 10, fontWeight: 600, color: D.gold, textTransform: 'uppercase', letterSpacing: '0.06em' },
+  cardName: { margin: '3px 0 2px', fontSize: 13, fontWeight: 700, color: D.textPrimary, lineHeight: 1.3 },
+  cardSupplier: { margin: 0, fontSize: 11, color: D.textSecondary },
+  cardPrice: { fontSize: 14, fontWeight: 700, color: D.navy },
+  detailsTag: { fontSize: 11, color: D.surface, backgroundColor: D.navy, padding: '4px 8px', borderRadius: 4, fontWeight: 600 },
+  supplierSection: { backgroundColor: D.surface, borderRadius: 10, padding: 14, marginBottom: 12, boxShadow: '0 1px 4px rgba(3,22,50,0.06)' },
+  supplierLabel: { margin: '0 0 10px', fontSize: 12, fontWeight: 700, color: D.gold, textTransform: 'uppercase', letterSpacing: '0.05em' },
+  cartItem: { display: 'flex', alignItems: 'center', gap: 10, paddingTop: 10, borderTop: `1px solid ${D.borderLight}` },
+  sizeBadge: { backgroundColor: D.bg, border: `1px solid ${D.border}`, borderRadius: 4, padding: '1px 5px', fontSize: 11, marginLeft: 4, fontWeight: 600 },
+  qtyInput: { width: 60, padding: '6px 4px', border: `1px solid ${D.border}`, borderRadius: 6, textAlign: 'center', fontSize: 13 },
+  qtyCircleBtn: { width: 28, height: 28, borderRadius: '50%', border: `1px solid ${D.border}`, backgroundColor: D.surface, cursor: 'pointer', fontSize: 14, display: 'flex', alignItems: 'center', justifyContent: 'center' },
+  removeBtn: { width: 28, height: 28, borderRadius: 6, border: 'none', backgroundColor: '#fce8e6', color: D.error, cursor: 'pointer', fontSize: 12, fontWeight: 700 },
+  statusBadge: { padding: '4px 10px', borderRadius: 20, fontSize: 11, fontWeight: 700 },
+  profileCard: { backgroundColor: D.surface, borderRadius: 12, padding: 20, boxShadow: '0 2px 8px rgba(3,22,50,0.06)', textAlign: 'center' },
+  profileAvatar: { width: 64, height: 64, borderRadius: '50%', backgroundColor: '#e8edf5', display: 'flex', alignItems: 'center', justifyContent: 'center', margin: '0 auto' },
+  profileRow: { display: 'flex', justifyContent: 'space-between', padding: '8px 0', borderBottom: `1px solid ${D.borderLight}`, textAlign: 'left' },
+  profileLabel: { fontSize: 12, color: D.textSecondary, fontWeight: 500 },
+  profileValue: { fontSize: 13, color: D.textPrimary, fontWeight: 600, textAlign: 'right', maxWidth: '60%' },
+  input: { display: 'block', width: '100%', padding: '11px 14px', border: `1px solid ${D.border}`, borderRadius: 8, fontSize: 14, color: D.textPrimary, outline: 'none', boxSizing: 'border-box', marginBottom: 10, backgroundColor: D.surface },
+  btnPrimary: { display: 'block', width: '100%', padding: '14px', backgroundColor: D.navy, color: 'white', border: 'none', borderRadius: 8, fontSize: 15, fontWeight: 700, cursor: 'pointer', letterSpacing: '-0.01em' },
+  btnGhost: { display: 'block', width: '100%', padding: '13px', backgroundColor: 'transparent', color: D.navy, border: `1px solid ${D.border}`, borderRadius: 8, fontSize: 14, fontWeight: 600, cursor: 'pointer' },
+  bottomNav: { position: 'fixed', bottom: 0, left: '50%', transform: 'translateX(-50%)', width: '100%', maxWidth: 480, display: 'flex', backgroundColor: D.surface, borderTop: `1px solid ${D.borderLight}`, zIndex: 50, paddingBottom: 'env(safe-area-inset-bottom)' },
+  navBtn: { flex: 1, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', padding: '10px 0', border: 'none', backgroundColor: 'transparent', cursor: 'pointer', minHeight: 56 },
+  // modalOverlay: flex-end ensures bottom sheet behaviour
+  modalOverlay: { position: 'fixed', inset: 0, backgroundColor: 'rgba(3,22,50,0.5)', zIndex: 200, display: 'flex', flexDirection: 'column', justifyContent: 'flex-end' },
+  fullModal: { backgroundColor: D.surface, borderRadius: '16px 16px 0 0', padding: '12px 16px 32px', width: '100%', maxHeight: '85vh', overflowY: 'auto', display: 'flex', flexDirection: 'column' },
+  // productModal: no fixed height — image controls it, sheet slides from bottom
+  productModal: { backgroundColor: D.surface, borderRadius: '16px 16px 0 0', width: '100%', maxHeight: '88vh', overflowY: 'auto', position: 'relative' },
+  modalHandle: { width: 36, height: 4, backgroundColor: D.border, borderRadius: 2, margin: '8px auto 12px' },
+  modalHeading: { margin: '0 0 16px', fontSize: 18, fontWeight: 700, color: D.navy },
+  modalClose: { position: 'absolute', top: 16, right: 16, width: 32, height: 32, borderRadius: '50%', border: 'none', backgroundColor: 'rgba(255,255,255,0.9)', cursor: 'pointer', fontSize: 13, fontWeight: 700, zIndex: 10, display: 'flex', alignItems: 'center', justifyContent: 'center' },
+  modalCategory: { fontSize: 11, fontWeight: 600, color: D.gold, textTransform: 'uppercase', letterSpacing: '0.06em' },
+  specsRow: { display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 8, backgroundColor: D.bg, padding: 12, borderRadius: 8, marginBottom: 14 },
+  specItem: { display: 'flex', flexDirection: 'column', gap: 2 },
+  specLabel: { fontSize: 11, color: D.textSecondary, fontWeight: 500 },
+  specValue: { fontSize: 14, fontWeight: 700, color: D.navy },
+  packActive: { flex: 1, padding: '14px 10px', backgroundColor: D.navy, color: 'white', border: `2px solid ${D.navy}`, borderRadius: 8, cursor: 'pointer', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 2 },
+  packBtn: { flex: 1, padding: '14px 10px', backgroundColor: D.surface, color: D.navy, border: `2px solid ${D.border}`, borderRadius: 8, cursor: 'pointer', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 2 },
+  slideArrow: (side) => ({ position: 'absolute', top: '50%', [side]: 10, transform: 'translateY(-50%)', backgroundColor: 'rgba(255,255,255,0.85)', border: 'none', width: 36, height: 36, borderRadius: '50%', cursor: 'pointer', fontSize: 20, fontWeight: 700, display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 5 }),
 };
 
 export default BuyerDashboard;
