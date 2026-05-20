@@ -5,7 +5,8 @@ import {
   collection, getDocs, doc, updateDoc, addDoc,
   deleteDoc, query, where, orderBy, onSnapshot, writeBatch
 } from 'firebase/firestore';
-import { auth, db } from '../../firebase';
+import { ref, uploadBytes, getDownloadURL, deleteObject } from 'firebase/storage';
+import { auth, db, storage } from '../../firebase';
 
 const SIZES = ['M', 'L', 'XL', '2XL', '3XL', '4XL', '5XL'];
 const NIGHTY_CATEGORIES = ['Nighty', 'Nighty with Dupatta'];
@@ -23,23 +24,20 @@ function AdminDashboard() {
   const [loading, setLoading] = useState(false);
   const [newCategoryName, setNewCategoryName] = useState('');
 
-  // Users
   const [userSearch, setUserSearch] = useState('');
   const [selectedUser, setSelectedUser] = useState(null);
 
-  // Products
   const [productSearch, setProductSearch] = useState('');
   const [editingProduct, setEditingProduct] = useState(null);
+  const [uploadingImage, setUploadingImage] = useState(false);
 
-  // Orders
   const [orderSearch, setOrderSearch] = useState('');
   const [orderFilter, setOrderFilter] = useState('All');
   const [expandedOrder, setExpandedOrder] = useState(null);
   const [deliveryModal, setDeliveryModal] = useState(null);
   const [deliveryStatus, setDeliveryStatus] = useState('');
   const [paymentForm, setPaymentForm] = useState({
-    billNo: '', billDate: '', transport: '', lrNo: '', lrDate: '',
-    paymentType: 'full', sizeWise: {}
+    billNo: '', billDate: '', transport: '', lrNo: '', lrDate: '', sizeWise: {}
   });
   const [shareModal, setShareModal] = useState(null);
 
@@ -48,6 +46,19 @@ function AdminDashboard() {
   const navigate = useNavigate();
 
   useEffect(() => { fetchAllData(); }, []);
+
+  // Global ESC — saare modals band
+  useEffect(() => {
+    const handler = () => {
+      setSelectedUser(null);
+      setEditingProduct(null);
+      setDeliveryModal(null);
+      setShareModal(null);
+      setShowNotifications(false);
+    };
+    window.addEventListener('closeModal', handler);
+    return () => window.removeEventListener('closeModal', handler);
+  }, []);
 
   useEffect(() => {
     if (!adminId) return;
@@ -104,6 +115,50 @@ function AdminDashboard() {
     setProducts(products.map(p => p.id === productId ? { ...p, status: newStatus } : p));
   };
 
+  // Product image upload
+  const handleProductImageUpload = async (files) => {
+    if (!editingProduct || !files.length) return;
+    setUploadingImage(true);
+    try {
+      const newUrls = [];
+      for (const file of Array.from(files).slice(0, 10)) {
+        const imageRef = ref(storage, `products/admin/${editingProduct.id}/${Date.now()}_${file.name}`);
+        await uploadBytes(imageRef, file);
+        const url = await getDownloadURL(imageRef);
+        newUrls.push(url);
+      }
+      const existingUrls = editingProduct.imageUrls
+        ? editingProduct.imageUrls.map(u => typeof u === 'string' ? u : u.url).filter(Boolean)
+        : editingProduct.imageUrl ? [editingProduct.imageUrl] : [];
+      const updatedUrls = [...existingUrls, ...newUrls];
+      await updateDoc(doc(db, 'products', editingProduct.id), {
+        imageUrl: updatedUrls[0] || '',
+        imageUrls: updatedUrls,
+      });
+      setEditingProduct(prev => ({ ...prev, imageUrl: updatedUrls[0], imageUrls: updatedUrls }));
+      setProducts(products.map(p => p.id === editingProduct.id ? { ...p, imageUrl: updatedUrls[0], imageUrls: updatedUrls } : p));
+    } catch (err) { console.error('Image upload error:', err); }
+    setUploadingImage(false);
+  };
+
+  const handleDeleteProductImage = async (urlToDelete) => {
+    if (!editingProduct) return;
+    const existingUrls = editingProduct.imageUrls
+      ? editingProduct.imageUrls.map(u => typeof u === 'string' ? u : u.url).filter(Boolean)
+      : editingProduct.imageUrl ? [editingProduct.imageUrl] : [];
+    const updatedUrls = existingUrls.filter(u => u !== urlToDelete);
+    try {
+      const imageRef = ref(storage, urlToDelete);
+      await deleteObject(imageRef);
+    } catch (e) { /* ignore if not in storage */ }
+    await updateDoc(doc(db, 'products', editingProduct.id), {
+      imageUrl: updatedUrls[0] || '',
+      imageUrls: updatedUrls,
+    });
+    setEditingProduct(prev => ({ ...prev, imageUrl: updatedUrls[0] || '', imageUrls: updatedUrls }));
+    setProducts(products.map(p => p.id === editingProduct.id ? { ...p, imageUrl: updatedUrls[0] || '', imageUrls: updatedUrls } : p));
+  };
+
   const saveProductEdit = async () => {
     if (!editingProduct) return;
     const updateData = {
@@ -126,7 +181,6 @@ function AdminDashboard() {
     setEditingProduct(null);
   };
 
-  // Open delivery modal — jab delivery status change karte hain
   const openDeliveryModal = (order) => {
     setDeliveryModal(order);
     setDeliveryStatus(order.status || 'Pending');
@@ -140,7 +194,6 @@ function AdminDashboard() {
       transport: order.transport || '',
       lrNo: order.lrNo || '',
       lrDate: order.lrDate || '',
-      paymentType: order.paymentStatus === 'Cleared' ? 'full' : 'part',
       sizeWise
     });
   };
@@ -194,20 +247,16 @@ function AdminDashboard() {
     setCategories(categories.filter(c => c.id !== catId));
   };
 
-  const generatePDF = (order) => {
+  const generateOrderText = (order) => {
     const items = order.items?.map(i =>
       i.sets ? `  • ${i.productName} DN${i.designNo || ''} ${i.dnNumber ? `(${i.dnNumber})` : ''} — ${i.sets} sets = ${i.pcs} pcs @ ₹${i.price}/pc`
              : `  • ${i.productName}${i.size ? ` (Size: ${i.size})` : ''} — ${i.quantity} ${i.unit} @ ₹${i.price}/pc`
     ).join('\n') || '';
-
     const sizeWiseText = order.sizeWisePayment
-      ? '\nSize-wise:\n' + Object.entries(order.sizeWisePayment).map(([s, q]) => `  ${s}: ${q}`).join('\n')
-      : '';
-
-    const content = `
+      ? '\nSize-wise:\n' + Object.entries(order.sizeWisePayment).map(([s, q]) => `  ${s}: ${q}`).join('\n') : '';
+    return `
 ================================================================
-                    JAIN AGENCY
-                  ORDER DETAILS
+                    JAIN AGENCY — ORDER DETAILS
 ================================================================
 Order ID  : ${order.id}
 Date      : ${order.createdAt?.toDate?.()?.toLocaleDateString() || ''}
@@ -220,21 +269,17 @@ ${order.nightyDetails ? `\nPacking: ${order.nightyDetails.totalSets} sets | ${or
 ----------------------------------------------------------------
 Delivery Status : ${order.status || 'Pending'}
 Payment Status  : ${order.paymentStatus || 'Unpaid'}
-${order.billNo ? `\nBill No   : ${order.billNo}` : ''}
+${order.billNo ? `Bill No   : ${order.billNo}` : ''}
 ${order.billDate ? `Bill Date : ${order.billDate}` : ''}
 ${order.transport ? `Transport : ${order.transport}` : ''}
 ${order.lrNo ? `LR No     : ${order.lrNo}` : ''}
 ${order.lrDate ? `LR Date   : ${order.lrDate}` : ''}
 ${sizeWiseText}
-================================================================
-    `.trim();
-
-    return content;
+================================================================`.trim();
   };
 
   const downloadOrder = (order) => {
-    const content = generatePDF(order);
-    const blob = new Blob([content], { type: 'text/plain' });
+    const blob = new Blob([generateOrderText(order)], { type: 'text/plain' });
     const url = URL.createObjectURL(blob);
     const a = document.createElement('a');
     a.href = url;
@@ -243,20 +288,16 @@ ${sizeWiseText}
     URL.revokeObjectURL(url);
   };
 
-  const shareOrder = async (order) => {
-    const content = generatePDF(order);
-    if (navigator.share) {
-      try {
-        await navigator.share({ title: `Order #${order.id.slice(0, 8)}`, text: content });
-      } catch (e) { console.log('Share cancelled'); }
-    } else {
-      setShareModal(order);
-    }
+  const copyToClipboard = (order) => {
+    navigator.clipboard.writeText(generateOrderText(order));
+    alert('Copied to clipboard!');
   };
 
-  const copyToClipboard = (order) => {
-    navigator.clipboard.writeText(generatePDF(order));
-    alert('Order details copied to clipboard!');
+  const shareViaApp = async (order) => {
+    if (navigator.share) {
+      try { await navigator.share({ title: `Order #${order.id.slice(0, 8)}`, text: generateOrderText(order) }); }
+      catch (e) { }
+    }
   };
 
   const stats = {
@@ -324,11 +365,17 @@ ${sizeWiseText}
 
   const toggleEditSize = (size) => {
     const current = editingProduct.sizes || [];
-    if (current.includes(size)) {
-      setEditingProduct({ ...editingProduct, sizes: current.filter(s => s !== size) });
-    } else {
-      setEditingProduct({ ...editingProduct, sizes: [...current, size] });
+    setEditingProduct({ ...editingProduct, sizes: current.includes(size) ? current.filter(s => s !== size) : [...current, size] });
+  };
+
+  // Get all image urls from product
+  const getProductImages = (product) => {
+    if (!product) return [];
+    if (product.imageUrls && Array.isArray(product.imageUrls)) {
+      return product.imageUrls.map(u => typeof u === 'string' ? u : u.url).filter(Boolean);
     }
+    if (product.imageUrl) return [product.imageUrl];
+    return [];
   };
 
   if (loading) return <div style={{ padding: '50px', textAlign: 'center' }}>Loading System Data...</div>;
@@ -338,7 +385,7 @@ ${sizeWiseText}
 
       {/* ── SIDEBAR ── */}
       <div style={styles.sidebar}>
-        <div style={{ flex: 1, overflowY: 'auto' }}>
+        <div style={{ flex: 1, display: 'flex', flexDirection: 'column', gap: '4px', overflowY: 'auto' }}>
           <h2 style={{ color: 'white', margin: '0 0 20px 0' }}>Admin Hub</h2>
           <button style={activeTab === 'analytics' ? styles.activeTab : styles.tab} onClick={() => setActiveTab('analytics')}>Dashboard</button>
           <button style={activeTab === 'users' ? styles.activeTab : styles.tab} onClick={() => setActiveTab('users')}>
@@ -523,10 +570,8 @@ ${sizeWiseText}
               const pb = paymentBadge(order);
               const db2 = deliveryBadge(order);
               const isExpanded = expandedOrder === order.id;
-
               return (
                 <div key={order.id} style={styles.orderCard}>
-                  {/* Compact row */}
                   <div style={styles.orderRow} onClick={() => setExpandedOrder(isExpanded ? null : order.id)}>
                     <div style={{ display: 'flex', alignItems: 'center', gap: '12px', flex: 1, minWidth: 0 }}>
                       <span style={{ fontSize: '13px', fontWeight: 'bold', color: '#1e293b', whiteSpace: 'nowrap' }}>#{order.id.slice(0, 8)}</span>
@@ -544,7 +589,6 @@ ${sizeWiseText}
                     </div>
                   </div>
 
-                  {/* Expanded details */}
                   {isExpanded && (
                     <div style={styles.orderBody}>
                       <div style={{ display: 'flex', gap: '30px', fontSize: '14px', marginBottom: '10px' }}>
@@ -644,8 +688,23 @@ ${sizeWiseText}
       {/* ── PRODUCT EDIT MODAL ── */}
       {editingProduct && (
         <div style={styles.modalOverlay} onClick={() => setEditingProduct(null)}>
-          <div style={{ ...styles.modal, maxWidth: '520px', maxHeight: '90vh', overflowY: 'auto' }} onClick={e => e.stopPropagation()}>
-            <h3 style={{ marginTop: 0 }}>Edit Product — {editingProduct.name}</h3>
+          <div style={{ ...styles.modal, maxWidth: '540px', maxHeight: '90vh', overflowY: 'auto' }} onClick={e => e.stopPropagation()}>
+            <h3 style={{ marginTop: 0 }}>Edit — {editingProduct.name}</h3>
+
+            {/* Images */}
+            <label style={styles.label}>Photos</label>
+            <div style={{ display: 'flex', flexWrap: 'wrap', gap: '8px', marginBottom: '8px' }}>
+              {getProductImages(editingProduct).map((url, i) => (
+                <div key={i} style={{ position: 'relative' }}>
+                  <img src={url} alt="" style={{ width: '70px', height: '70px', objectFit: 'cover', borderRadius: '6px' }} />
+                  <button onClick={() => handleDeleteProductImage(url)}
+                    style={{ position: 'absolute', top: '-6px', right: '-6px', width: '20px', height: '20px', backgroundColor: '#ef4444', color: 'white', border: 'none', borderRadius: '50%', cursor: 'pointer', fontSize: '11px', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>✕</button>
+                </div>
+              ))}
+            </div>
+            <input type="file" accept="image/*" multiple style={styles.inputFull}
+              onChange={e => handleProductImageUpload(e.target.files)} />
+            {uploadingImage && <p style={{ color: '#f59e0b', fontSize: '12px' }}>Uploading...</p>}
 
             <label style={styles.label}>Product Name</label>
             <input style={styles.inputFull} value={editingProduct.name} onChange={e => setEditingProduct({ ...editingProduct, name: e.target.value })} />
@@ -678,11 +737,10 @@ ${sizeWiseText}
             <label style={styles.label}>Description</label>
             <textarea style={{ ...styles.inputFull, height: '60px' }} value={editingProduct.description || ''} onChange={e => setEditingProduct({ ...editingProduct, description: e.target.value })} />
 
-            {/* Nighty fields */}
             {NIGHTY_CATEGORIES.includes(editingProduct.category) && (
               <>
                 <label style={styles.label}>Cut</label>
-                <div style={{ display: 'flex', gap: '8px' }}>
+                <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap' }}>
                   {['2/70', '2/90', '3/20'].map(cut => (
                     <button key={cut} type="button"
                       style={{ padding: '6px 14px', border: '2px solid', borderColor: editingProduct.cut === cut ? '#1a1a2e' : '#ddd', borderRadius: '6px', cursor: 'pointer', backgroundColor: editingProduct.cut === cut ? '#1a1a2e' : 'white', color: editingProduct.cut === cut ? 'white' : '#333' }}
@@ -694,7 +752,6 @@ ${sizeWiseText}
               </>
             )}
 
-            {/* Stitched / Chudidar sizes */}
             {(STITCHED_CATEGORIES.includes(editingProduct.category) || editingProduct.category === CHUDIDAR_CATEGORY) && (
               <>
                 <label style={styles.label}>Material</label>
@@ -712,7 +769,6 @@ ${sizeWiseText}
               </>
             )}
 
-            {/* Chudidar specific */}
             {editingProduct.category === CHUDIDAR_CATEGORY && (
               <>
                 <label style={styles.label}>Top Material</label>
@@ -725,7 +781,7 @@ ${sizeWiseText}
             )}
 
             <div style={{ display: 'flex', gap: '10px', marginTop: '20px' }}>
-              <button style={styles.btnApprove} onClick={saveProductEdit}>Save Changes</button>
+              <button style={styles.btnApprove} onClick={saveProductEdit} disabled={uploadingImage}>Save Changes</button>
               <button style={styles.btnEdit} onClick={() => setEditingProduct(null)}>Cancel</button>
             </div>
           </div>
@@ -749,11 +805,9 @@ ${sizeWiseText}
               <option value="Part Paid">Part Paid</option>
             </select>
 
-            {/* Payment details form — sirf Paid ya Part Paid ke liye */}
             {needsPaymentForm && (
               <div style={{ marginTop: '15px', backgroundColor: '#f8fafc', padding: '15px', borderRadius: '8px' }}>
                 <p style={{ margin: '0 0 12px 0', fontWeight: 'bold', fontSize: '13px', color: '#475569' }}>Payment Details</p>
-
                 <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '10px' }}>
                   <div>
                     <label style={styles.label}>Bill No</label>
@@ -777,7 +831,6 @@ ${sizeWiseText}
                   </div>
                 </div>
 
-                {/* Size-wise — sirf tab jab order mein size wale items hoon */}
                 {hasSizeItems(deliveryModal) && (
                   <div style={{ marginTop: '12px' }}>
                     <label style={styles.label}>Size-wise Quantity</label>
@@ -794,7 +847,6 @@ ${sizeWiseText}
                   </div>
                 )}
 
-                {/* Part paid me Full paid ka option */}
                 {deliveryStatus === 'Part Paid' && (
                   <div style={{ marginTop: '15px', padding: '10px', backgroundColor: '#fffbeb', borderRadius: '6px', border: '1px solid #fcd34d' }}>
                     <p style={{ margin: '0 0 8px 0', fontSize: '13px', color: '#92400e' }}>Mark as completely paid?</p>
@@ -817,7 +869,7 @@ ${sizeWiseText}
         <div style={styles.modalOverlay} onClick={() => setShareModal(null)}>
           <div style={styles.modal} onClick={e => e.stopPropagation()}>
             <h3 style={{ marginTop: 0 }}>Share Order #{shareModal.id.slice(0, 8)}</h3>
-            <p style={{ color: '#64748b', fontSize: '14px' }}>Choose how to share this order:</p>
+            <p style={{ color: '#64748b', fontSize: '14px' }}>Choose how to share:</p>
             <div style={{ display: 'flex', flexDirection: 'column', gap: '10px', marginTop: '15px' }}>
               <button style={{ ...styles.btnApprove, padding: '12px', fontSize: '14px' }} onClick={() => { downloadOrder(shareModal); setShareModal(null); }}>
                 📥 Download as File
@@ -826,13 +878,11 @@ ${sizeWiseText}
                 📋 Copy to Clipboard
               </button>
               {navigator.share && (
-                <button style={{ ...styles.btnDelivery, padding: '12px', fontSize: '14px' }} onClick={() => { shareOrder(shareModal); setShareModal(null); }}>
+                <button style={{ ...styles.btnDelivery, padding: '12px', fontSize: '14px' }} onClick={() => { shareViaApp(shareModal); setShareModal(null); }}>
                   📤 Share via App (WhatsApp etc.)
                 </button>
               )}
-              <button style={{ ...styles.btnReject, padding: '12px', fontSize: '14px' }} onClick={() => setShareModal(null)}>
-                Cancel
-              </button>
+              <button style={{ ...styles.btnReject, padding: '12px', fontSize: '14px' }} onClick={() => setShareModal(null)}>Cancel</button>
             </div>
           </div>
         </div>
@@ -844,11 +894,11 @@ ${sizeWiseText}
 
 const styles = {
   container: { display: 'flex', height: '100vh', backgroundColor: '#f4f7f6', fontFamily: 'sans-serif', overflow: 'hidden' },
-  sidebar: { width: '220px', backgroundColor: '#111827', padding: '20px', display: 'flex', flexDirection: 'column', flexShrink: 0, height: '100vh', boxSizing: 'border-box' },
-  tab: { padding: '12px 15px', backgroundColor: 'transparent', color: '#94a3b8', border: 'none', borderRadius: '6px', cursor: 'pointer', textAlign: 'left', fontSize: '14px', marginBottom: '4px' },
-  activeTab: { padding: '12px 15px', backgroundColor: '#3b82f6', color: 'white', border: 'none', borderRadius: '6px', cursor: 'pointer', textAlign: 'left', fontSize: '14px', fontWeight: 'bold', marginBottom: '4px' },
+  sidebar: { width: '220px', backgroundColor: '#111827', padding: '20px', display: 'flex', flexDirection: 'column', flexShrink: 0, height: '100vh', boxSizing: 'border-box', gap: '0' },
+  tab: { padding: '12px 15px', backgroundColor: 'transparent', color: '#94a3b8', border: 'none', borderRadius: '6px', cursor: 'pointer', textAlign: 'left', fontSize: '14px', marginBottom: '4px', display: 'block', width: '100%', boxSizing: 'border-box' },
+  activeTab: { padding: '12px 15px', backgroundColor: '#3b82f6', color: 'white', border: 'none', borderRadius: '6px', cursor: 'pointer', textAlign: 'left', fontSize: '14px', fontWeight: 'bold', marginBottom: '4px', display: 'block', width: '100%', boxSizing: 'border-box' },
   sidebarBadge: { backgroundColor: '#ef4444', color: 'white', fontSize: '10px', fontWeight: 'bold', borderRadius: '10px', padding: '2px 6px', marginLeft: '6px' },
-  logoutBtn: { padding: '12px', backgroundColor: '#ef4444', color: 'white', border: 'none', borderRadius: '6px', cursor: 'pointer', marginTop: '10px', flexShrink: 0 },
+  logoutBtn: { padding: '12px', backgroundColor: '#ef4444', color: 'white', border: 'none', borderRadius: '6px', cursor: 'pointer', marginTop: '10px', flexShrink: 0, width: '100%' },
   main: { flex: 1, padding: '30px', overflowY: 'auto' },
   topBar: { display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '30px' },
   bellWrapper: { position: 'relative' },
