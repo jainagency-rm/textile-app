@@ -4,10 +4,25 @@ import { signInWithEmailAndPassword, onAuthStateChanged, sendPasswordResetEmail 
 import { doc, getDoc } from 'firebase/firestore';
 import { auth, db } from '../firebase';
 
+const D = {
+  navy: '#031632',
+  navyMid: '#1a2b48',
+  gold: '#775a19',
+  goldLight: '#c49a2e',
+  bg: '#f8f9fa',
+  surface: '#ffffff',
+  textPrimary: '#191c1d',
+  textSecondary: '#44474d',
+  border: '#c5c6ce',
+  error: '#ba1a1a',
+  success: '#1a6b3c',
+};
+
 function Login() {
   const [role, setRole] = useState('');
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
+  const [showPass, setShowPass] = useState(false);
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
   const [showAdmin, setShowAdmin] = useState(false);
@@ -23,15 +38,13 @@ function Login() {
         try {
           const userDoc = await getDoc(doc(db, 'users', user.uid));
           if (userDoc.exists()) {
-            const userData = userDoc.data();
-            if (userData.role === 'admin') navigate('/admin');
-            else if (userData.status === 'pending') navigate('/pending');
-            else if (userData.role === 'buyer') navigate('/buyer');
-            else if (userData.role === 'supplier') navigate('/supplier');
+            const ud = userDoc.data();
+            if (ud.role === 'admin') navigate('/admin');
+            else if (ud.status === 'pending') navigate('/pending');
+            else if (ud.role === 'buyer') navigate('/buyer');
+            else if (ud.role === 'supplier') navigate('/supplier');
           }
-        } catch (err) {
-          console.error("Auto-login error:", err);
-        }
+        } catch (err) { console.error(err); }
       }
       setLoading(false);
     });
@@ -41,140 +54,283 @@ function Login() {
   const handleLogin = async (e) => {
     e.preventDefault();
     if (!role) { setError('Please select Buyer or Supplier'); return; }
-    setLoading(true);
-    setError('');
+    setLoading(true); setError('');
     try {
       const userCred = await signInWithEmailAndPassword(auth, email, password);
       const userDoc = await getDoc(doc(db, 'users', userCred.user.uid));
       if (!userDoc.exists()) { setError('User not found'); setLoading(false); return; }
-      const userData = userDoc.data();
-      if (userData.role === 'admin') { navigate('/admin'); return; }
-      if (userData.role !== role) { setError('Invalid role selected'); setLoading(false); return; }
-      if (userData.status === 'pending') { navigate('/pending'); return; }
-      if (userData.role === 'buyer') navigate('/buyer');
-      else if (userData.role === 'supplier') navigate('/supplier');
-    } catch (err) {
-      setError('Invalid email or password');
-    }
+      const ud = userDoc.data();
+      if (ud.role === 'admin') { navigate('/admin'); return; }
+      if (ud.role !== role) { setError('Invalid role selected'); setLoading(false); return; }
+      if (ud.status === 'pending') { navigate('/pending'); return; }
+      if (ud.role === 'buyer') navigate('/buyer');
+      else if (ud.role === 'supplier') navigate('/supplier');
+    } catch (err) { setError('Invalid email or password'); }
     setLoading(false);
   };
 
   const handleAdminLogin = async (e) => {
     e.preventDefault();
-    setLoading(true);
-    setError('');
+    setLoading(true); setError('');
     try {
       const userCred = await signInWithEmailAndPassword(auth, email, password);
       const userDoc = await getDoc(doc(db, 'users', userCred.user.uid));
       if (!userDoc.exists()) { setError('User not found'); setLoading(false); return; }
-      const userData = userDoc.data();
-      if (userData.role !== 'admin') { setError('Not an admin account'); setLoading(false); return; }
+      const ud = userDoc.data();
+      if (ud.role !== 'admin') { setError('Not an admin account'); setLoading(false); return; }
       navigate('/admin');
-    } catch (err) {
-      setError('Invalid email or password');
-    }
+    } catch (err) { setError('Invalid email or password'); }
     setLoading(false);
   };
 
   const handleForgotPassword = async (e) => {
     e.preventDefault();
-    setForgotMsg('');
-    setError('');
+    setForgotMsg(''); setError('');
     try {
       await sendPasswordResetEmail(auth, forgotEmail);
       setForgotMsg('Reset link sent! Check your email.');
-    } catch (err) {
-      setError('Email not found. Check and try again.');
-    }
+    } catch (err) { setError('Email not found. Check and try again.'); }
   };
 
+  if (loading) {
+    return (
+      <div style={S.page}>
+        <div style={{ textAlign: 'center' }}>
+          <div style={S.spinner} />
+          <p style={{ color: D.textSecondary, fontSize: 14, marginTop: 16 }}>Loading...</p>
+        </div>
+      </div>
+    );
+  }
+
   return (
-    <div style={styles.container}>
-      <div style={styles.card}>
-        <div style={styles.titleRow}>
-          <div>
-            <h1 style={styles.title}>Jain Agency</h1>
-            <p style={styles.subtitle}>Textile Marketplace</p>
+    <div style={S.page}>
+      {/* Background pattern */}
+      <div style={S.bgPattern} />
+
+      <div style={S.card}>
+        {/* Logo area */}
+        <div style={S.logoArea}>
+          <div style={S.logoMark}>
+            <svg width="28" height="28" viewBox="0 0 24 24" fill="none">
+              <path d="M12 2L2 7l10 5 10-5-10-5z" fill={D.gold}/>
+              <path d="M2 17l10 5 10-5M2 12l10 5 10-5" stroke={D.gold} strokeWidth="1.5" strokeLinecap="round"/>
+            </svg>
           </div>
-          <button style={styles.menuBtn} onClick={() => { setShowAdmin(!showAdmin); setShowForgot(false); setRole(''); setError(''); setEmail(''); setPassword(''); }} title="Admin Login">
-            ☰
+          <div>
+            <h1 style={S.brandName}>Jain Agency</h1>
+            <p style={S.brandTagline}>Textile Marketplace</p>
+          </div>
+          <button style={S.menuBtn} title="Admin" onClick={() => { setShowAdmin(!showAdmin); setShowForgot(false); setRole(''); setError(''); setEmail(''); setPassword(''); }}>
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke={D.textSecondary} strokeWidth="2"><circle cx="12" cy="8" r="4"/><path d="M4 20c0-4 3.6-7 8-7s8 3 8 7"/></svg>
           </button>
         </div>
 
-        {loading ? (
-          <p style={{ textAlign: 'center', color: '#666' }}>Checking session...</p>
-        ) : showForgot ? (
-          <form onSubmit={handleForgotPassword} style={styles.form}>
-            <p style={styles.adminTitle}>Reset Password</p>
-            <input style={styles.input} type="email" placeholder="Enter your registered email"
-              value={forgotEmail} onChange={(e) => setForgotEmail(e.target.value)} required />
-            {error && <p style={styles.error}>{error}</p>}
-            {forgotMsg && <p style={styles.success}>{forgotMsg}</p>}
-            <button style={styles.loginButton} type="submit">Send Reset Link</button>
-            <button style={styles.backBtn} type="button" onClick={() => { setShowForgot(false); setError(''); setForgotMsg(''); }}>Back</button>
-          </form>
-        ) : !showAdmin ? (
-          <>
-            <div style={styles.roleContainer}>
-              <button style={role === 'buyer' ? styles.roleButtonActive : styles.roleButton} onClick={() => setRole('buyer')}>Buyer Login</button>
-              <button style={role === 'supplier' ? styles.roleButtonActive : styles.roleButton} onClick={() => setRole('supplier')}>Supplier Login</button>
+        {/* Divider */}
+        <div style={S.divider} />
+
+        {showForgot ? (
+          /* Forgot Password */
+          <div>
+            <h2 style={S.formTitle}>Reset Password</h2>
+            <p style={S.formSubtitle}>Enter your email to receive a reset link</p>
+            <form onSubmit={handleForgotPassword}>
+              <div style={S.fieldGroup}>
+                <label style={S.label}>Email Address</label>
+                <input style={S.input} type="email" placeholder="your@email.com"
+                  value={forgotEmail} onChange={e => setForgotEmail(e.target.value)} required />
+              </div>
+              {error && <p style={S.errorMsg}>{error}</p>}
+              {forgotMsg && <p style={S.successMsg}>✓ {forgotMsg}</p>}
+              <button style={S.primaryBtn} type="submit">Send Reset Link</button>
+              <button style={S.ghostBtn} type="button" onClick={() => { setShowForgot(false); setError(''); setForgotMsg(''); }}>
+                ← Back to Login
+              </button>
+            </form>
+          </div>
+
+        ) : showAdmin ? (
+          /* Admin Login */
+          <div>
+            <div style={S.adminBadge}>
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke={D.gold} strokeWidth="2"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg>
+              <span>Admin Access</span>
+            </div>
+            <h2 style={S.formTitle}>Admin Login</h2>
+            <p style={S.formSubtitle}>Restricted to administrators only</p>
+            <form onSubmit={handleAdminLogin}>
+              <div style={S.fieldGroup}>
+                <label style={S.label}>Admin Email</label>
+                <input style={S.input} type="email" placeholder="admin@email.com"
+                  value={email} onChange={e => setEmail(e.target.value)} required />
+              </div>
+              <div style={S.fieldGroup}>
+                <label style={S.label}>Password</label>
+                <div style={S.passWrap}>
+                  <input style={{ ...S.input, paddingRight: 44 }} type={showPass ? 'text' : 'password'} placeholder="••••••••"
+                    value={password} onChange={e => setPassword(e.target.value)} required />
+                  <button type="button" style={S.eyeBtn} onClick={() => setShowPass(!showPass)}>
+                    {showPass ? '🙈' : '👁'}
+                  </button>
+                </div>
+              </div>
+              {error && <p style={S.errorMsg}>{error}</p>}
+              <button style={{ ...S.primaryBtn, backgroundColor: D.navyMid }} type="submit" disabled={loading}>
+                {loading ? 'Signing in...' : 'Sign In as Admin'}
+              </button>
+              <button style={S.ghostBtn} type="button" onClick={() => { setShowAdmin(false); setError(''); }}>
+                ← Back
+              </button>
+            </form>
+          </div>
+
+        ) : (
+          /* Main Login */
+          <div>
+            <h2 style={S.formTitle}>Welcome back</h2>
+            <p style={S.formSubtitle}>Sign in to your account</p>
+
+            {/* Role selector */}
+            <div style={S.roleRow}>
+              <button style={role === 'buyer' ? S.roleActive : S.roleBtn} onClick={() => { setRole('buyer'); setError(''); }}>
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M6 2L3 6v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2V6l-3-4z"/><line x1="3" y1="6" x2="21" y2="6"/><path d="M16 10a4 4 0 0 1-8 0"/></svg>
+                Buyer
+              </button>
+              <button style={role === 'supplier' ? S.roleActive : S.roleBtn} onClick={() => { setRole('supplier'); setError(''); }}>
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><rect x="1" y="3" width="15" height="13"/><polygon points="16 8 20 8 23 11 23 16 16 16 16 8"/><circle cx="5.5" cy="18.5" r="2.5"/><circle cx="18.5" cy="18.5" r="2.5"/></svg>
+                Supplier
+              </button>
             </div>
 
             {role && (
-              <form onSubmit={handleLogin} style={styles.form}>
-                <input style={styles.input} type="email" placeholder="Email" value={email}
-                  onChange={(e) => setEmail(e.target.value)} required />
-                <input style={styles.input} type="password" placeholder="Password" value={password}
-                  onChange={(e) => setPassword(e.target.value)} required />
-                {error && <p style={styles.error}>{error}</p>}
-                <button style={styles.loginButton} type="submit" disabled={loading}>Login</button>
-                <p style={styles.forgotText}>
-                  <span style={styles.link} onClick={() => { setShowForgot(true); setError(''); }}>Forgot Password?</span>
-                </p>
-                <p style={styles.registerText}>
-                  Don't have an account?{' '}
-                  <Link to={`/register?role=${role}`} style={styles.link}>Register here</Link>
-                </p>
+              <form onSubmit={handleLogin}>
+                <div style={S.fieldGroup}>
+                  <label style={S.label}>Email Address</label>
+                  <input style={S.input} type="email" placeholder="your@email.com"
+                    value={email} onChange={e => setEmail(e.target.value)} required />
+                </div>
+                <div style={S.fieldGroup}>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 6 }}>
+                    <label style={S.label}>Password</label>
+                    <span style={S.forgotLink} onClick={() => { setShowForgot(true); setError(''); }}>Forgot password?</span>
+                  </div>
+                  <div style={S.passWrap}>
+                    <input style={{ ...S.input, paddingRight: 44 }} type={showPass ? 'text' : 'password'} placeholder="••••••••"
+                      value={password} onChange={e => setPassword(e.target.value)} required />
+                    <button type="button" style={S.eyeBtn} onClick={() => setShowPass(!showPass)}>
+                      {showPass ? '🙈' : '👁'}
+                    </button>
+                  </div>
+                </div>
+                {error && <p style={S.errorMsg}>{error}</p>}
+                <button style={S.primaryBtn} type="submit" disabled={loading}>
+                  {loading ? 'Signing in...' : `Sign in as ${role === 'buyer' ? 'Buyer' : 'Supplier'}`}
+                </button>
               </form>
             )}
-          </>
-        ) : (
-          <form onSubmit={handleAdminLogin} style={styles.form}>
-            <p style={styles.adminTitle}>Admin Login</p>
-            <input style={styles.input} type="email" placeholder="Admin Email" value={email}
-              onChange={(e) => setEmail(e.target.value)} required />
-            <input style={styles.input} type="password" placeholder="Password" value={password}
-              onChange={(e) => setPassword(e.target.value)} required />
-            {error && <p style={styles.error}>{error}</p>}
-            <button style={styles.loginButton} type="submit" disabled={loading}>Admin Login</button>
-            <button style={styles.backBtn} type="button" onClick={() => { setShowAdmin(false); setError(''); }}>Back</button>
-          </form>
+
+            <p style={S.registerText}>
+              New to Jain Agency?{' '}
+              <Link to={`/register?role=${role || 'buyer'}`} style={S.linkText}>Create account</Link>
+            </p>
+          </div>
         )}
+
+        {/* Footer */}
+        <p style={S.footerText}>© 2026 Jain Agency · All rights reserved</p>
       </div>
     </div>
   );
 }
 
-const styles = {
-  container: { minHeight: '100vh', display: 'flex', alignItems: 'center', justifyContent: 'center', backgroundColor: '#f5f5f5' },
-  card: { backgroundColor: 'white', padding: '40px', borderRadius: '12px', boxShadow: '0 2px 20px rgba(0,0,0,0.1)', width: '100%', maxWidth: '400px' },
-  titleRow: { display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '25px' },
-  title: { color: '#1a1a2e', margin: '0 0 5px 0', fontSize: '28px' },
-  subtitle: { color: '#666', margin: '0' },
-  menuBtn: { backgroundColor: 'transparent', border: '1px solid #ddd', borderRadius: '6px', padding: '6px 10px', cursor: 'pointer', fontSize: '18px', color: '#555' },
-  roleContainer: { display: 'flex', gap: '10px', marginBottom: '25px' },
-  roleButton: { flex: 1, padding: '12px', border: '2px solid #ddd', borderRadius: '8px', cursor: 'pointer', backgroundColor: 'white', fontSize: '14px' },
-  roleButtonActive: { flex: 1, padding: '12px', border: '2px solid #1a1a2e', borderRadius: '8px', cursor: 'pointer', backgroundColor: '#1a1a2e', color: 'white', fontSize: '14px' },
-  form: { display: 'flex', flexDirection: 'column', gap: '15px' },
-  input: { padding: '12px', border: '1px solid #ddd', borderRadius: '8px', fontSize: '14px', outline: 'none' },
-  loginButton: { padding: '12px', backgroundColor: '#e63946', color: 'white', border: 'none', borderRadius: '8px', fontSize: '16px', cursor: 'pointer' },
-  backBtn: { padding: '10px', backgroundColor: '#ddd', color: '#333', border: 'none', borderRadius: '8px', fontSize: '14px', cursor: 'pointer' },
-  error: { color: 'red', fontSize: '13px', margin: '0' },
-  success: { color: '#10b981', fontSize: '13px', margin: '0' },
-  registerText: { textAlign: 'center', fontSize: '13px', color: '#666' },
-  forgotText: { textAlign: 'center', fontSize: '13px', margin: '0' },
-  link: { color: '#e63946', textDecoration: 'none', cursor: 'pointer' },
-  adminTitle: { fontWeight: 'bold', fontSize: '16px', color: '#1a1a2e', textAlign: 'center', margin: '0' },
+const S = {
+  page: {
+    minHeight: '100vh', display: 'flex', alignItems: 'center', justifyContent: 'center',
+    backgroundColor: D.navy, padding: 20, position: 'relative', overflow: 'hidden',
+    fontFamily: "'Inter', -apple-system, sans-serif",
+  },
+  bgPattern: {
+    position: 'absolute', inset: 0, zIndex: 0,
+    backgroundImage: `radial-gradient(circle at 20% 20%, rgba(119,90,25,0.15) 0%, transparent 50%), radial-gradient(circle at 80% 80%, rgba(26,43,72,0.8) 0%, transparent 50%)`,
+    backgroundSize: '100% 100%',
+  },
+  card: {
+    position: 'relative', zIndex: 1,
+    backgroundColor: D.surface, borderRadius: 20,
+    padding: '32px 28px', width: '100%', maxWidth: 400,
+    boxShadow: '0 24px 64px rgba(0,0,0,0.4)',
+  },
+  logoArea: { display: 'flex', alignItems: 'center', gap: 12, marginBottom: 20 },
+  logoMark: {
+    width: 48, height: 48, borderRadius: 12,
+    backgroundColor: D.navy, display: 'flex', alignItems: 'center', justifyContent: 'center',
+    flexShrink: 0,
+  },
+  brandName: { margin: 0, fontSize: 20, fontWeight: 800, color: D.navy, letterSpacing: '-0.02em' },
+  brandTagline: { margin: '2px 0 0', fontSize: 12, color: D.textSecondary, fontWeight: 500 },
+  menuBtn: {
+    marginLeft: 'auto', width: 36, height: 36, borderRadius: 10,
+    border: `1px solid ${D.border}`, backgroundColor: 'transparent',
+    display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer',
+  },
+  divider: { height: 1, backgroundColor: D.border, margin: '0 0 24px', opacity: 0.5 },
+  formTitle: { margin: '0 0 4px', fontSize: 22, fontWeight: 800, color: D.navy, letterSpacing: '-0.02em' },
+  formSubtitle: { margin: '0 0 20px', fontSize: 13, color: D.textSecondary },
+  adminBadge: {
+    display: 'inline-flex', alignItems: 'center', gap: 6, marginBottom: 12,
+    backgroundColor: '#fef7e0', borderRadius: 20, padding: '4px 12px',
+    fontSize: 12, fontWeight: 600, color: D.gold,
+  },
+  roleRow: { display: 'flex', gap: 10, marginBottom: 20 },
+  roleBtn: {
+    flex: 1, padding: '12px 10px', border: `1.5px solid ${D.border}`, borderRadius: 10,
+    backgroundColor: 'transparent', cursor: 'pointer', fontSize: 14, fontWeight: 600,
+    color: D.textSecondary, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8,
+    transition: 'all 0.15s',
+  },
+  roleActive: {
+    flex: 1, padding: '12px 10px', border: `1.5px solid ${D.navy}`, borderRadius: 10,
+    backgroundColor: D.navy, cursor: 'pointer', fontSize: 14, fontWeight: 600,
+    color: 'white', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8,
+  },
+  fieldGroup: { marginBottom: 16 },
+  label: { display: 'block', fontSize: 12, fontWeight: 600, color: D.textSecondary, marginBottom: 6, textTransform: 'uppercase', letterSpacing: '0.05em' },
+  input: {
+    display: 'block', width: '100%', padding: '12px 14px',
+    border: `1.5px solid ${D.border}`, borderRadius: 10, fontSize: 14,
+    color: D.textPrimary, outline: 'none', boxSizing: 'border-box',
+    backgroundColor: D.bg, transition: 'border-color 0.15s',
+    fontFamily: 'inherit',
+  },
+  passWrap: { position: 'relative' },
+  eyeBtn: {
+    position: 'absolute', right: 12, top: '50%', transform: 'translateY(-50%)',
+    background: 'none', border: 'none', cursor: 'pointer', fontSize: 16, padding: 4,
+  },
+  forgotLink: { fontSize: 12, color: D.gold, cursor: 'pointer', fontWeight: 600 },
+  primaryBtn: {
+    display: 'block', width: '100%', padding: '14px',
+    backgroundColor: D.navy, color: 'white', border: 'none', borderRadius: 10,
+    fontSize: 15, fontWeight: 700, cursor: 'pointer', marginTop: 8,
+    letterSpacing: '-0.01em', fontFamily: 'inherit',
+  },
+  ghostBtn: {
+    display: 'block', width: '100%', padding: '12px',
+    backgroundColor: 'transparent', color: D.textSecondary,
+    border: `1.5px solid ${D.border}`, borderRadius: 10,
+    fontSize: 14, fontWeight: 600, cursor: 'pointer', marginTop: 10,
+    fontFamily: 'inherit',
+  },
+  errorMsg: { fontSize: 13, color: D.error, margin: '0 0 12px', fontWeight: 500 },
+  successMsg: { fontSize: 13, color: D.success, margin: '0 0 12px', fontWeight: 600 },
+  registerText: { textAlign: 'center', fontSize: 13, color: D.textSecondary, marginTop: 20, marginBottom: 0 },
+  linkText: { color: D.gold, textDecoration: 'none', fontWeight: 700 },
+  spinner: {
+    width: 36, height: 36, border: `3px solid rgba(255,255,255,0.2)`,
+    borderTop: `3px solid white`, borderRadius: '50%',
+    animation: 'spin 0.8s linear infinite', margin: '0 auto',
+  },
+  footerText: { textAlign: 'center', fontSize: 11, color: D.border, marginTop: 24, marginBottom: 0 },
 };
 
 export default Login;

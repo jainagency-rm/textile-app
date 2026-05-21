@@ -11,3 +11,33 @@ code {
   font-family: source-code-pro, Menlo, Monaco, Consolas, 'Courier New',
     monospace;
 }
+
+/* ── Supplier Dashboard — Mobile Responsive ── */
+.sup-mobile-topbar { display: none !important; }
+.sup-sidebar-close { display: none !important; }
+
+@media (max-width: 768px) {
+  .sup-mobile-topbar { display: flex !important; }
+
+  .sup-sidebar {
+    position: fixed !important;
+    top: 0;
+    left: 0;
+    height: 100vh !important;
+    z-index: 300;
+    transform: translateX(-100%);
+    transition: transform 0.25s ease;
+  }
+
+  .sup-sidebar-open {
+    transform: translateX(0) !important;
+  }
+
+  .sup-sidebar-close {
+    display: block !important;
+  }
+
+  .sup-main {
+    padding: 72px 16px 24px !important;
+  }
+}

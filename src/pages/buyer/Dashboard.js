@@ -9,24 +9,23 @@ import { notifyNewOrder } from '../../utils/notifications';
 const NIGHTY_CATEGORIES = ['Nighty', 'Nighty with Dupatta'];
 
 const D = {
-  navy: '#031632',
-  navyMid: '#1a2b48',
-  gold: '#775a19',
-  goldLight: '#fed488',
-  bg: '#f8f9fa',
-  surface: '#ffffff',
-  textPrimary: '#191c1d',
-  textSecondary: '#44474d',
-  border: '#c5c6ce',
-  borderLight: '#e7e8e9',
-  error: '#ba1a1a',
-  success: '#1a6b3c',
+  navy: '#031632', navyMid: '#1a2b48', gold: '#775a19', goldLight: '#fed488',
+  bg: '#f8f9fa', surface: '#ffffff', textPrimary: '#191c1d', textSecondary: '#44474d',
+  border: '#c5c6ce', borderLight: '#e7e8e9', error: '#ba1a1a', success: '#1a6b3c',
 };
 
+// ── ProfileEdit ─────────────────────────────────────────────
 function ProfileEdit({ userProfile, onSave }) {
   const [editing, setEditing] = useState(false);
   const [form, setForm] = useState(userProfile);
   const [loading, setLoading] = useState(false);
+
+  // ESC to cancel edit
+  useEffect(() => {
+    const handler = (e) => { if (e.key === 'Escape') setEditing(false); };
+    document.addEventListener('keydown', handler);
+    return () => document.removeEventListener('keydown', handler);
+  }, []);
 
   const handleSave = async () => {
     setLoading(true);
@@ -34,9 +33,7 @@ function ProfileEdit({ userProfile, onSave }) {
       firmName: form.firmName, contactPerson: form.contactPerson, mobile: form.mobile,
       address: form.address, city: form.city, district: form.district, state: form.state, pincode: form.pincode,
     });
-    setLoading(false);
-    setEditing(false);
-    onSave();
+    setLoading(false); setEditing(false); onSave();
   };
 
   if (!editing) {
@@ -47,33 +44,27 @@ function ProfileEdit({ userProfile, onSave }) {
         </div>
         <h3 style={{ margin: '12px 0 4px', color: D.textPrimary, fontSize: 18, fontWeight: 700 }}>{userProfile.firmName}</h3>
         <p style={{ margin: '0 0 20px', color: D.textSecondary, fontSize: 13 }}>{userProfile.email}</p>
-        {[
-          ['GST Number', userProfile.gstNumber],
-          ['Contact Person', userProfile.contactPerson],
-          ['Mobile', userProfile.mobile],
-          ['Address', userProfile.address],
-          ['City', userProfile.city],
-          ['District', userProfile.district],
-          ['State', userProfile.state],
-          ['Pincode', userProfile.pincode],
+        {[['GST Number', userProfile.gstNumber], ['Contact Person', userProfile.contactPerson],
+          ['Mobile', userProfile.mobile], ['Address', userProfile.address],
+          ['City', userProfile.city], ['District', userProfile.district],
+          ['State', userProfile.state], ['Pincode', userProfile.pincode],
         ].map(([label, val]) => (
           <div key={label} style={S.profileRow}>
             <span style={S.profileLabel}>{label}</span>
             <span style={S.profileValue}>{val || '—'}</span>
           </div>
         ))}
-        <button style={S.btnPrimary} onClick={() => setEditing(true)}>Edit Profile</button>
+        <button style={{ ...S.btnPrimary, marginTop: 20 }} onClick={() => setEditing(true)}>Edit Profile</button>
       </div>
     );
   }
 
   return (
     <div style={S.profileCard}>
-      <h3 style={{ margin: '0 0 16px', color: D.textPrimary }}>Edit Profile</h3>
-      {[
-        ['firmName', 'Firm Name'], ['contactPerson', 'Contact Person'],
-        ['mobile', 'Mobile'], ['address', 'Address'],
-        ['city', 'City'], ['district', 'District'],
+      <h3 style={{ margin: '0 0 4px', color: D.textPrimary }}>Edit Profile</h3>
+      <p style={{ margin: '0 0 16px', fontSize: 12, color: D.textSecondary }}>Press ESC to cancel</p>
+      {[['firmName', 'Firm Name'], ['contactPerson', 'Contact Person'], ['mobile', 'Mobile'],
+        ['address', 'Address'], ['city', 'City'], ['district', 'District'],
         ['state', 'State'], ['pincode', 'Pincode'],
       ].map(([key, placeholder]) => (
         <input key={key} style={S.input} value={form[key] || ''} placeholder={placeholder}
@@ -87,24 +78,27 @@ function ProfileEdit({ userProfile, onSave }) {
   );
 }
 
+// ── NightyCheckout ──────────────────────────────────────────
 function NightyCheckout({ nightyBySupplier, onConfirm, onCancel }) {
   const [packingTypes, setPackingTypes] = useState({});
   const [error, setError] = useState('');
   const suppliers = Object.keys(nightyBySupplier);
 
+  useEffect(() => {
+    const handler = (e) => { if (e.key === 'Escape') onCancel(); };
+    document.addEventListener('keydown', handler);
+    return () => document.removeEventListener('keydown', handler);
+  }, [onCancel]);
+
   const handleConfirm = () => {
-    let tempPackingDetails = {};
-    let hasError = false;
+    let tempPackingDetails = {}; let hasError = false;
     for (const sId of suppliers) {
       const group = nightyBySupplier[sId];
       const totalSets = group.items.reduce((sum, item) => sum + (item.sets || 0), 0);
       const pType = packingTypes[sId];
       if (!pType) { setError(`Select packing for ${group.supplierFirm}`); hasError = true; break; }
       const typeNum = Number(pType);
-      if (totalSets % typeNum !== 0) {
-        setError(`${group.supplierFirm}: ${totalSets} sets not divisible by ${pType}`);
-        hasError = true; break;
-      }
+      if (totalSets % typeNum !== 0) { setError(`${group.supplierFirm}: ${totalSets} sets not divisible by ${pType}`); hasError = true; break; }
       tempPackingDetails[sId] = { packingType: typeNum, totalBales: totalSets / typeNum, totalSets, totalPcs: totalSets * (group.items[0]?.pcsPerSet || 30) };
     }
     if (!hasError) onConfirm(tempPackingDetails);
@@ -133,11 +127,9 @@ function NightyCheckout({ nightyBySupplier, onConfirm, onCancel }) {
                   </button>
                 ))}
               </div>
-              {cur && (
-                <p style={{ marginTop: 8, fontSize: 13, fontWeight: 600, color: isValid ? D.success : D.error }}>
-                  {isValid ? `✓ ${totalSets / Number(cur)} complete bale(s)` : `✗ Need multiple of ${cur}`}
-                </p>
-              )}
+              {cur && <p style={{ marginTop: 8, fontSize: 13, fontWeight: 600, color: isValid ? D.success : D.error }}>
+                {isValid ? `✓ ${totalSets / Number(cur)} complete bale(s)` : `✗ Need multiple of ${cur}`}
+              </p>}
             </div>
           );
         })}
@@ -154,10 +146,16 @@ function OrderCard({ order }) {
   const [expanded, setExpanded] = useState(false);
   const [showDispatch, setShowDispatch] = useState(false);
 
-  // Admin saves: paymentStatus = 'Cleared' (Paid) or 'Advance Received' (Part Paid)
   const isPaid = order.paymentStatus === 'Cleared' || order.paymentStatus === 'Advance Received';
   const totalItems = order.items?.length || 0;
   const firstItem = order.items?.[0];
+
+  // ESC closes dispatch modal only
+  useEffect(() => {
+    const handler = (e) => { if (e.key === 'Escape') setShowDispatch(false); };
+    document.addEventListener('keydown', handler);
+    return () => document.removeEventListener('keydown', handler);
+  }, []);
 
   const paymentLabel = () => {
     if (order.paymentStatus === 'Cleared') return { text: '✓ Paid', color: D.success, bg: '#e6f4ea' };
@@ -166,15 +164,21 @@ function OrderCard({ order }) {
   };
   const pLabel = paymentLabel();
 
+  // Format quantity display
+  const fmtQty = (item) => {
+    if (item.sets) return `${item.sets} sets = ${item.pcs} pcs`;
+    const unit = (item.unit || 'pc').replace('pieces', 'pcs').replace('piece', 'pc');
+    return `${item.quantity} ${unit}`;
+  };
+
   return (
     <>
-      {/* Dispatch Details Modal */}
       {showDispatch && (
         <div style={S.modalOverlay} onClick={() => setShowDispatch(false)}>
           <div style={S.fullModal} onClick={e => e.stopPropagation()}>
             <div style={S.modalHandle} />
             <h3 style={S.modalHeading}>Dispatch Details</h3>
-            <div style={{ display: 'flex', flexDirection: 'column', gap: 0 }}>
+            <div style={{ display: 'flex', flexDirection: 'column' }}>
               {[
                 ['Order ID', `#${order.id.slice(0, 8)}`],
                 ['Payment', order.paymentStatus === 'Cleared' ? '✓ Fully Paid' : '◑ Part Paid (Advance)'],
@@ -186,16 +190,9 @@ function OrderCard({ order }) {
               ].map(([label, val]) => (
                 <div key={label} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '11px 0', borderBottom: `1px solid ${D.borderLight}` }}>
                   <span style={{ fontSize: 13, color: D.textSecondary, fontWeight: 500 }}>{label}</span>
-                  <span style={{
-                    fontSize: 13,
-                    color: label === 'Payment'
-                      ? (order.paymentStatus === 'Cleared' ? D.success : '#7a5200')
-                      : D.textPrimary,
-                    fontWeight: 600, textAlign: 'right', maxWidth: '60%'
-                  }}>{val}</span>
+                  <span style={{ fontSize: 13, color: label === 'Payment' ? (order.paymentStatus === 'Cleared' ? D.success : '#7a5200') : D.textPrimary, fontWeight: 600, textAlign: 'right', maxWidth: '60%' }}>{val}</span>
                 </div>
               ))}
-              {/* Size-wise payment if exists */}
               {order.sizeWisePayment && Object.keys(order.sizeWisePayment).length > 0 && (
                 <div style={{ paddingTop: 12 }}>
                   <p style={{ margin: '0 0 8px', fontSize: 12, fontWeight: 600, color: D.textSecondary, textTransform: 'uppercase', letterSpacing: '0.05em' }}>Size-wise Qty</p>
@@ -213,32 +210,21 @@ function OrderCard({ order }) {
         </div>
       )}
 
-      {/* Compact Order Card */}
-      <div style={{ backgroundColor: D.surface, borderRadius: 10, marginBottom: 10, boxShadow: '0 1px 4px rgba(3,22,50,0.06)', overflow: 'hidden', border: `1px solid ${D.borderLight}` }}>
-
-        {/* Header row — always visible, click to expand */}
+      <div style={{ backgroundColor: D.surface, borderRadius: 12, marginBottom: 10, boxShadow: '0 1px 6px rgba(3,22,50,0.07)', overflow: 'hidden', border: `1px solid ${D.borderLight}` }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '12px 14px', cursor: 'pointer' }}
           onClick={() => setExpanded(!expanded)}>
-
-          {/* Thumbnail */}
           {firstItem?.photoUrl ? (
-            <img src={firstItem.photoUrl} alt="" style={{ width: 44, height: 44, objectFit: 'cover', borderRadius: 6, flexShrink: 0, border: `1px solid ${D.borderLight}` }} />
+            <img src={firstItem.photoUrl} alt="" style={{ width: 44, height: 44, objectFit: 'cover', borderRadius: 8, flexShrink: 0, border: `1px solid ${D.borderLight}` }} />
           ) : (
-            <div style={{ width: 44, height: 44, borderRadius: 6, backgroundColor: D.bg, flexShrink: 0, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke={D.border} strokeWidth="2">
-                <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/>
-              </svg>
+            <div style={{ width: 44, height: 44, borderRadius: 8, backgroundColor: D.bg, flexShrink: 0, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke={D.border} strokeWidth="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/></svg>
             </div>
           )}
-
-          {/* Info */}
           <div style={{ flex: 1, minWidth: 0 }}>
-            <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginBottom: 2, flexWrap: 'wrap' }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginBottom: 3, flexWrap: 'wrap' }}>
               <span style={{ fontSize: 12, fontWeight: 700, color: D.navy }}>#{order.id.slice(0, 8)}</span>
               <span style={{ ...S.statusBadge, ...getStatusStyle(order.status), fontSize: 10, padding: '2px 7px' }}>{order.status || 'Pending'}</span>
-              {pLabel && (
-                <span style={{ fontSize: 10, fontWeight: 700, padding: '2px 7px', borderRadius: 20, backgroundColor: pLabel.bg, color: pLabel.color }}>{pLabel.text}</span>
-              )}
+              {pLabel && <span style={{ fontSize: 10, fontWeight: 700, padding: '2px 7px', borderRadius: 20, backgroundColor: pLabel.bg, color: pLabel.color }}>{pLabel.text}</span>}
             </div>
             <p style={{ margin: 0, fontSize: 12, color: D.textSecondary, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
               {order.supplierFirm} · {totalItems} item{totalItems !== 1 ? 's' : ''}
@@ -247,49 +233,36 @@ function OrderCard({ order }) {
               {order.createdAt?.toDate?.()?.toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: 'numeric' })}
             </p>
           </div>
-
-          {/* Chevron */}
           <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke={D.textSecondary} strokeWidth="2"
             style={{ flexShrink: 0, transform: expanded ? 'rotate(180deg)' : 'rotate(0deg)', transition: 'transform 0.2s' }}>
             <polyline points="6 9 12 15 18 9"/>
           </svg>
         </div>
 
-        {/* Expanded items */}
         {expanded && (
-          <div style={{ borderTop: `1px solid ${D.borderLight}`, padding: '10px 14px 14px' }}>
+          <div style={{ borderTop: `1px solid ${D.borderLight}`, padding: '10px 14px 14px', backgroundColor: '#fafbfc' }}>
             {order.items?.map((item, idx) => (
-              <div key={idx} style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '7px 0', borderBottom: `1px solid ${D.borderLight}` }}>
-                {item.photoUrl && <img src={item.photoUrl} alt="" style={{ width: 32, height: 32, objectFit: 'cover', borderRadius: 4, flexShrink: 0 }} />}
+              <div key={idx} style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '8px 0', borderBottom: `1px solid ${D.borderLight}` }}>
+                {item.photoUrl && <img src={item.photoUrl} alt="" style={{ width: 34, height: 34, objectFit: 'cover', borderRadius: 6, flexShrink: 0 }} />}
                 <div style={{ flex: 1, minWidth: 0 }}>
                   <span style={{ fontSize: 12, color: D.textPrimary, fontWeight: 600 }}>{item.productName}</span>
                   {item.designNo && <span style={{ fontSize: 11, color: D.textSecondary }}> · DN{item.designNo}</span>}
                   {item.size && <span style={{ fontSize: 11, color: D.textSecondary }}> · Size {item.size}</span>}
                 </div>
-                <span style={{ fontSize: 11, color: D.textSecondary, flexShrink: 0 }}>
-                  {item.sets ? `${item.sets} sets = ${item.pcs} pcs` : `${item.quantity} ${item.unit || 'pc'}`}
-                </span>
+                <span style={{ fontSize: 11, color: D.textSecondary, flexShrink: 0, fontWeight: 500 }}>{fmtQty(item)}</span>
               </div>
             ))}
-
             {order.nightyDetails && (
               <p style={{ margin: '8px 0 0', fontSize: 12, color: D.textSecondary }}>
                 {order.nightyDetails.totalSets} sets · {order.nightyDetails.packingType} sets/bale · <b style={{ color: D.navy }}>{order.nightyDetails.totalBales} bale(s)</b>
               </p>
             )}
-
-            {/* Dispatch button — show if paid */}
-            {isPaid && (
-              <button style={{ ...S.btnPrimary, marginTop: 12, padding: '10px', fontSize: 13, backgroundColor: D.navyMid }}
-                onClick={() => setShowDispatch(true)}>
-                📦 View Dispatch Details
-              </button>
-            )}
-
-            {/* Unpaid badge */}
-            {!isPaid && (
-              <div style={{ marginTop: 10, padding: '8px 12px', backgroundColor: '#fce8e6', borderRadius: 6, fontSize: 12, color: D.error, fontWeight: 600 }}>
-                ⏳ Payment pending
+            {isPaid ? (
+              <button style={{ ...S.btnPrimary, marginTop: 12, padding: '11px', fontSize: 13, backgroundColor: D.navyMid }}
+                onClick={() => setShowDispatch(true)}>📦 View Dispatch Details</button>
+            ) : (
+              <div style={{ marginTop: 10, padding: '10px 12px', backgroundColor: '#fff8f0', borderRadius: 8, fontSize: 12, color: '#7a5200', fontWeight: 600, border: '1px solid #fcd34d' }}>
+                ⏳ Awaiting payment clearance
               </div>
             )}
           </div>
@@ -322,6 +295,7 @@ function BuyerDashboard() {
   const [notifications, setNotifications] = useState([]);
   const [showNotifications, setShowNotifications] = useState(false);
   const [showSearch, setShowSearch] = useState(false);
+  const [cartAdded, setCartAdded] = useState(false);
   const notifRef = useRef(null);
   const buyerId = auth.currentUser?.uid;
   const navigate = useNavigate();
@@ -351,13 +325,22 @@ function BuyerDashboard() {
 
   useEffect(() => {
     const unsubscribe = auth.onAuthStateChanged((user) => {
-      if (user) {
-        fetchProfile();
-        fetchProducts();
-        fetchOrders();
-      }
+      if (user) { fetchProfile(); fetchProducts(); fetchOrders(); }
     });
     return () => unsubscribe();
+  }, []);
+
+  // ESC — product modal band karo
+  useEffect(() => {
+    const handleEsc = (e) => {
+      if (e.key === 'Escape') {
+        setSelectedProductDetails(null);
+        setShowNotifications(false);
+        setCartAdded(false);
+      }
+    };
+    document.addEventListener('keydown', handleEsc);
+    return () => document.removeEventListener('keydown', handleEsc);
   }, []);
 
   const markAllRead = async () => {
@@ -401,15 +384,8 @@ function BuyerDashboard() {
   const searchedAndFilteredProducts = categoryFiltered.filter(product => {
     const sl = searchTerm.toLowerCase();
     const designs = productDesigns[product.id] || [];
-    const matchDesign = designs.some(d =>
-      String(d.designNo || '').toLowerCase().includes(sl) ||
-      String(d.dnNumber || '').toLowerCase().includes(sl)
-    );
-    const matchSearch = !sl || product.name?.toLowerCase().includes(sl) ||
-      product.category?.toLowerCase().includes(sl) ||
-      product.supplierFirm?.toLowerCase().includes(sl) ||
-      product.material?.toLowerCase().includes(sl) ||
-      matchDesign;
+    const matchDesign = designs.some(d => String(d.designNo || '').toLowerCase().includes(sl) || String(d.dnNumber || '').toLowerCase().includes(sl));
+    const matchSearch = !sl || product.name?.toLowerCase().includes(sl) || product.category?.toLowerCase().includes(sl) || product.supplierFirm?.toLowerCase().includes(sl) || product.material?.toLowerCase().includes(sl) || matchDesign;
     const matchMin = minPrice ? Number(product.price) >= Number(minPrice) : true;
     const matchMax = maxPrice ? Number(product.price) <= Number(maxPrice) : true;
     return matchSearch && matchMin && matchMax;
@@ -421,8 +397,7 @@ function BuyerDashboard() {
     const arr = product.imageUrls || product.photos || [];
     if (arr.length > 0) return arr.map((item, idx) => ({
       photoUrl: item.photoUrl || item.url || (typeof item === 'string' ? item : product.imageUrl),
-      designNo: item.dnNumber || item.designNo || `${idx + 1}`,
-      dnNumber: item.dnNumber || ''
+      designNo: item.dnNumber || item.designNo || `${idx + 1}`, dnNumber: item.dnNumber || ''
     }));
     if (product.imageUrl) return [{ photoUrl: product.imageUrl, designNo: '1' }];
     return [];
@@ -452,8 +427,8 @@ function BuyerDashboard() {
       }
     });
     setCart(items);
-    setSelectedProductDetails(null);
     setSizeQuantities({});
+    setCartAdded(true);
   };
 
   const removeFromCart = (cartKey) => setCart(cart.filter(i => i.cartKey !== cartKey));
@@ -470,19 +445,19 @@ function BuyerDashboard() {
     acc[i.supplierId].items.push(i); return acc;
   }, {});
 
+  const cartTotal = cart.reduce((sum, i) => sum + (i.price * (i.quantity || (i.sets * (i.pcsPerSet || 30)) || 0)), 0);
+
   const placeOrder = async (supplierBaleDetails) => {
     setLoading(true);
     try {
       const user = auth.currentUser;
       const adminSnap = await getDocs(query(collection(db, 'users'), where('role', '==', 'admin')));
       const adminId = adminSnap.docs[0]?.id;
-
       for (const supplierId of Object.keys(nonNightyBySupplier)) {
         const sc = nonNightyBySupplier[supplierId];
         await addDoc(collection(db, 'orders'), { buyerId: user.uid, buyerFirm: userProfile?.firmName || '', supplierId, supplierFirm: sc.supplierFirm, items: sc.items.map(i => ({ productId: i.productId, productName: i.productName, quantity: i.quantity, price: i.price, unit: i.unit, size: i.size || '' })), status: 'Pending', createdAt: new Date() });
         if (adminId) await notifyNewOrder(adminId, supplierId, userProfile?.firmName || '');
       }
-
       for (const supplierId of Object.keys(nightyBySupplier)) {
         const sc = nightyBySupplier[supplierId];
         const currentBaleDetail = supplierBaleDetails?.[supplierId] || null;
@@ -497,7 +472,6 @@ function BuyerDashboard() {
           if (pSnap.exists()) await updateDoc(pRef, { totalSets: Math.max(0, pSnap.data().totalSets - item.sets) });
         }
       }
-
       setCart([]); setShowNightyCheckout(false); setOrderSuccess(true);
       fetchOrders(); fetchProducts();
       setTimeout(() => setOrderSuccess(false), 3000);
@@ -520,14 +494,7 @@ function BuyerDashboard() {
           <div style={{ width: 40 }} />
         </div>
         <div style={{ flex: 1, overflowY: 'auto', paddingBottom: 90 }}>
-          <ProductDesigns
-            product={viewingProduct}
-            designs={productDesigns[viewingProduct.id] || []}
-            cart={cart}
-            onAddSet={addDesignToCart}
-            onRemoveSet={removeDesignFromCart}
-            onBack={() => setViewingProduct(null)}
-          />
+          <ProductDesigns product={viewingProduct} designs={productDesigns[viewingProduct.id] || []} cart={cart} onAddSet={addDesignToCart} onRemoveSet={removeDesignFromCart} onBack={() => setViewingProduct(null)} />
         </div>
         <BottomNav activeTab={activeTab} setActiveTab={t => { setViewingProduct(null); setActiveTab(t); }} cartCount={totalCartItems} />
       </div>
@@ -536,9 +503,7 @@ function BuyerDashboard() {
 
   return (
     <div style={S.appShell}>
-      {showNightyCheckout && (
-        <NightyCheckout nightyBySupplier={nightyBySupplier} onConfirm={placeOrder} onCancel={() => setShowNightyCheckout(false)} />
-      )}
+      {showNightyCheckout && <NightyCheckout nightyBySupplier={nightyBySupplier} onConfirm={placeOrder} onCancel={() => setShowNightyCheckout(false)} />}
 
       {/* TOP BAR */}
       <div style={S.topBar}>
@@ -611,14 +576,10 @@ function BuyerDashboard() {
             )}
             <div style={S.chipRow}>
               <button style={!selectedCategory ? S.chipActive : S.chip} onClick={() => setSelectedCategory('')}>All</button>
-              {categories.map(cat => (
-                <button key={cat} style={selectedCategory === cat ? S.chipActive : S.chip} onClick={() => setSelectedCategory(cat)}>{cat}</button>
-              ))}
+              {categories.map(cat => <button key={cat} style={selectedCategory === cat ? S.chipActive : S.chip} onClick={() => setSelectedCategory(cat)}>{cat}</button>)}
             </div>
             {searchedAndFilteredProducts.length === 0 ? (
-              <div style={{ padding: '60px 16px', textAlign: 'center', color: D.textSecondary }}>
-                <p style={{ fontSize: 15 }}>No products found</p>
-              </div>
+              <div style={{ padding: '60px 16px', textAlign: 'center', color: D.textSecondary }}><p style={{ fontSize: 15 }}>No products found</p></div>
             ) : (
               <div style={S.productGrid}>
                 {searchedAndFilteredProducts.map(product => {
@@ -627,7 +588,7 @@ function BuyerDashboard() {
                   const img = designs[idx]?.photoUrl || 'https://via.placeholder.com/200';
                   return (
                     <div key={product.id} style={S.productCard}
-                      onClick={() => { setSelectedProductDetails(product); setModalDesignIdx(idx); setSizeQuantities({}); }}>
+                      onClick={() => { setSelectedProductDetails(product); setModalDesignIdx(idx); setSizeQuantities({}); setCartAdded(false); }}>
                       <div style={S.cardImgWrap}>
                         <img src={img} alt={product.name} style={S.cardImg} />
                         {designs.length > 1 && (
@@ -655,60 +616,112 @@ function BuyerDashboard() {
           </div>
         )}
 
-        {/* CART TAB */}
+        {/* CART TAB — redesigned */}
         {activeTab === 'cart' && (
-          <div style={{ padding: '0 16px' }}>
+          <div style={{ padding: '12px 16px' }}>
             {cart.length === 0 ? (
               <div style={{ padding: '80px 0', textAlign: 'center' }}>
-                <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke={D.border} strokeWidth="1.5" style={{ display: 'block', margin: '0 auto 12px' }}><path d="M6 2L3 6v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2V6l-3-4z"/><line x1="3" y1="6" x2="21" y2="6"/><path d="M16 10a4 4 0 0 1-8 0"/></svg>
-                <p style={{ color: D.textSecondary, fontSize: 15 }}>Your cart is empty</p>
-                <button style={{ ...S.btnPrimary, marginTop: 16, width: 'auto', padding: '12px 24px' }} onClick={() => setActiveTab('browse')}>Browse Products</button>
+                <div style={{ width: 72, height: 72, borderRadius: '50%', backgroundColor: '#e8edf5', display: 'flex', alignItems: 'center', justifyContent: 'center', margin: '0 auto 16px' }}>
+                  <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke={D.navy} strokeWidth="1.5"><path d="M6 2L3 6v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2V6l-3-4z"/><line x1="3" y1="6" x2="21" y2="6"/><path d="M16 10a4 4 0 0 1-8 0"/></svg>
+                </div>
+                <p style={{ color: D.textPrimary, fontSize: 16, fontWeight: 700, margin: '0 0 6px' }}>Your cart is empty</p>
+                <p style={{ color: D.textSecondary, fontSize: 13, margin: '0 0 24px' }}>Browse products and add items to your cart</p>
+                <button style={{ ...S.btnPrimary, width: 'auto', padding: '12px 28px', margin: '0 auto' }} onClick={() => setActiveTab('browse')}>Browse Products</button>
               </div>
             ) : (
               <>
+                {/* Cart summary header */}
+                <div style={{ backgroundColor: D.navy, borderRadius: 12, padding: '14px 16px', marginBottom: 16, display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                  <div>
+                    <p style={{ margin: 0, fontSize: 12, color: 'rgba(255,255,255,0.7)', fontWeight: 500 }}>Cart Total</p>
+                    <p style={{ margin: '2px 0 0', fontSize: 22, fontWeight: 800, color: 'white' }}>₹{cartTotal.toLocaleString('en-IN')}</p>
+                  </div>
+                  <div style={{ textAlign: 'right' }}>
+                    <p style={{ margin: 0, fontSize: 12, color: 'rgba(255,255,255,0.7)' }}>{totalCartItems} items</p>
+                    <p style={{ margin: '2px 0 0', fontSize: 12, color: D.goldLight }}>{cart.length} product{cart.length !== 1 ? 's' : ''}</p>
+                  </div>
+                </div>
+
+                {/* Non-nighty items */}
                 {Object.keys(nonNightyBySupplier).map(sid => (
                   <div key={sid} style={S.supplierSection}>
-                    <p style={S.supplierLabel}>{nonNightyBySupplier[sid].supplierFirm}</p>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 12 }}>
+                      <div style={{ width: 28, height: 28, borderRadius: '50%', backgroundColor: '#e8edf5', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
+                        <span style={{ fontSize: 11, fontWeight: 800, color: D.navy }}>{nonNightyBySupplier[sid].supplierFirm?.[0]?.toUpperCase()}</span>
+                      </div>
+                      <span style={S.supplierLabel}>{nonNightyBySupplier[sid].supplierFirm}</span>
+                    </div>
                     {nonNightyBySupplier[sid].items.map(item => (
-                      <div key={item.cartKey} style={S.cartItem}>
+                      <div key={item.cartKey} style={{ ...S.cartItem, padding: '12px 0' }}>
                         <div style={{ flex: 1 }}>
-                          <p style={{ margin: '0 0 2px', fontWeight: 600, fontSize: 14, color: D.textPrimary }}>{item.productName} {item.size && <span style={S.sizeBadge}>{item.size}</span>}</p>
-                          <p style={{ margin: 0, fontSize: 12, color: D.textSecondary }}>₹{item.price}/pc</p>
+                          <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginBottom: 4 }}>
+                            <p style={{ margin: 0, fontWeight: 700, fontSize: 14, color: D.textPrimary }}>{item.productName}</p>
+                            {item.size && <span style={S.sizeBadge}>{item.size}</span>}
+                          </div>
+                          <p style={{ margin: 0, fontSize: 12, color: D.textSecondary }}>₹{item.price}/pc · Total: <b style={{ color: D.navy }}>₹{(item.price * item.quantity).toLocaleString('en-IN')}</b></p>
                         </div>
                         <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-                          <input type="number" min={1} value={item.quantity} onChange={e => updateQuantity(item.cartKey, e.target.value)} style={S.qtyInput} />
-                          <span style={{ fontSize: 13, fontWeight: 600, color: D.navy, minWidth: 60, textAlign: 'right' }}>₹{(item.price * item.quantity).toLocaleString()}</span>
-                          <button style={S.removeBtn} onClick={() => removeFromCart(item.cartKey)}>✕</button>
+                          <div style={{ display: 'flex', alignItems: 'center', border: `1px solid ${D.border}`, borderRadius: 8, overflow: 'hidden' }}>
+                            <button style={{ width: 32, height: 36, border: 'none', backgroundColor: D.bg, cursor: 'pointer', fontSize: 16, color: D.navy, fontWeight: 700 }}
+                              onClick={() => { if (item.quantity <= 1) removeFromCart(item.cartKey); else updateQuantity(item.cartKey, item.quantity - 1); }}>−</button>
+                            <input type="number" min={1} value={item.quantity} onChange={e => updateQuantity(item.cartKey, e.target.value)}
+                              style={{ width: 44, height: 36, border: 'none', textAlign: 'center', fontSize: 13, fontWeight: 700, color: D.navy, backgroundColor: D.surface, outline: 'none' }} />
+                            <button style={{ width: 32, height: 36, border: 'none', backgroundColor: D.bg, cursor: 'pointer', fontSize: 16, color: D.navy, fontWeight: 700 }}
+                              onClick={() => updateQuantity(item.cartKey, item.quantity + 1)}>+</button>
+                          </div>
+                          <button style={{ width: 30, height: 30, borderRadius: 8, border: 'none', backgroundColor: '#fce8e6', color: D.error, cursor: 'pointer', fontSize: 14, fontWeight: 700, display: 'flex', alignItems: 'center', justifyContent: 'center' }}
+                            onClick={() => removeFromCart(item.cartKey)}>✕</button>
                         </div>
                       </div>
                     ))}
                   </div>
                 ))}
+
+                {/* Nighty items */}
                 {Object.keys(nightyBySupplier).map(sid => (
                   <div key={sid} style={S.supplierSection}>
-                    <p style={S.supplierLabel}>{nightyBySupplier[sid].supplierFirm} · {nightyBySupplier[sid].category}</p>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 12 }}>
+                      <div style={{ width: 28, height: 28, borderRadius: '50%', backgroundColor: '#e8edf5', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
+                        <span style={{ fontSize: 11, fontWeight: 800, color: D.navy }}>{nightyBySupplier[sid].supplierFirm?.[0]?.toUpperCase()}</span>
+                      </div>
+                      <span style={S.supplierLabel}>{nightyBySupplier[sid].supplierFirm}</span>
+                      <span style={{ fontSize: 10, color: D.gold, fontWeight: 600, backgroundColor: '#fef7e0', padding: '2px 7px', borderRadius: 10 }}>{nightyBySupplier[sid].category}</span>
+                    </div>
                     {nightyBySupplier[sid].items.map(item => (
-                      <div key={item.cartKey} style={S.cartItem}>
-                        <img src={item.photoUrl} alt="" style={{ width: 44, height: 44, objectFit: 'cover', borderRadius: 6, flexShrink: 0 }} />
+                      <div key={item.cartKey} style={{ ...S.cartItem, padding: '10px 0' }}>
+                        <img src={item.photoUrl} alt="" style={{ width: 48, height: 48, objectFit: 'cover', borderRadius: 8, flexShrink: 0, border: `1px solid ${D.borderLight}` }} />
                         <div style={{ flex: 1 }}>
-                          <p style={{ margin: '0 0 2px', fontWeight: 600, fontSize: 13, color: D.textPrimary }}>{item.productName}</p>
+                          <p style={{ margin: '0 0 2px', fontWeight: 700, fontSize: 13, color: D.textPrimary }}>{item.productName}</p>
                           <p style={{ margin: 0, fontSize: 12, color: D.textSecondary }}>DN {item.designNo}{item.dnNumber ? ` (${item.dnNumber})` : ''} · {item.pcsPerSet} pcs/set</p>
                         </div>
                         <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
-                          <button style={S.qtyCircleBtn} onClick={() => removeDesignFromCart(item.cartKey)}>−</button>
-                          <span style={{ fontSize: 14, fontWeight: 700, minWidth: 24, textAlign: 'center', color: D.navy }}>{item.sets}</span>
-                          <button style={S.qtyCircleBtn} onClick={() => addDesignToCart(products.find(p => p.id === item.productId), { id: item.designId, designNo: item.designNo, dnNumber: item.dnNumber, photoUrl: item.photoUrl, sets: item.availableSets })}>+</button>
-                          <button style={S.removeBtn} onClick={() => removeFromCart(item.cartKey)}>✕</button>
+                          <button style={{ width: 30, height: 30, borderRadius: '50%', border: `1.5px solid ${D.border}`, backgroundColor: D.surface, cursor: 'pointer', fontSize: 16, fontWeight: 700, color: D.navy, display: 'flex', alignItems: 'center', justifyContent: 'center' }}
+                            onClick={() => removeDesignFromCart(item.cartKey)}>−</button>
+                          <span style={{ fontSize: 15, fontWeight: 800, minWidth: 24, textAlign: 'center', color: D.navy }}>{item.sets}</span>
+                          <button style={{ width: 30, height: 30, borderRadius: '50%', border: `1.5px solid ${D.border}`, backgroundColor: D.surface, cursor: 'pointer', fontSize: 16, fontWeight: 700, color: D.navy, display: 'flex', alignItems: 'center', justifyContent: 'center' }}
+                            onClick={() => addDesignToCart(products.find(p => p.id === item.productId), { id: item.designId, designNo: item.designNo, dnNumber: item.dnNumber, photoUrl: item.photoUrl, sets: item.availableSets })}>+</button>
+                          <button style={{ width: 30, height: 30, borderRadius: 8, border: 'none', backgroundColor: '#fce8e6', color: D.error, cursor: 'pointer', fontSize: 14, fontWeight: 700, display: 'flex', alignItems: 'center', justifyContent: 'center' }}
+                            onClick={() => removeFromCart(item.cartKey)}>✕</button>
                         </div>
                       </div>
                     ))}
                   </div>
                 ))}
-                <div style={{ padding: '16px 0 100px' }}>
-                  {nightyCart.length > 0 && <p style={{ fontSize: 12, color: D.textSecondary, marginBottom: 12 }}>* Bale packing will be confirmed at checkout</p>}
-                  {orderSuccess && <p style={{ color: D.success, fontWeight: 600, marginBottom: 12, fontSize: 14 }}>✓ Order placed successfully!</p>}
+
+                <div style={{ padding: '8px 0 100px' }}>
+                  {nightyCart.length > 0 && (
+                    <p style={{ fontSize: 12, color: D.textSecondary, marginBottom: 12, padding: '10px 14px', backgroundColor: '#f0f4ff', borderRadius: 8, border: `1px solid #c5d0f0` }}>
+                      📦 Bale packing details will be confirmed at checkout
+                    </p>
+                  )}
+                  {orderSuccess && (
+                    <div style={{ backgroundColor: '#e6f4ea', borderRadius: 10, padding: '12px 16px', marginBottom: 12, display: 'flex', alignItems: 'center', gap: 10 }}>
+                      <span style={{ fontSize: 20 }}>✓</span>
+                      <p style={{ margin: 0, color: D.success, fontWeight: 700, fontSize: 14 }}>Order placed successfully!</p>
+                    </div>
+                  )}
                   <button style={S.btnPrimary} onClick={handleCheckout} disabled={loading}>
-                    {loading ? 'Placing Order...' : 'Proceed to Checkout'}
+                    {loading ? 'Placing Order...' : `Proceed to Checkout · ₹${cartTotal.toLocaleString('en-IN')}`}
                   </button>
                 </div>
               </>
@@ -720,12 +733,8 @@ function BuyerDashboard() {
         {activeTab === 'orders' && (
           <div style={{ padding: '8px 16px' }}>
             {orders.length === 0 ? (
-              <div style={{ padding: '80px 0', textAlign: 'center', color: D.textSecondary }}>
-                <p style={{ fontSize: 15 }}>No orders yet</p>
-              </div>
-            ) : orders.map(order => (
-              <OrderCard key={order.id} order={order} />
-            ))}
+              <div style={{ padding: '80px 0', textAlign: 'center', color: D.textSecondary }}><p style={{ fontSize: 15 }}>No orders yet</p></div>
+            ) : orders.map(order => <OrderCard key={order.id} order={order} />)}
           </div>
         )}
 
@@ -741,12 +750,12 @@ function BuyerDashboard() {
       {/* BOTTOM NAV */}
       <BottomNav activeTab={activeTab} setActiveTab={setActiveTab} cartCount={totalCartItems} />
 
-      {/* PRODUCT DETAIL MODAL — bottom sheet */}
+      {/* PRODUCT DETAIL MODAL */}
       {selectedProductDetails && (
-        <div style={S.modalOverlay} onClick={() => setSelectedProductDetails(null)}>
+        <div style={S.modalOverlay} onClick={() => { setSelectedProductDetails(null); setCartAdded(false); }}>
           <div style={S.productModal} onClick={e => e.stopPropagation()}>
             <div style={S.modalHandle} />
-            <button style={S.modalClose} onClick={() => setSelectedProductDetails(null)}>✕</button>
+            <button style={S.modalClose} onClick={() => { setSelectedProductDetails(null); setCartAdded(false); }}>✕</button>
             {(() => {
               const designs = getProductDesignsList(selectedProductDetails);
               const img = designs[modalDesignIdx]?.photoUrl || 'https://via.placeholder.com/300';
@@ -775,12 +784,12 @@ function BuyerDashboard() {
               </div>
               {selectedProductDetails.sizes?.length > 0 && !NIGHTY_CATEGORIES.includes(selectedProductDetails.category) && (
                 <div style={{ marginBottom: 16 }}>
-                  <p style={{ fontSize: 13, fontWeight: 600, color: D.navy, margin: '0 0 10px' }}>Qty per Size <span style={{ fontWeight: 400, color: D.textSecondary }}>(must be multiple of {selectedProductDetails.moq})</span></p>
+                  <p style={{ fontSize: 13, fontWeight: 600, color: D.navy, margin: '0 0 10px' }}>Qty per Size <span style={{ fontWeight: 400, color: D.textSecondary }}>(multiple of {selectedProductDetails.moq})</span></p>
                   {selectedProductDetails.sizes.map(size => (
                     <div key={size} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '8px 0', borderBottom: `1px solid ${D.borderLight}` }}>
                       <span style={{ fontSize: 14, fontWeight: 600, color: D.textPrimary }}>Size {size}</span>
                       <input type="number" min="0" placeholder="0" value={sizeQuantities[size] || ''}
-                        onChange={e => setSizeQuantities({ ...sizeQuantities, [size]: e.target.value })}
+                        onChange={e => { setSizeQuantities({ ...sizeQuantities, [size]: e.target.value }); setCartAdded(false); }}
                         style={{ width: 80, padding: '6px 10px', border: `1px solid ${D.border}`, borderRadius: 6, textAlign: 'center', fontSize: 14 }} />
                     </div>
                   ))}
@@ -803,6 +812,7 @@ function BuyerDashboard() {
                   </div>
                 );
               })()}
+
               {NIGHTY_CATEGORIES.includes(selectedProductDetails.category) ? (
                 <button style={S.btnPrimary} onClick={() => { setSelectedProductDetails(null); setViewingProduct(selectedProductDetails); }}>
                   Select Designs & Bales
@@ -811,11 +821,21 @@ function BuyerDashboard() {
                 const total = Object.values(sizeQuantities).reduce((s, q) => s + Number(q || 0), 0);
                 const moq = Number(selectedProductDetails.moq || 1);
                 const valid = total > 0 && total % moq === 0;
+
+                if (cartAdded) {
+                  return (
+                    <div style={{ display: 'flex', gap: 8 }}>
+                      <button style={{ ...S.btnGhost, flex: 1 }} onClick={() => setCartAdded(false)}>+ Add More</button>
+                      <button style={{ ...S.btnPrimary, flex: 1, backgroundColor: D.gold }}
+                        onClick={() => { setSelectedProductDetails(null); setCartAdded(false); setActiveTab('cart'); }}>
+                        Go to Cart →
+                      </button>
+                    </div>
+                  );
+                }
                 return (
                   <>
-                    {total > 0 && !valid && (
-                      <p style={{ fontSize: 12, color: D.error, margin: '0 0 8px', fontWeight: 600 }}>⚠ Total {total} pcs must be multiple of {moq}</p>
-                    )}
+                    {total > 0 && !valid && <p style={{ fontSize: 12, color: D.error, margin: '0 0 8px', fontWeight: 600 }}>⚠ Total {total} pcs must be multiple of {moq}</p>}
                     <button style={{ ...S.btnPrimary, backgroundColor: (selectedProductDetails.sizes?.length > 0 && !valid) ? D.border : D.navy }}
                       onClick={() => addSizesToCart(selectedProductDetails)}
                       disabled={selectedProductDetails.sizes?.length > 0 && !valid}>
@@ -894,28 +914,26 @@ const S = {
   cardSupplier: { margin: 0, fontSize: 11, color: D.textSecondary },
   cardPrice: { fontSize: 14, fontWeight: 700, color: D.navy },
   detailsTag: { fontSize: 11, color: D.surface, backgroundColor: D.navy, padding: '4px 8px', borderRadius: 4, fontWeight: 600 },
-  supplierSection: { backgroundColor: D.surface, borderRadius: 10, padding: 14, marginBottom: 12, boxShadow: '0 1px 4px rgba(3,22,50,0.06)' },
-  supplierLabel: { margin: '0 0 10px', fontSize: 12, fontWeight: 700, color: D.gold, textTransform: 'uppercase', letterSpacing: '0.05em' },
-  cartItem: { display: 'flex', alignItems: 'center', gap: 10, paddingTop: 10, borderTop: `1px solid ${D.borderLight}` },
-  sizeBadge: { backgroundColor: D.bg, border: `1px solid ${D.border}`, borderRadius: 4, padding: '1px 5px', fontSize: 11, marginLeft: 4, fontWeight: 600 },
+  supplierSection: { backgroundColor: D.surface, borderRadius: 12, padding: '14px 14px 4px', marginBottom: 12, boxShadow: '0 1px 6px rgba(3,22,50,0.06)', border: `1px solid ${D.borderLight}` },
+  supplierLabel: { margin: 0, fontSize: 12, fontWeight: 700, color: D.navy, textTransform: 'uppercase', letterSpacing: '0.05em' },
+  cartItem: { display: 'flex', alignItems: 'center', gap: 10, borderTop: `1px solid ${D.borderLight}` },
+  sizeBadge: { backgroundColor: '#e8edf5', border: 'none', borderRadius: 6, padding: '2px 7px', fontSize: 11, fontWeight: 700, color: D.navy },
   qtyInput: { width: 60, padding: '6px 4px', border: `1px solid ${D.border}`, borderRadius: 6, textAlign: 'center', fontSize: 13 },
   qtyCircleBtn: { width: 28, height: 28, borderRadius: '50%', border: `1px solid ${D.border}`, backgroundColor: D.surface, cursor: 'pointer', fontSize: 14, display: 'flex', alignItems: 'center', justifyContent: 'center' },
   removeBtn: { width: 28, height: 28, borderRadius: 6, border: 'none', backgroundColor: '#fce8e6', color: D.error, cursor: 'pointer', fontSize: 12, fontWeight: 700 },
   statusBadge: { padding: '4px 10px', borderRadius: 20, fontSize: 11, fontWeight: 700 },
-  profileCard: { backgroundColor: D.surface, borderRadius: 12, padding: 20, boxShadow: '0 2px 8px rgba(3,22,50,0.06)', textAlign: 'center' },
+  profileCard: { backgroundColor: D.surface, borderRadius: 12, padding: 20, boxShadow: '0 2px 8px rgba(3,22,50,0.06)', textAlign: 'center', marginTop: 8 },
   profileAvatar: { width: 64, height: 64, borderRadius: '50%', backgroundColor: '#e8edf5', display: 'flex', alignItems: 'center', justifyContent: 'center', margin: '0 auto' },
   profileRow: { display: 'flex', justifyContent: 'space-between', padding: '8px 0', borderBottom: `1px solid ${D.borderLight}`, textAlign: 'left' },
   profileLabel: { fontSize: 12, color: D.textSecondary, fontWeight: 500 },
   profileValue: { fontSize: 13, color: D.textPrimary, fontWeight: 600, textAlign: 'right', maxWidth: '60%' },
   input: { display: 'block', width: '100%', padding: '11px 14px', border: `1px solid ${D.border}`, borderRadius: 8, fontSize: 14, color: D.textPrimary, outline: 'none', boxSizing: 'border-box', marginBottom: 10, backgroundColor: D.surface },
-  btnPrimary: { display: 'block', width: '100%', padding: '14px', backgroundColor: D.navy, color: 'white', border: 'none', borderRadius: 8, fontSize: 15, fontWeight: 700, cursor: 'pointer', letterSpacing: '-0.01em' },
-  btnGhost: { display: 'block', width: '100%', padding: '13px', backgroundColor: 'transparent', color: D.navy, border: `1px solid ${D.border}`, borderRadius: 8, fontSize: 14, fontWeight: 600, cursor: 'pointer' },
+  btnPrimary: { display: 'block', width: '100%', padding: '14px', backgroundColor: D.navy, color: 'white', border: 'none', borderRadius: 10, fontSize: 15, fontWeight: 700, cursor: 'pointer', letterSpacing: '-0.01em' },
+  btnGhost: { display: 'block', width: '100%', padding: '13px', backgroundColor: 'transparent', color: D.navy, border: `1.5px solid ${D.border}`, borderRadius: 10, fontSize: 14, fontWeight: 600, cursor: 'pointer' },
   bottomNav: { position: 'fixed', bottom: 0, left: '50%', transform: 'translateX(-50%)', width: '100%', maxWidth: 480, display: 'flex', backgroundColor: D.surface, borderTop: `1px solid ${D.borderLight}`, zIndex: 50, paddingBottom: 'env(safe-area-inset-bottom)' },
   navBtn: { flex: 1, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', padding: '10px 0', border: 'none', backgroundColor: 'transparent', cursor: 'pointer', minHeight: 56 },
-  // modalOverlay: flex-end ensures bottom sheet behaviour
-  modalOverlay: { position: 'fixed', inset: 0, backgroundColor: 'rgba(3,22,50,0.5)', zIndex: 200, display: 'flex', flexDirection: 'column', justifyContent: 'flex-end' },
+  modalOverlay: { position: 'fixed', top: 0, bottom: 0, left: '50%', transform: 'translateX(-50%)', width: '100%', maxWidth: 480, backgroundColor: 'rgba(3,22,50,0.5)', zIndex: 200, display: 'flex', alignItems: 'flex-end' },
   fullModal: { backgroundColor: D.surface, borderRadius: '16px 16px 0 0', padding: '12px 16px 32px', width: '100%', maxHeight: '85vh', overflowY: 'auto', display: 'flex', flexDirection: 'column' },
-  // productModal: no fixed height — image controls it, sheet slides from bottom
   productModal: { backgroundColor: D.surface, borderRadius: '16px 16px 0 0', width: '100%', maxHeight: '88vh', overflowY: 'auto', position: 'relative' },
   modalHandle: { width: 36, height: 4, backgroundColor: D.border, borderRadius: 2, margin: '8px auto 12px' },
   modalHeading: { margin: '0 0 16px', fontSize: 18, fontWeight: 700, color: D.navy },

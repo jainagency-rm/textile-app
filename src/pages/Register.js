@@ -5,6 +5,83 @@ import { doc, setDoc, getDocs, query, where, collection } from 'firebase/firesto
 import { auth, db } from '../firebase';
 import { notifyNewUser } from '../utils/notifications';
 
+const D = {
+  navy: '#031632', navyMid: '#1a2b48', gold: '#775a19',
+  bg: '#f8f9fa', surface: '#ffffff', textPrimary: '#191c1d',
+  textSecondary: '#44474d', border: '#c5c6ce', error: '#ba1a1a', success: '#1a6b3c',
+};
+
+// Searchable dropdown with free-type
+function SmartSelect({ label, value, onChange, options, placeholder, required }) {
+  const [open, setOpen] = useState(false);
+  const [search, setSearch] = useState('');
+
+  const filtered = options.filter(o => o.toLowerCase().includes(search.toLowerCase()));
+
+  const handleSelect = (opt) => {
+    onChange(opt);
+    setSearch('');
+    setOpen(false);
+  };
+
+  const handleInputChange = (e) => {
+    onChange(e.target.value);
+    setSearch(e.target.value);
+    setOpen(true);
+  };
+
+  const handleBlur = () => {
+    setTimeout(() => setOpen(false), 150);
+  };
+
+  return (
+    <div style={{ position: 'relative', marginBottom: 12 }}>
+      <label style={S.label}>{label}</label>
+      <div style={{ position: 'relative' }}>
+        <input
+          style={{ ...S.input, backgroundColor: value ? '#f0f8f0' : D.bg, paddingRight: 32 }}
+          value={value}
+          onChange={handleInputChange}
+          onFocus={() => { setSearch(''); setOpen(true); }}
+          onBlur={handleBlur}
+          placeholder={placeholder}
+          required={required}
+          autoComplete="off"
+        />
+        <span style={{ position: 'absolute', right: 10, top: '50%', transform: 'translateY(-50%)', fontSize: 10, color: D.textSecondary, pointerEvents: 'none' }}>
+          {open ? '▲' : '▼'}
+        </span>
+      </div>
+      {open && options.length > 0 && (
+        <div style={{
+          position: 'absolute', top: '100%', left: 0, right: 0, zIndex: 999,
+          backgroundColor: D.surface, border: `1.5px solid ${D.border}`,
+          borderRadius: 8, boxShadow: '0 8px 24px rgba(3,22,50,0.12)',
+          maxHeight: 180, overflowY: 'auto', marginTop: 4,
+        }}>
+          {filtered.length === 0 ? (
+            <div style={{ padding: '10px 14px', fontSize: 13, color: D.textSecondary }}>
+              No match — type to use custom value
+            </div>
+          ) : filtered.map((opt, i) => (
+            <div key={i}
+              onMouseDown={() => handleSelect(opt)}
+              style={{
+                padding: '10px 14px', fontSize: 13, cursor: 'pointer',
+                color: opt === value ? D.navy : D.textPrimary,
+                fontWeight: opt === value ? 700 : 400,
+                backgroundColor: opt === value ? '#e8edf5' : 'transparent',
+                borderBottom: i < filtered.length - 1 ? `1px solid ${D.borderLight}` : 'none',
+              }}>
+              {opt}
+            </div>
+          ))}
+        </div>
+      )}
+    </div>
+  );
+}
+
 function Register() {
   const [searchParams] = useSearchParams();
   const role = searchParams.get('role') || 'buyer';
@@ -13,52 +90,106 @@ function Register() {
   const [step, setStep] = useState(1);
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
+  const [showPass, setShowPass] = useState(false);
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
+  const [pincodeLoading, setPincodeLoading] = useState(false);
+  const [pincodeError, setPincodeError] = useState('');
+
+  // All post offices from pincode response
+  const [postOffices, setPostOffices] = useState([]);
+  const [cityOptions, setCityOptions] = useState([]);
 
   const [formData, setFormData] = useState({
-    gstNumber: '',
-    firmName: '',
-    contactPerson: '',
-    mobile: '',
-    address: '',
-    city: '',
-    district: '',
-    state: '',
-    pincode: '',
+    gstNumber: '', firmName: '', contactPerson: '', mobile: '',
+    addressLine1: '', addressLine2: '',
+    pincode: '', city: '', district: '', state: '',
   });
 
-  const handleChange = (e) => {
-    setFormData({ ...formData, [e.target.name]: e.target.value });
+  const handleChange = (e) => setFormData(prev => ({ ...prev, [e.target.name]: e.target.value }));
+  const handleFieldChange = (field, val) => setFormData(prev => ({ ...prev, [field]: val }));
+
+  const fetchPincodeDetails = async (pin) => {
+    setPincodeLoading(true);
+    setPincodeError('');
+    setCityOptions([]);
+    setPostOffices([]);
+    try {
+      const res = await fetch(`https://api.postalpincode.in/pincode/${pin}`);
+      const data = await res.json();
+      if (data[0]?.Status === 'Success') {
+        const offices = data[0].PostOffice || [];
+        setPostOffices(offices);
+        // Unique city/block names
+        const cities = [...new Set(offices.map(o => o.Block || o.Name).filter(Boolean))];
+        setCityOptions(cities);
+        // Auto-fill from first office
+        const first = offices[0];
+        setFormData(prev => ({
+          ...prev,
+          city: first.Block || first.Name || '',
+          district: first.District || '',
+          state: first.State || '',
+        }));
+      } else {
+        setPincodeError('Invalid pincode — enter details manually');
+        setFormData(prev => ({ ...prev, city: '', district: '', state: '' }));
+      }
+    } catch {
+      setPincodeError('Could not fetch — enter details manually');
+    }
+    setPincodeLoading(false);
   };
+
+  const handlePincodeChange = (e) => {
+    const val = e.target.value.replace(/\D/g, '').slice(0, 6);
+    setFormData(prev => ({ ...prev, pincode: val, city: '', district: '', state: '' }));
+    setPincodeError('');
+    setCityOptions([]);
+    if (val.length === 6) fetchPincodeDetails(val);
+  };
+
+  // When city changes, auto-update district from matching post office
+  const handleCityChange = (val) => {
+    handleFieldChange('city', val);
+    const match = postOffices.find(o => (o.Block || o.Name) === val);
+    if (match) {
+      handleFieldChange('district', match.District || formData.district);
+    }
+  };
+
+  // Unique districts from fetched offices
+  const districtOptions = [...new Set(postOffices.map(o => o.District).filter(Boolean))];
+  // Unique states
+  const stateOptions = [...new Set(postOffices.map(o => o.State).filter(Boolean))];
 
   const handleStep1 = (e) => {
     e.preventDefault();
     if (password.length < 6) { setError('Password must be at least 6 characters'); return; }
-    setError('');
-    setStep(2);
+    setError(''); setStep(2);
   };
 
   const handleSubmit = async (e) => {
     e.preventDefault();
-    setLoading(true);
-    setError('');
+    setLoading(true); setError('');
     try {
       const userCred = await createUserWithEmailAndPassword(auth, email, password);
+      const address = [formData.addressLine1, formData.addressLine2].filter(Boolean).join(', ');
       await setDoc(doc(db, 'users', userCred.user.uid), {
-        uid: userCred.user.uid,
-        email,
-        role,
-        status: 'pending',
-        createdAt: new Date(),
-        ...formData,
+        uid: userCred.user.uid, email, role, status: 'pending', createdAt: new Date(),
+        gstNumber: formData.gstNumber,
+        firmName: formData.firmName,
+        contactPerson: formData.contactPerson,
+        mobile: formData.mobile,
+        address,
+        city: formData.city,
+        district: formData.district,
+        state: formData.state,
+        pincode: formData.pincode,
       });
-
-      // Admin ko notify karo
       const adminSnap = await getDocs(query(collection(db, 'users'), where('role', '==', 'admin')));
       const adminId = adminSnap.docs[0]?.id;
       if (adminId) await notifyNewUser(adminId, formData.firmName, role);
-
       navigate('/pending');
     } catch (err) {
       if (err.code === 'auth/email-already-in-use') setError('Email already registered');
@@ -68,65 +199,216 @@ function Register() {
   };
 
   return (
-    <div style={styles.container}>
-      <div style={styles.card}>
-        <h2 style={styles.title}>{role === 'buyer' ? 'Buyer' : 'Supplier'} Registration</h2>
+    <div style={S.page}>
+      <div style={S.bgPattern} />
+      <div style={S.card}>
 
+        {/* Header */}
+        <div style={S.logoArea}>
+          <div style={S.logoMark}>
+            <svg width="28" height="28" viewBox="0 0 24 24" fill="none">
+              <path d="M12 2L2 7l10 5 10-5-10-5z" fill={D.gold}/>
+              <path d="M2 17l10 5 10-5M2 12l10 5 10-5" stroke={D.gold} strokeWidth="1.5" strokeLinecap="round"/>
+            </svg>
+          </div>
+          <div>
+            <h1 style={S.brandName}>Jain Agency</h1>
+            <p style={S.brandTagline}>Textile Marketplace</p>
+          </div>
+        </div>
+
+        <div style={S.divider} />
+
+        <div style={S.roleBadge}>
+          <span style={{ fontSize: 16 }}>{role === 'buyer' ? '🛍️' : '🏭'}</span>
+          <span>{role === 'buyer' ? 'Buyer' : 'Supplier'} Registration</span>
+        </div>
+
+        {/* Step indicator */}
+        <div style={S.stepRow}>
+          <div style={{ ...S.stepDot, backgroundColor: D.navy }}>
+            {step > 1
+              ? <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="3"><polyline points="20 6 9 17 4 12"/></svg>
+              : <span style={{ color: 'white', fontSize: 11, fontWeight: 700 }}>1</span>}
+          </div>
+          <div style={{ flex: 1, height: 2, borderRadius: 1, backgroundColor: step > 1 ? D.navy : D.border }} />
+          <div style={{ ...S.stepDot, backgroundColor: step >= 2 ? D.navy : D.border }}>
+            <span style={{ color: 'white', fontSize: 11, fontWeight: 700 }}>2</span>
+          </div>
+          <div style={{ flex: 1, height: 2, borderRadius: 1, backgroundColor: D.border }} />
+          <div style={{ ...S.stepDot, backgroundColor: D.border }}>
+            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="2"><polyline points="9 11 12 14 22 4"/><path d="M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11"/></svg>
+          </div>
+        </div>
+        <div style={S.stepLabels}>
+          <span style={S.stepLabel}>Account</span>
+          <span style={S.stepLabel}>Business</span>
+          <span style={S.stepLabel}>Done</span>
+        </div>
+
+        {/* ── STEP 1 ── */}
         {step === 1 && (
-          <form onSubmit={handleStep1} style={styles.form}>
-            <input style={styles.input} type="email" placeholder="Email" value={email}
-              onChange={(e) => setEmail(e.target.value)} required />
-            <input style={styles.input} type="password" placeholder="Password (min 6 characters)" value={password}
-              onChange={(e) => setPassword(e.target.value)} required />
-            {error && <p style={styles.error}>{error}</p>}
-            <button style={styles.button} type="submit">Next</button>
-            <p style={styles.loginText}>Already registered? <Link to="/" style={styles.link}>Login</Link></p>
-          </form>
+          <div>
+            <h2 style={S.formTitle}>Create Account</h2>
+            <p style={S.formSubtitle}>Start with your login credentials</p>
+            <form onSubmit={handleStep1}>
+              <div style={S.fieldGroup}>
+                <label style={S.label}>Email Address</label>
+                <input style={S.input} type="email" placeholder="your@email.com"
+                  value={email} onChange={e => setEmail(e.target.value)} required />
+              </div>
+              <div style={S.fieldGroup}>
+                <label style={S.label}>Password</label>
+                <div style={S.passWrap}>
+                  <input style={{ ...S.input, paddingRight: 44 }} type={showPass ? 'text' : 'password'}
+                    placeholder="Min. 6 characters" value={password} onChange={e => setPassword(e.target.value)} required />
+                  <button type="button" style={S.eyeBtn} onClick={() => setShowPass(!showPass)}>
+                    {showPass ? '🙈' : '👁'}
+                  </button>
+                </div>
+              </div>
+              {error && <p style={S.errorMsg}>{error}</p>}
+              <button style={S.primaryBtn} type="submit">Continue →</button>
+            </form>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 10, marginTop: 16 }}>
+  <p style={{ ...S.loginText, margin: 0 }}>Already registered? <Link to="/" style={S.linkText}>Sign in</Link></p>
+  <Link to="/" style={{ textAlign: 'center', fontSize: 13, color: D.textSecondary, textDecoration: 'none', display: 'block' }}>← Back to Login</Link>
+</div>
+          </div>
         )}
 
+        {/* ── STEP 2 ── */}
         {step === 2 && (
-          <form onSubmit={handleSubmit} style={styles.form}>
-            <input style={styles.input} name="gstNumber" placeholder="GST Number" value={formData.gstNumber}
-              onChange={handleChange} required />
-            <input style={styles.input} name="firmName" placeholder="Firm Name" value={formData.firmName}
-              onChange={handleChange} required />
-            <input style={styles.input} name="contactPerson" placeholder="Contact Person" value={formData.contactPerson}
-              onChange={handleChange} required />
-            <input style={styles.input} name="mobile" placeholder="Mobile Number" value={formData.mobile}
-              onChange={handleChange} required />
-            <input style={styles.input} name="address" placeholder="Address" value={formData.address}
-              onChange={handleChange} required />
-            <input style={styles.input} name="city" placeholder="City" value={formData.city}
-              onChange={handleChange} required />
-            <input style={styles.input} name="district" placeholder="District" value={formData.district}
-              onChange={handleChange} required />
-            <input style={styles.input} name="state" placeholder="State" value={formData.state}
-              onChange={handleChange} required />
-            <input style={styles.input} name="pincode" placeholder="Pincode" value={formData.pincode}
-              onChange={handleChange} required />
-            {error && <p style={styles.error}>{error}</p>}
-            <button style={styles.button} type="submit" disabled={loading}>
-              {loading ? 'Submitting...' : 'Submit for Approval'}
-            </button>
-            <button style={styles.backButton} type="button" onClick={() => setStep(1)}>Back</button>
-          </form>
+          <div>
+            <h2 style={S.formTitle}>Business Details</h2>
+            <p style={S.formSubtitle}>Helps us verify your account</p>
+            <form onSubmit={handleSubmit}>
+              <div style={{ maxHeight: '50vh', overflowY: 'auto', paddingRight: 4 }}>
+
+                <div style={S.fieldGroup}>
+                  <label style={S.label}>GST Number</label>
+                  <input style={S.input} name="gstNumber" placeholder="22AAAAA0000A1Z5"
+                    value={formData.gstNumber} onChange={handleChange} required />
+                </div>
+
+                <div style={S.fieldGroup}>
+                  <label style={S.label}>Firm Name</label>
+                  <input style={S.input} name="firmName" placeholder="e.g. Shree Textiles"
+                    value={formData.firmName} onChange={handleChange} required />
+                </div>
+
+                <div style={S.fieldGroup}>
+                  <label style={S.label}>Contact Person</label>
+                  <input style={S.input} name="contactPerson" placeholder="Full name"
+                    value={formData.contactPerson} onChange={handleChange} required />
+                </div>
+
+                <div style={S.fieldGroup}>
+                  <label style={S.label}>Mobile Number</label>
+                  <input style={S.input} name="mobile" placeholder="10-digit mobile" type="tel"
+                    value={formData.mobile} onChange={handleChange} required />
+                </div>
+
+                <div style={S.fieldGroup}>
+                  <label style={S.label}>Address Line 1</label>
+                  <input style={S.input} name="addressLine1" placeholder="Shop / Building / Street"
+                    value={formData.addressLine1} onChange={handleChange} required />
+                </div>
+
+                <div style={S.fieldGroup}>
+                  <label style={S.label}>Address Line 2 <span style={{ color: D.textSecondary, fontWeight: 400, textTransform: 'none' }}>(optional)</span></label>
+                  <input style={S.input} name="addressLine2" placeholder="Area / Landmark"
+                    value={formData.addressLine2} onChange={handleChange} />
+                </div>
+
+                {/* Pincode */}
+                <div style={S.fieldGroup}>
+                  <label style={S.label}>
+                    Pincode
+                    {pincodeLoading && <span style={{ marginLeft: 8, fontSize: 11, color: D.gold, fontWeight: 600, textTransform: 'none' }}>⏳ Fetching...</span>}
+                    {!pincodeLoading && formData.city && !pincodeError && (
+                      <span style={{ marginLeft: 8, fontSize: 11, color: D.success, fontWeight: 600, textTransform: 'none' }}>✓ Details loaded</span>
+                    )}
+                  </label>
+                  <input style={S.input} placeholder="6-digit pincode" type="tel"
+                    value={formData.pincode} onChange={handlePincodeChange} maxLength={6} required />
+                  {pincodeError && <p style={{ margin: '5px 0 0', fontSize: 12, color: D.error }}>{pincodeError}</p>}
+                </div>
+
+                {/* City — searchable dropdown */}
+                <SmartSelect
+                  label="City / Block"
+                  value={formData.city}
+                  onChange={handleCityChange}
+                  options={cityOptions}
+                  placeholder={pincodeLoading ? 'Fetching...' : 'Type or select'}
+                  required
+                />
+
+                {/* District + State side by side */}
+                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10 }}>
+                  <SmartSelect
+                    label="District"
+                    value={formData.district}
+                    onChange={val => handleFieldChange('district', val)}
+                    options={districtOptions}
+                    placeholder="Type or select"
+                    required
+                  />
+                  <SmartSelect
+                    label="State"
+                    value={formData.state}
+                    onChange={val => handleFieldChange('state', val)}
+                    options={stateOptions}
+                    placeholder="Type or select"
+                    required
+                  />
+                </div>
+
+              </div>
+
+              {error && <p style={S.errorMsg}>{error}</p>}
+              <button style={S.primaryBtn} type="submit" disabled={loading || pincodeLoading}>
+                {loading ? 'Submitting...' : 'Submit for Approval ✓'}
+              </button>
+            </form>
+            <button style={S.ghostBtn} type="button" onClick={() => { setStep(1); setError(''); }}>← Back</button>
+          </div>
         )}
+
+        <p style={S.footerText}>© 2026 Jain Agency · All rights reserved</p>
       </div>
     </div>
   );
 }
 
-const styles = {
-  container: { minHeight: '100vh', display: 'flex', alignItems: 'center', justifyContent: 'center', backgroundColor: '#f5f5f5', padding: '20px' },
-  card: { backgroundColor: 'white', padding: '40px', borderRadius: '12px', boxShadow: '0 2px 20px rgba(0,0,0,0.1)', width: '100%', maxWidth: '400px' },
-  title: { textAlign: 'center', color: '#1a1a2e', marginBottom: '25px' },
-  form: { display: 'flex', flexDirection: 'column', gap: '12px' },
-  input: { padding: '12px', border: '1px solid #ddd', borderRadius: '8px', fontSize: '14px', outline: 'none' },
-  button: { padding: '12px', backgroundColor: '#e63946', color: 'white', border: 'none', borderRadius: '8px', fontSize: '16px', cursor: 'pointer' },
-  backButton: { padding: '12px', backgroundColor: '#ddd', color: '#333', border: 'none', borderRadius: '8px', fontSize: '14px', cursor: 'pointer' },
-  error: { color: 'red', fontSize: '13px', margin: '0' },
-  loginText: { textAlign: 'center', fontSize: '13px', color: '#666' },
-  link: { color: '#e63946', textDecoration: 'none' },
+const S = {
+  page: { minHeight: '100vh', display: 'flex', alignItems: 'center', justifyContent: 'center', backgroundColor: D.navy, padding: 20, position: 'relative', overflow: 'hidden', fontFamily: "'Inter', -apple-system, sans-serif" },
+  bgPattern: { position: 'absolute', inset: 0, zIndex: 0, backgroundImage: `radial-gradient(circle at 20% 20%, rgba(119,90,25,0.15) 0%, transparent 50%), radial-gradient(circle at 80% 80%, rgba(26,43,72,0.8) 0%, transparent 50%)` },
+  card: { position: 'relative', zIndex: 1, backgroundColor: D.surface, borderRadius: 20, padding: '28px 28px 20px', width: '100%', maxWidth: 420, boxShadow: '0 24px 64px rgba(0,0,0,0.4)' },
+  logoArea: { display: 'flex', alignItems: 'center', gap: 12, marginBottom: 20 },
+  logoMark: { width: 48, height: 48, borderRadius: 12, backgroundColor: D.navy, display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 },
+  brandName: { margin: 0, fontSize: 20, fontWeight: 800, color: D.navy, letterSpacing: '-0.02em' },
+  brandTagline: { margin: '2px 0 0', fontSize: 12, color: D.textSecondary, fontWeight: 500 },
+  divider: { height: 1, backgroundColor: D.border, margin: '0 0 20px', opacity: 0.5 },
+  roleBadge: { display: 'inline-flex', alignItems: 'center', gap: 8, backgroundColor: '#e8edf5', borderRadius: 20, padding: '6px 14px', fontSize: 13, fontWeight: 700, color: D.navy, marginBottom: 20 },
+  stepRow: { display: 'flex', alignItems: 'center', marginBottom: 6 },
+  stepDot: { width: 24, height: 24, borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 },
+  stepLabels: { display: 'flex', justifyContent: 'space-between', marginBottom: 20 },
+  stepLabel: { fontSize: 10, color: D.textSecondary, fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.05em' },
+  formTitle: { margin: '0 0 4px', fontSize: 20, fontWeight: 800, color: D.navy, letterSpacing: '-0.02em' },
+  formSubtitle: { margin: '0 0 16px', fontSize: 13, color: D.textSecondary },
+  fieldGroup: { marginBottom: 12 },
+  label: { display: 'block', fontSize: 11, fontWeight: 600, color: D.textSecondary, marginBottom: 5, textTransform: 'uppercase', letterSpacing: '0.05em' },
+  input: { display: 'block', width: '100%', padding: '11px 13px', border: `1.5px solid ${D.border}`, borderRadius: 8, fontSize: 14, color: D.textPrimary, outline: 'none', boxSizing: 'border-box', backgroundColor: D.bg, fontFamily: 'inherit' },
+  passWrap: { position: 'relative' },
+  eyeBtn: { position: 'absolute', right: 12, top: '50%', transform: 'translateY(-50%)', background: 'none', border: 'none', cursor: 'pointer', fontSize: 16, padding: 4 },
+  primaryBtn: { display: 'block', width: '100%', padding: '13px', backgroundColor: D.navy, color: 'white', border: 'none', borderRadius: 10, fontSize: 15, fontWeight: 700, cursor: 'pointer', marginTop: 12, letterSpacing: '-0.01em', fontFamily: 'inherit' },
+  ghostBtn: { display: 'block', width: '100%', padding: '11px', backgroundColor: 'transparent', color: D.textSecondary, border: `1.5px solid ${D.border}`, borderRadius: 10, fontSize: 14, fontWeight: 600, cursor: 'pointer', marginTop: 10, fontFamily: 'inherit' },
+  errorMsg: { fontSize: 13, color: D.error, margin: '8px 0 0', fontWeight: 500 },
+  loginText: { textAlign: 'center', fontSize: 13, color: D.textSecondary, marginTop: 18, marginBottom: 0 },
+  linkText: { color: D.gold, textDecoration: 'none', fontWeight: 700 },
+  footerText: { textAlign: 'center', fontSize: 11, color: D.border, marginTop: 20, marginBottom: 0 },
 };
 
 export default Register;
