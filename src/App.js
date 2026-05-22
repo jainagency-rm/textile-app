@@ -51,6 +51,8 @@ function App() {
         <Route path="/" element={<Login />} />
         <Route path="/register" element={<Register />} />
         <Route path="/pending" element={<Pending />} />
+        
+        {/* Dashboards ab apne khud ke in-built layouts use karenge */}
         <Route path="/admin" element={<AdminDashboard />} />
         <Route path="/supplier" element={<SupplierDashboard />} />
         <Route path="/buyer" element={<BuyerDashboard />} />

@@ -41,23 +41,38 @@ function AdminDashboard() {
   });
   const [shareModal, setShareModal] = useState(null);
 
+  // Responsive State
+  const [isMobile, setIsMobile] = useState(window.innerWidth < 768);
+
   const notifRef = useRef(null);
   const adminId = auth.currentUser?.uid;
   const navigate = useNavigate();
+
+  useEffect(() => {
+    const handleResize = () => setIsMobile(window.innerWidth < 768);
+    window.addEventListener('resize', handleResize);
+    return () => window.removeEventListener('resize', handleResize);
+  }, []);
 
   useEffect(() => { fetchAllData(); }, []);
 
   // Global ESC — saare modals band
   useEffect(() => {
-    const handler = () => {
-      setSelectedUser(null);
-      setEditingProduct(null);
-      setDeliveryModal(null);
-      setShareModal(null);
-      setShowNotifications(false);
+    const handler = (e) => {
+      if(e.key === 'Escape' || e.type === 'closeModal') {
+        setSelectedUser(null);
+        setEditingProduct(null);
+        setDeliveryModal(null);
+        setShareModal(null);
+        setShowNotifications(false);
+      }
     };
     window.addEventListener('closeModal', handler);
-    return () => window.removeEventListener('closeModal', handler);
+    document.addEventListener('keydown', handler);
+    return () => {
+      window.removeEventListener('closeModal', handler);
+      document.removeEventListener('keydown', handler);
+    }
   }, []);
 
   useEffect(() => {
@@ -94,7 +109,11 @@ function AdminDashboard() {
     setLoading(false);
   };
 
-  const handleLogout = async () => { await signOut(auth); navigate('/'); };
+  const handleLogoutClick = () => {
+    if (window.confirm('Are you sure you want to logout?')) {
+      signOut(auth).then(() => navigate('/'));
+    }
+  };
 
   const markAllRead = async () => {
     const unread = notifications.filter(n => !n.read);
@@ -115,7 +134,6 @@ function AdminDashboard() {
     setProducts(products.map(p => p.id === productId ? { ...p, status: newStatus } : p));
   };
 
-  // Product image upload
   const handleProductImageUpload = async (files) => {
     if (!editingProduct || !files.length) return;
     setUploadingImage(true);
@@ -368,7 +386,6 @@ ${sizeWiseText}
     setEditingProduct({ ...editingProduct, sizes: current.includes(size) ? current.filter(s => s !== size) : [...current, size] });
   };
 
-  // Get all image urls from product
   const getProductImages = (product) => {
     if (!product) return [];
     if (product.imageUrls && Array.isArray(product.imageUrls)) {
@@ -378,63 +395,78 @@ ${sizeWiseText}
     return [];
   };
 
+  // Nav Items Data
+  const navTabs = [
+    { id: 'analytics', label: 'Dashboard', icon: <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M3 3v18h18"/><path d="M18 17V9"/><path d="M13 17V5"/><path d="M8 17v-3"/></svg> },
+    { id: 'users', label: 'Users', count: stats.pendingUsers, icon: <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg> },
+    { id: 'products', label: 'Products', count: stats.pendingProducts, icon: <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z"/></svg> },
+    { id: 'orders', label: 'Orders', icon: <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M6 2L3 6v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2V6l-3-4z"/><line x1="3" y1="6" x2="21" y2="6"/><path d="M16 10a4 4 0 0 1-8 0"/></svg> },
+    { id: 'categories', label: 'Settings', icon: <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg> },
+  ];
+
   if (loading) return <div style={{ padding: '50px', textAlign: 'center' }}>Loading System Data...</div>;
 
   return (
     <div style={styles.container}>
 
-      {/* ── SIDEBAR ── */}
-      <div style={styles.sidebar}>
-        <div style={{ flex: 1, display: 'flex', flexDirection: 'column', gap: '4px', overflowY: 'auto' }}>
-          <h2 style={{ color: 'white', margin: '0 0 20px 0' }}>Admin Hub</h2>
-          <button style={activeTab === 'analytics' ? styles.activeTab : styles.tab} onClick={() => setActiveTab('analytics')}>Dashboard</button>
-          <button style={activeTab === 'users' ? styles.activeTab : styles.tab} onClick={() => setActiveTab('users')}>
-            Users Control {stats.pendingUsers > 0 && <span style={styles.sidebarBadge}>{stats.pendingUsers}</span>}
-          </button>
-          <button style={activeTab === 'products' ? styles.activeTab : styles.tab} onClick={() => setActiveTab('products')}>
-            Products {stats.pendingProducts > 0 && <span style={styles.sidebarBadge}>{stats.pendingProducts}</span>}
-          </button>
-          <button style={activeTab === 'orders' ? styles.activeTab : styles.tab} onClick={() => setActiveTab('orders')}>Orders</button>
-          <button style={activeTab === 'categories' ? styles.activeTab : styles.tab} onClick={() => setActiveTab('categories')}>System Settings</button>
+      {/* ── SIDEBAR (Only visible on Desktop) ── */}
+      {!isMobile && (
+        <div style={styles.sidebar}>
+          <div style={{ flex: 1, display: 'flex', flexDirection: 'column', gap: '4px', overflowY: 'auto' }}>
+            <h2 style={{ color: 'white', margin: '0 0 20px 0' }}>Admin Hub</h2>
+            {navTabs.map(tab => (
+              <button key={tab.id} style={activeTab === tab.id ? styles.activeTab : styles.tab} onClick={() => setActiveTab(tab.id)}>
+                {tab.label} {tab.count > 0 && <span style={styles.sidebarBadge}>{tab.count}</span>}
+              </button>
+            ))}
+          </div>
         </div>
-        <button style={styles.logoutBtn} onClick={handleLogout}>Logout</button>
-      </div>
+      )}
 
       {/* ── MAIN ── */}
       <div style={styles.main}>
 
         {/* TOP BAR */}
         <div style={styles.topBar}>
-          <h1 style={{ color: '#1a1a2e', margin: 0 }}>Jain Agency Control Panel</h1>
-          <div style={styles.bellWrapper} ref={notifRef}>
-            <button style={styles.bellBtn} onClick={() => { setShowNotifications(!showNotifications); if (!showNotifications) markAllRead(); }}>
-              🔔
-              {unreadCount > 0 && <span style={styles.badge}>{unreadCount > 99 ? '99+' : unreadCount}</span>}
-            </button>
-            {showNotifications && (
-              <div style={styles.notifDropdown}>
-                <div style={styles.notifHeader}>
-                  <span style={{ fontWeight: 'bold', fontSize: '14px' }}>Notifications</span>
-                  <span style={{ fontSize: '12px', color: '#64748b' }}>{notifications.length} total</span>
-                </div>
-                {notifications.length === 0 ? (
-                  <div style={styles.notifEmpty}>No notifications yet</div>
-                ) : (
-                  <div style={styles.notifList}>
-                    {notifications.slice(0, 20).map(n => (
-                      <div key={n.id} style={{ ...styles.notifItem, backgroundColor: n.read ? 'white' : '#eff6ff' }}>
-                        <span style={{ fontSize: '18px', marginRight: '10px' }}>{notifIcon(n.type)}</span>
-                        <div style={{ flex: 1 }}>
-                          <p style={styles.notifMsg}>{n.message}</p>
-                          <p style={styles.notifTime}>{formatTime(n.createdAt)}</p>
-                        </div>
-                        {!n.read && <span style={styles.unreadDot} />}
-                      </div>
-                    ))}
+          <div>
+            <span style={{ fontSize: '11px', color: '#775a19', fontWeight: 600, letterSpacing: '0.08em', textTransform: 'uppercase' }}>Jain Agency</span>
+            <h1 style={{ color: '#031632', margin: 0, fontSize: '20px' }}>Admin Control</h1>
+          </div>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+            <div style={styles.bellWrapper} ref={notifRef}>
+              <button style={styles.bellBtn} onClick={() => { setShowNotifications(!showNotifications); if (!showNotifications) markAllRead(); }}>
+                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#031632" strokeWidth="2"><path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9M13.73 21a2 2 0 0 1-3.46 0"/></svg>
+                {unreadCount > 0 && <span style={styles.badge}>{unreadCount > 99 ? '99+' : unreadCount}</span>}
+              </button>
+              {showNotifications && (
+                <div style={styles.notifDropdown}>
+                  <div style={styles.notifHeader}>
+                    <span style={{ fontWeight: 'bold', fontSize: '14px' }}>Notifications</span>
+                    <span style={{ fontSize: '12px', color: '#64748b' }}>{notifications.length} total</span>
                   </div>
-                )}
-              </div>
-            )}
+                  {notifications.length === 0 ? (
+                    <div style={styles.notifEmpty}>No notifications yet</div>
+                  ) : (
+                    <div style={styles.notifList}>
+                      {notifications.slice(0, 20).map(n => (
+                        <div key={n.id} style={{ ...styles.notifItem, backgroundColor: n.read ? 'white' : '#eff6ff' }}>
+                          <span style={{ fontSize: '18px', marginRight: '10px' }}>{notifIcon(n.type)}</span>
+                          <div style={{ flex: 1 }}>
+                            <p style={styles.notifMsg}>{n.message}</p>
+                            <p style={styles.notifTime}>{formatTime(n.createdAt)}</p>
+                          </div>
+                          {!n.read && <span style={styles.unreadDot} />}
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                </div>
+              )}
+            </div>
+            {/* Universal Logout Button */}
+            <button style={styles.iconBtn} onClick={handleLogoutClick} title="Logout">
+              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#ba1a1a" strokeWidth="2.5"><path d="M18.36 6.64a9 9 0 1 1-12.73 0"/><line x1="12" y1="2" x2="12" y2="12"/></svg>
+            </button>
           </div>
         </div>
 
@@ -459,40 +491,46 @@ ${sizeWiseText}
             <input style={{ ...styles.inputFull, marginBottom: '15px', maxWidth: '320px' }}
               placeholder="Search by firm, mobile, role..."
               value={userSearch} onChange={e => setUserSearch(e.target.value)} />
-            <table style={styles.table}>
-              <thead>
-                <tr>
-                  <th style={styles.th}>Firm</th>
-                  <th style={styles.th}>Role</th>
-                  <th style={styles.th}>Contact</th>
-                  <th style={styles.th}>Status</th>
-                  <th style={styles.th}>Actions</th>
-                </tr>
-              </thead>
-              <tbody>
-                {filteredUsers.map(user => (
-                  <tr key={user.id} style={styles.tr}>
-                    <td style={styles.td}>
-                      <b style={{ cursor: 'pointer', color: '#3b82f6' }} onClick={() => setSelectedUser(user)}>{user.firmName}</b>
-                    </td>
-                    <td style={styles.td}>{user.role?.toUpperCase()}</td>
-                    <td style={styles.td}>{user.mobile}</td>
-                    <td style={styles.td}>
-                      <span style={{
-                        padding: '3px 8px', borderRadius: '4px', fontSize: '12px', fontWeight: 'bold',
-                        backgroundColor: user.status === 'approved' ? '#d1fae5' : user.status === 'blocked' ? '#fee2e2' : '#fef9c3',
-                        color: user.status === 'approved' ? '#065f46' : user.status === 'blocked' ? '#991b1b' : '#854d0e'
-                      }}>{user.status || 'pending'}</span>
-                    </td>
-                    <td style={styles.td}>
-                      {user.status !== 'approved' && <button style={styles.btnApprove} onClick={() => updateUserStatus(user.id, 'approved')}>Approve</button>}
-                      {user.status !== 'pending' && <button style={styles.btnPending} onClick={() => updateUserStatus(user.id, 'pending')}>Pending</button>}
-                      {user.status !== 'blocked' && <button style={styles.btnReject} onClick={() => updateUserStatus(user.id, 'blocked')}>Block</button>}
-                    </td>
+            
+            {/* Scrollable Table Wrapper */}
+            <div style={styles.tableWrapper}>
+              <table style={styles.table}>
+                <thead>
+                  <tr>
+                    <th style={styles.th}>Firm</th>
+                    <th style={styles.th}>Role</th>
+                    <th style={styles.th}>Contact</th>
+                    <th style={styles.th}>Status</th>
+                    <th style={styles.th}>Actions</th>
                   </tr>
-                ))}
-              </tbody>
-            </table>
+                </thead>
+                <tbody>
+                  {filteredUsers.map(user => (
+                    <tr key={user.id} style={styles.tr}>
+                      <td style={styles.td}>
+                        <b style={{ cursor: 'pointer', color: '#3b82f6' }} onClick={() => setSelectedUser(user)}>{user.firmName}</b>
+                      </td>
+                      <td style={styles.td}>{user.role?.toUpperCase()}</td>
+                      <td style={styles.td}>{user.mobile}</td>
+                      <td style={styles.td}>
+                        <span style={{
+                          padding: '3px 8px', borderRadius: '4px', fontSize: '12px', fontWeight: 'bold',
+                          backgroundColor: user.status === 'approved' ? '#d1fae5' : user.status === 'blocked' ? '#fee2e2' : '#fef9c3',
+                          color: user.status === 'approved' ? '#065f46' : user.status === 'blocked' ? '#991b1b' : '#854d0e'
+                        }}>{user.status || 'pending'}</span>
+                      </td>
+                      <td style={styles.td}>
+                        <div style={{ display: 'flex', gap: '4px' }}>
+                          {user.status !== 'approved' && <button style={styles.btnApprove} onClick={() => updateUserStatus(user.id, 'approved')}>Approve</button>}
+                          {user.status !== 'pending' && <button style={styles.btnPending} onClick={() => updateUserStatus(user.id, 'pending')}>Pending</button>}
+                          {user.status !== 'blocked' && <button style={styles.btnReject} onClick={() => updateUserStatus(user.id, 'blocked')}>Block</button>}
+                        </div>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
           </div>
         )}
 
@@ -503,49 +541,54 @@ ${sizeWiseText}
             <input style={{ ...styles.inputFull, marginBottom: '15px', maxWidth: '320px' }}
               placeholder="Search by name, category, supplier, material..."
               value={productSearch} onChange={e => setProductSearch(e.target.value)} />
-            <table style={styles.table}>
-              <thead>
-                <tr>
-                  <th style={styles.th}>Product</th>
-                  <th style={styles.th}>Supplier</th>
-                  <th style={styles.th}>Price/MOQ</th>
-                  <th style={styles.th}>Status</th>
-                  <th style={styles.th}>Actions</th>
-                </tr>
-              </thead>
-              <tbody>
-                {filteredProducts.map(product => (
-                  <tr key={product.id} style={styles.tr}>
-                    <td style={styles.td}>
-                      <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
-                        {product.imageUrl && (
-                          <img src={product.imageUrl} alt="" style={{ width: '38px', height: '38px', objectFit: 'cover', borderRadius: '6px', flexShrink: 0 }} />
-                        )}
-                        <div>
-                          <b style={{ fontSize: '14px' }}>{product.name}</b>
-                          <br /><span style={{ fontSize: '12px', color: '#64748b' }}>{product.category}</span>
-                        </div>
-                      </div>
-                    </td>
-                    <td style={styles.td}>{product.supplierFirm}</td>
-                    <td style={styles.td}>₹{product.price} / {product.moq} {product.unit}</td>
-                    <td style={styles.td}>
-                      <span style={{
-                        padding: '3px 8px', borderRadius: '4px', fontSize: '12px', fontWeight: 'bold',
-                        backgroundColor: product.status === 'approved' ? '#d1fae5' : product.status === 'delisted' ? '#fee2e2' : '#fef9c3',
-                        color: product.status === 'approved' ? '#065f46' : product.status === 'delisted' ? '#991b1b' : '#854d0e'
-                      }}>{product.status || 'pending'}</span>
-                    </td>
-                    <td style={styles.td}>
-                      <button style={styles.btnEdit} onClick={() => setEditingProduct({ ...product })}>Edit</button>
-                      {product.status !== 'approved' && <button style={styles.btnApprove} onClick={() => updateProductStatus(product.id, 'approved')}>Live</button>}
-                      {product.status !== 'pending' && <button style={styles.btnPending} onClick={() => updateProductStatus(product.id, 'pending')}>Pending</button>}
-                      {product.status !== 'delisted' && <button style={styles.btnReject} onClick={() => updateProductStatus(product.id, 'delisted')}>Delist</button>}
-                    </td>
+            
+            <div style={styles.tableWrapper}>
+              <table style={styles.table}>
+                <thead>
+                  <tr>
+                    <th style={styles.th}>Product</th>
+                    <th style={styles.th}>Supplier</th>
+                    <th style={styles.th}>Price/MOQ</th>
+                    <th style={styles.th}>Status</th>
+                    <th style={styles.th}>Actions</th>
                   </tr>
-                ))}
-              </tbody>
-            </table>
+                </thead>
+                <tbody>
+                  {filteredProducts.map(product => (
+                    <tr key={product.id} style={styles.tr}>
+                      <td style={styles.td}>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+                          {product.imageUrl && (
+                            <img src={product.imageUrl} alt="" style={{ width: '38px', height: '38px', objectFit: 'cover', borderRadius: '6px', flexShrink: 0 }} />
+                          )}
+                          <div>
+                            <b style={{ fontSize: '14px' }}>{product.name}</b>
+                            <br /><span style={{ fontSize: '12px', color: '#64748b' }}>{product.category}</span>
+                          </div>
+                        </div>
+                      </td>
+                      <td style={styles.td}>{product.supplierFirm}</td>
+                      <td style={styles.td} style={{ whiteSpace: 'nowrap' }}>₹{product.price} / {product.moq} {product.unit}</td>
+                      <td style={styles.td}>
+                        <span style={{
+                          padding: '3px 8px', borderRadius: '4px', fontSize: '12px', fontWeight: 'bold',
+                          backgroundColor: product.status === 'approved' ? '#d1fae5' : product.status === 'delisted' ? '#fee2e2' : '#fef9c3',
+                          color: product.status === 'approved' ? '#065f46' : product.status === 'delisted' ? '#991b1b' : '#854d0e'
+                        }}>{product.status || 'pending'}</span>
+                      </td>
+                      <td style={styles.td}>
+                        <div style={{ display: 'flex', gap: '4px' }}>
+                          <button style={styles.btnEdit} onClick={() => setEditingProduct({ ...product })}>Edit</button>
+                          {product.status !== 'approved' && <button style={styles.btnApprove} onClick={() => updateProductStatus(product.id, 'approved')}>Live</button>}
+                          {product.status !== 'pending' && <button style={styles.btnPending} onClick={() => updateProductStatus(product.id, 'pending')}>Pending</button>}
+                          {product.status !== 'delisted' && <button style={styles.btnReject} onClick={() => updateProductStatus(product.id, 'delisted')}>Delist</button>}
+                        </div>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
           </div>
         )}
 
@@ -573,25 +616,25 @@ ${sizeWiseText}
               return (
                 <div key={order.id} style={styles.orderCard}>
                   <div style={styles.orderRow} onClick={() => setExpandedOrder(isExpanded ? null : order.id)}>
-                    <div style={{ display: 'flex', alignItems: 'center', gap: '12px', flex: 1, minWidth: 0 }}>
-                      <span style={{ fontSize: '13px', fontWeight: 'bold', color: '#1e293b', whiteSpace: 'nowrap' }}>#{order.id.slice(0, 8)}</span>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '12px', flex: 1, minWidth: 0, flexWrap: 'wrap' }}>
+                      <span style={{ fontSize: '13px', fontWeight: 'bold', color: '#1e293b' }}>#{order.id.slice(0, 8)}</span>
                       <span style={{ fontSize: '13px', color: '#475569', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
                         B: {order.buyerFirm} &nbsp;|&nbsp; S: {order.supplierFirm}
                       </span>
-                      <span style={{ fontSize: '12px', color: '#94a3b8', whiteSpace: 'nowrap' }}>{order.createdAt?.toDate?.()?.toLocaleDateString()}</span>
+                      <span style={{ fontSize: '12px', color: '#94a3b8' }}>{order.createdAt?.toDate?.()?.toLocaleDateString()}</span>
                     </div>
-                    <div style={{ display: 'flex', gap: '6px', alignItems: 'center', flexShrink: 0 }}>
+                    <div style={{ display: 'flex', gap: '6px', alignItems: 'center', flexShrink: 0, flexWrap: 'wrap' }}>
                       <span style={{ padding: '3px 8px', borderRadius: '12px', fontSize: '11px', fontWeight: 'bold', backgroundColor: db2.bg, color: db2.color }}>{order.status || 'Pending'}</span>
                       <span style={{ padding: '3px 8px', borderRadius: '12px', fontSize: '11px', fontWeight: 'bold', backgroundColor: pb.bg, color: pb.color }}>{pb.label}</span>
                       <button style={styles.btnDelivery} onClick={e => { e.stopPropagation(); openDeliveryModal(order); }}>Status</button>
-                      <button style={styles.btnShare} onClick={e => { e.stopPropagation(); setShareModal(order); }}>Share 📄</button>
+                      <button style={styles.btnShare} onClick={e => { e.stopPropagation(); setShareModal(order); }}>Share</button>
                       <span style={{ color: '#94a3b8', fontSize: '16px' }}>{isExpanded ? '▲' : '▼'}</span>
                     </div>
                   </div>
 
                   {isExpanded && (
                     <div style={styles.orderBody}>
-                      <div style={{ display: 'flex', gap: '30px', fontSize: '14px', marginBottom: '10px' }}>
+                      <div style={{ display: 'flex', gap: '30px', fontSize: '14px', marginBottom: '10px', flexWrap: 'wrap' }}>
                         <span><b>Buyer:</b> {order.buyerFirm}</span>
                         <span><b>Supplier:</b> {order.supplierFirm}</span>
                       </div>
@@ -639,8 +682,8 @@ ${sizeWiseText}
 
         {/* ── SYSTEM SETTINGS ── */}
         {activeTab === 'categories' && (
-          <div style={{ display: 'flex', gap: '20px' }}>
-            <div style={{ ...styles.card, flex: 1 }}>
+          <div style={{ display: 'flex', gap: '20px', flexWrap: 'wrap' }}>
+            <div style={{ ...styles.card, flex: '1 1 300px' }}>
               <h3>Manage Categories</h3>
               <form onSubmit={handleAddCategory} style={{ display: 'flex', gap: '10px', marginBottom: '20px' }}>
                 <input style={styles.inputFull} value={newCategoryName} onChange={e => setNewCategoryName(e.target.value)} placeholder="New Category Name" />
@@ -655,26 +698,45 @@ ${sizeWiseText}
                 ))}
               </ul>
             </div>
-            <div style={{ ...styles.card, flex: 1 }}>
+            <div style={{ ...styles.card, flex: '1 1 300px' }}>
               <h3>System Info</h3>
-              <p>Warning: Deleting a category will not delete existing products in that category, but it will remove it from Supplier upload options.</p>
+              <p style={{ fontSize: '14px', color: '#64748b', lineHeight: '1.5' }}>
+                Warning: Deleting a category will not delete existing products in that category, but it will remove it from Supplier upload options. Ensure you notify suppliers before making structural changes.
+              </p>
             </div>
           </div>
         )}
       </div>
+
+      {/* ── MOBILE BOTTOM NAV ── */}
+      {isMobile && (
+        <div style={styles.bottomNav}>
+          {navTabs.map(tab => (
+            <button key={tab.id} style={activeTab === tab.id ? styles.bottomNavBtnActive : styles.bottomNavBtn} onClick={() => setActiveTab(tab.id)}>
+              <div style={{ position: 'relative' }}>
+                {tab.icon}
+                {tab.count > 0 && <span style={styles.bottomNavBadge}>{tab.count > 99 ? '99+' : tab.count}</span>}
+              </div>
+              <span style={{ fontSize: '10px', marginTop: '2px', fontWeight: activeTab === tab.id ? 700 : 500 }}>{tab.label}</span>
+            </button>
+          ))}
+        </div>
+      )}
 
       {/* ── USER DETAIL MODAL ── */}
       {selectedUser && (
         <div style={styles.modalOverlay} onClick={() => setSelectedUser(null)}>
           <div style={styles.modal} onClick={e => e.stopPropagation()}>
             <h3 style={{ marginTop: 0 }}>{selectedUser.firmName}</h3>
-            <p><b>Role:</b> {selectedUser.role?.toUpperCase()}</p>
-            <p><b>GST:</b> {selectedUser.gstNumber}</p>
-            <p><b>Contact:</b> {selectedUser.contactPerson}</p>
-            <p><b>Mobile:</b> {selectedUser.mobile}</p>
-            <p><b>Email:</b> {selectedUser.email}</p>
-            <p><b>Address:</b> {selectedUser.address}, {selectedUser.city}, {selectedUser.district}, {selectedUser.state} - {selectedUser.pincode}</p>
-            <p><b>Status:</b> <span style={{ fontWeight: 'bold', color: selectedUser.status === 'approved' ? '#065f46' : '#991b1b' }}>{selectedUser.status}</span></p>
+            <div style={{ fontSize: '14px', lineHeight: '1.6' }}>
+              <p><b>Role:</b> {selectedUser.role?.toUpperCase()}</p>
+              <p><b>GST:</b> {selectedUser.gstNumber}</p>
+              <p><b>Contact:</b> {selectedUser.contactPerson}</p>
+              <p><b>Mobile:</b> {selectedUser.mobile}</p>
+              <p><b>Email:</b> {selectedUser.email}</p>
+              <p><b>Address:</b> {selectedUser.address}, {selectedUser.city}, {selectedUser.district}, {selectedUser.state} - {selectedUser.pincode}</p>
+              <p><b>Status:</b> <span style={{ fontWeight: 'bold', color: selectedUser.status === 'approved' ? '#065f46' : '#991b1b' }}>{selectedUser.status}</span></p>
+            </div>
             <div style={{ display: 'flex', gap: '10px', marginTop: '15px', flexWrap: 'wrap' }}>
               {selectedUser.status !== 'approved' && <button style={styles.btnApprove} onClick={() => updateUserStatus(selectedUser.id, 'approved')}>Approve</button>}
               {selectedUser.status !== 'pending' && <button style={styles.btnPending} onClick={() => updateUserStatus(selectedUser.id, 'pending')}>Pending</button>}
@@ -893,47 +955,54 @@ ${sizeWiseText}
 }
 
 const styles = {
-  container: { display: 'flex', height: '100vh', backgroundColor: '#f4f7f6', fontFamily: 'sans-serif', overflow: 'hidden' },
-  sidebar: { width: '220px', backgroundColor: '#111827', padding: '20px', display: 'flex', flexDirection: 'column', flexShrink: 0, height: '100vh', boxSizing: 'border-box', gap: '0' },
-  tab: { padding: '12px 15px', backgroundColor: 'transparent', color: '#94a3b8', border: 'none', borderRadius: '6px', cursor: 'pointer', textAlign: 'left', fontSize: '14px', marginBottom: '4px', display: 'block', width: '100%', boxSizing: 'border-box' },
-  activeTab: { padding: '12px 15px', backgroundColor: '#3b82f6', color: 'white', border: 'none', borderRadius: '6px', cursor: 'pointer', textAlign: 'left', fontSize: '14px', fontWeight: 'bold', marginBottom: '4px', display: 'block', width: '100%', boxSizing: 'border-box' },
+  container: { display: 'flex', height: '100vh', width: '100vw', backgroundColor: '#f4f7f6', fontFamily: 'sans-serif', overflow: 'hidden' },
+  sidebar: { width: '220px', backgroundColor: '#031632', padding: '20px', display: 'flex', flexDirection: 'column', flexShrink: 0, height: '100vh', boxSizing: 'border-box' },
+  tab: { padding: '12px 15px', backgroundColor: 'transparent', color: '#94a3b8', border: 'none', borderRadius: '6px', cursor: 'pointer', textAlign: 'left', fontSize: '14px', marginBottom: '4px', display: 'block', width: '100%' },
+  activeTab: { padding: '12px 15px', backgroundColor: '#3b82f6', color: 'white', border: 'none', borderRadius: '6px', cursor: 'pointer', textAlign: 'left', fontSize: '14px', fontWeight: 'bold', marginBottom: '4px', display: 'block', width: '100%' },
   sidebarBadge: { backgroundColor: '#ef4444', color: 'white', fontSize: '10px', fontWeight: 'bold', borderRadius: '10px', padding: '2px 6px', marginLeft: '6px' },
-  logoutBtn: { padding: '12px', backgroundColor: '#ef4444', color: 'white', border: 'none', borderRadius: '6px', cursor: 'pointer', marginTop: '10px', flexShrink: 0, width: '100%' },
-  main: { flex: 1, padding: '30px', overflowY: 'auto' },
-  topBar: { display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '30px' },
+  main: { flex: 1, padding: '20px', overflowY: 'auto', paddingBottom: '80px' }, // Bottom padding added for mobile nav
+  topBar: { display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '30px', backgroundColor: 'white', padding: '15px 20px', borderRadius: '12px', boxShadow: '0 2px 8px rgba(0,0,0,0.05)' },
+  iconBtn: { width: '40px', height: '40px', borderRadius: '50%', border: '1px solid #e2e8f0', backgroundColor: 'white', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center' },
   bellWrapper: { position: 'relative' },
-  bellBtn: { background: 'white', border: '1px solid #e2e8f0', borderRadius: '50%', width: '44px', height: '44px', fontSize: '20px', cursor: 'pointer', position: 'relative', boxShadow: '0 2px 4px rgba(0,0,0,0.08)' },
+  bellBtn: { background: 'white', border: '1px solid #e2e8f0', borderRadius: '50%', width: '40px', height: '40px', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center' },
   badge: { position: 'absolute', top: '-4px', right: '-4px', backgroundColor: '#ef4444', color: 'white', fontSize: '10px', fontWeight: 'bold', borderRadius: '10px', padding: '2px 5px', minWidth: '16px', textAlign: 'center' },
-  notifDropdown: { position: 'absolute', top: '52px', right: 0, width: '360px', backgroundColor: 'white', borderRadius: '10px', boxShadow: '0 8px 30px rgba(0,0,0,0.15)', zIndex: 1000, overflow: 'hidden', border: '1px solid #e2e8f0' },
+  notifDropdown: { position: 'absolute', top: '50px', right: 0, width: '300px', backgroundColor: 'white', borderRadius: '10px', boxShadow: '0 8px 30px rgba(0,0,0,0.15)', zIndex: 1000, overflow: 'hidden', border: '1px solid #e2e8f0' },
   notifHeader: { display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '14px 16px', borderBottom: '1px solid #f1f5f9', backgroundColor: '#f8fafc' },
-  notifList: { maxHeight: '400px', overflowY: 'auto' },
-  notifEmpty: { padding: '30px', textAlign: 'center', color: '#94a3b8', fontSize: '14px' },
+  notifList: { maxHeight: '350px', overflowY: 'auto' },
+  notifEmpty: { padding: '30px', textAlign: 'center', color: '#94a3b8', fontSize: '13px' },
   notifItem: { display: 'flex', alignItems: 'flex-start', padding: '12px 16px', borderBottom: '1px solid #f1f5f9' },
   notifMsg: { margin: 0, fontSize: '13px', color: '#1e293b', lineHeight: '1.4' },
   notifTime: { margin: '4px 0 0 0', fontSize: '11px', color: '#94a3b8' },
   unreadDot: { width: '8px', height: '8px', borderRadius: '50%', backgroundColor: '#3b82f6', marginTop: '4px', flexShrink: 0 },
-  gridStats: { display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(180px, 1fr))', gap: '20px' },
+  gridStats: { display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(150px, 1fr))', gap: '15px' },
   statCard: { backgroundColor: 'white', padding: '20px', borderRadius: '10px', boxShadow: '0 2px 4px rgba(0,0,0,0.05)' },
-  statLabel: { margin: 0, color: '#64748b', fontSize: '14px' },
-  statValue: { margin: '10px 0 0 0', color: '#0f172a', fontSize: '28px' },
-  card: { backgroundColor: 'white', padding: '20px', borderRadius: '10px', boxShadow: '0 2px 4px rgba(0,0,0,0.05)', overflowX: 'auto' },
-  table: { width: '100%', borderCollapse: 'collapse', textAlign: 'left', fontSize: '14px' },
+  statLabel: { margin: 0, color: '#64748b', fontSize: '13px' },
+  statValue: { margin: '10px 0 0 0', color: '#0f172a', fontSize: '24px' },
+  card: { backgroundColor: 'white', padding: '20px', borderRadius: '10px', boxShadow: '0 2px 4px rgba(0,0,0,0.05)' },
+  tableWrapper: { overflowX: 'auto', WebkitOverflowScrolling: 'touch', width: '100%' }, // Added for Responsive Tables
+  table: { width: '100%', minWidth: '600px', borderCollapse: 'collapse', textAlign: 'left', fontSize: '14px' },
   th: { padding: '12px', borderBottom: '2px solid #e2e8f0', color: '#475569' },
   tr: { borderBottom: '1px solid #f1f5f9' },
   td: { padding: '12px', color: '#1e293b' },
   orderCard: { backgroundColor: 'white', borderRadius: '10px', boxShadow: '0 1px 3px rgba(0,0,0,0.07)', marginBottom: '8px', overflow: 'hidden' },
-  orderRow: { display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '12px 16px', cursor: 'pointer', gap: '10px' },
+  orderRow: { display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '12px 16px', cursor: 'pointer', gap: '10px', flexWrap: 'wrap' },
   orderBody: { padding: '12px 16px 16px', borderTop: '1px solid #f1f5f9', backgroundColor: '#fafafa' },
-  btnApprove: { backgroundColor: '#10b981', color: 'white', border: 'none', padding: '6px 12px', borderRadius: '4px', cursor: 'pointer', marginRight: '5px', fontSize: '13px' },
-  btnPending: { backgroundColor: '#f59e0b', color: 'white', border: 'none', padding: '6px 12px', borderRadius: '4px', cursor: 'pointer', marginRight: '5px', fontSize: '13px' },
+  btnApprove: { backgroundColor: '#10b981', color: 'white', border: 'none', padding: '6px 12px', borderRadius: '4px', cursor: 'pointer', fontSize: '13px' },
+  btnPending: { backgroundColor: '#f59e0b', color: 'white', border: 'none', padding: '6px 12px', borderRadius: '4px', cursor: 'pointer', fontSize: '13px' },
   btnReject: { backgroundColor: '#ef4444', color: 'white', border: 'none', padding: '6px 12px', borderRadius: '4px', cursor: 'pointer', fontSize: '13px' },
-  btnEdit: { backgroundColor: '#6366f1', color: 'white', border: 'none', padding: '6px 12px', borderRadius: '4px', cursor: 'pointer', marginRight: '5px', fontSize: '13px' },
-  btnDelivery: { backgroundColor: '#0ea5e9', color: 'white', border: 'none', padding: '5px 10px', borderRadius: '4px', cursor: 'pointer', marginRight: '5px', fontSize: '12px' },
+  btnEdit: { backgroundColor: '#6366f1', color: 'white', border: 'none', padding: '6px 12px', borderRadius: '4px', cursor: 'pointer', fontSize: '13px' },
+  btnDelivery: { backgroundColor: '#0ea5e9', color: 'white', border: 'none', padding: '5px 10px', borderRadius: '4px', cursor: 'pointer', fontSize: '12px' },
   btnShare: { backgroundColor: '#8b5cf6', color: 'white', border: 'none', padding: '5px 10px', borderRadius: '4px', cursor: 'pointer', fontSize: '12px' },
   modalOverlay: { position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, backgroundColor: 'rgba(0,0,0,0.5)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 2000 },
-  modal: { backgroundColor: 'white', padding: '25px', borderRadius: '12px', width: '90%', maxWidth: '420px', boxShadow: '0 20px 25px rgba(0,0,0,0.15)' },
+  modal: { backgroundColor: 'white', padding: '25px', borderRadius: '12px', width: '90%', maxWidth: '420px', boxShadow: '0 20px 25px rgba(0,0,0,0.15)', maxHeight: '90vh', overflowY: 'auto' },
   label: { fontSize: '12px', color: '#64748b', fontWeight: 'bold', display: 'block', marginBottom: '4px', marginTop: '10px' },
   inputFull: { padding: '8px 12px', border: '1px solid #cbd5e1', borderRadius: '6px', width: '100%', boxSizing: 'border-box', fontSize: '14px' },
+  
+  // Mobile Bottom Nav Styles
+  bottomNav: { position: 'fixed', bottom: 0, left: 0, width: '100%', display: 'flex', backgroundColor: 'white', borderTop: '1px solid #e2e8f0', zIndex: 50, paddingBottom: 'env(safe-area-inset-bottom)', boxShadow: '0 -2px 10px rgba(0,0,0,0.05)' },
+  bottomNavBtn: { flex: 1, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', padding: '10px 0', border: 'none', backgroundColor: 'transparent', color: '#94a3b8', cursor: 'pointer', minHeight: '56px' },
+  bottomNavBtnActive: { flex: 1, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', padding: '10px 0', border: 'none', backgroundColor: 'transparent', color: '#031632', cursor: 'pointer', minHeight: '56px' },
+  bottomNavBadge: { position: 'absolute', top: '-4px', right: '-8px', backgroundColor: '#ef4444', color: 'white', fontSize: '9px', fontWeight: 700, borderRadius: '20px', padding: '1px 5px', minWidth: '14px', textAlign: 'center' },
 };
 
 export default AdminDashboard;

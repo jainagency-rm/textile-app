@@ -1,10 +1,23 @@
-body {
+/* ── 1. Global Reset & Responsive Foundation ── */
+*, *::before, *::after {
+  box-sizing: border-box;
+}
+
+html, body, #root {
+  width: 100%;
+  min-height: 100vh;
   margin: 0;
+  padding: 0;
+  overflow-x: hidden; /* Mobile par horizontal scroll issue ko rokega */
+}
+
+body {
   font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Roboto', 'Oxygen',
     'Ubuntu', 'Cantarell', 'Fira Sans', 'Droid Sans', 'Helvetica Neue',
     sans-serif;
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
+  background-color: #f9fafb; /* App ka base background color */
 }
 
 code {
@@ -12,32 +25,46 @@ code {
     monospace;
 }
 
-/* ── Supplier Dashboard — Mobile Responsive ── */
+/* ── 2. Reusable Responsive Grid (For Buyer Dashboard) ── */
+.responsive-grid {
+  display: grid;
+  gap: 16px;
+  /* Magic Line: Mobile pe 1 column, Tablet pe 2, Desktop pe 3-4 automatically banayega */
+  grid-template-columns: repeat(auto-fill, minmax(250px, 1fr)); 
+}
+
+
+/* ── 3. Supplier Dashboard Layout Adjustments ── */
+
 .sup-mobile-topbar { display: none !important; }
 .sup-sidebar-close { display: none !important; }
 
-@media (max-width: 768px) {
+/* 📱 MOBILE Breakpoint (< 768px) */
+@media (max-width: 767px) {
   .sup-mobile-topbar { display: flex !important; }
-
+  
+  /* Mobile par sidebar hide hogi kyunki ab naya BottomNav use hoga */
   .sup-sidebar {
-    position: fixed !important;
-    top: 0;
-    left: 0;
-    height: 100vh !important;
-    z-index: 300;
-    transform: translateX(-100%);
-    transition: transform 0.25s ease;
-  }
-
-  .sup-sidebar-open {
-    transform: translateX(0) !important;
-  }
-
-  .sup-sidebar-close {
-    display: block !important;
+    display: none !important; 
   }
 
   .sup-main {
-    padding: 72px 16px 24px !important;
+    /* Top me 72px Topbar ke liye, Bottom me 80px BottomNav ke liye jagah chhodi hai */
+    padding: 72px 16px 80px !important; 
+  }
+}
+
+/* 💊 TABLET Breakpoint (768px - 1024px) */
+@media (min-width: 768px) and (max-width: 1024px) {
+  .sup-main {
+    padding: 24px !important;
+    /* Agar tablet pe left sidebar fixed hai, toh yahan utna left margin dena hoga. E.g. margin-left: 240px; */
+  }
+}
+
+/* 💻 DESKTOP Breakpoint (> 1024px) */
+@media (min-width: 1025px) {
+  .sup-main {
+    padding: 32px !important;
   }
 }

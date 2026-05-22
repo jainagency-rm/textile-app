@@ -15,12 +15,14 @@ const D = {
 };
 
 // ── ProfileEdit ─────────────────────────────────────────────
-function ProfileEdit({ userProfile, onSave }) {
+function ProfileEdit({ userProfile, onSave, categories }) {
   const [editing, setEditing] = useState(false);
-  const [form, setForm] = useState(userProfile);
+  const [form, setForm] = useState({
+    ...userProfile,
+    notificationPrefs: userProfile?.notificationPrefs || []
+  });
   const [loading, setLoading] = useState(false);
 
-  // ESC to cancel edit
   useEffect(() => {
     const handler = (e) => { if (e.key === 'Escape') setEditing(false); };
     document.addEventListener('keydown', handler);
@@ -32,8 +34,17 @@ function ProfileEdit({ userProfile, onSave }) {
     await updateDoc(doc(db, 'users', userProfile.uid), {
       firmName: form.firmName, contactPerson: form.contactPerson, mobile: form.mobile,
       address: form.address, city: form.city, district: form.district, state: form.state, pincode: form.pincode,
+      notificationPrefs: form.notificationPrefs
     });
     setLoading(false); setEditing(false); onSave();
+  };
+
+  const toggleCategoryPref = (cat) => {
+    setForm(prev => {
+      const prefs = prev.notificationPrefs || [];
+      if (prefs.includes(cat)) return { ...prev, notificationPrefs: prefs.filter(p => p !== cat) };
+      return { ...prev, notificationPrefs: [...prefs, cat] };
+    });
   };
 
   if (!editing) {
@@ -44,6 +55,7 @@ function ProfileEdit({ userProfile, onSave }) {
         </div>
         <h3 style={{ margin: '12px 0 4px', color: D.textPrimary, fontSize: 18, fontWeight: 700 }}>{userProfile.firmName}</h3>
         <p style={{ margin: '0 0 20px', color: D.textSecondary, fontSize: 13 }}>{userProfile.email}</p>
+        
         {[['GST Number', userProfile.gstNumber], ['Contact Person', userProfile.contactPerson],
           ['Mobile', userProfile.mobile], ['Address', userProfile.address],
           ['City', userProfile.city], ['District', userProfile.district],
@@ -54,15 +66,28 @@ function ProfileEdit({ userProfile, onSave }) {
             <span style={S.profileValue}>{val || '—'}</span>
           </div>
         ))}
-        <button style={{ ...S.btnPrimary, marginTop: 20 }} onClick={() => setEditing(true)}>Edit Profile</button>
+
+        <div style={{ marginTop: 20, textAlign: 'left' }}>
+          <span style={S.profileLabel}>Notification Preferences</span>
+          <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6, marginTop: 8 }}>
+            {userProfile.notificationPrefs?.length > 0 ? (
+              userProfile.notificationPrefs.map(p => <span key={p} style={S.prefBadge}>{p}</span>)
+            ) : (
+              <span style={{ fontSize: 12, color: D.textSecondary }}>All Categories (Default)</span>
+            )}
+          </div>
+        </div>
+
+        <button style={{ ...S.btnPrimary, marginTop: 24 }} onClick={() => setEditing(true)}>Edit Profile</button>
       </div>
     );
   }
 
   return (
     <div style={S.profileCard}>
-      <h3 style={{ margin: '0 0 4px', color: D.textPrimary }}>Edit Profile</h3>
-      <p style={{ margin: '0 0 16px', fontSize: 12, color: D.textSecondary }}>Press ESC to cancel</p>
+      <h3 style={{ margin: '0 0 4px', color: D.textPrimary, textAlign: 'left' }}>Edit Profile</h3>
+      <p style={{ margin: '0 0 16px', fontSize: 12, color: D.textSecondary, textAlign: 'left' }}>Press ESC to cancel</p>
+      
       {[['firmName', 'Firm Name'], ['contactPerson', 'Contact Person'], ['mobile', 'Mobile'],
         ['address', 'Address'], ['city', 'City'], ['district', 'District'],
         ['state', 'State'], ['pincode', 'Pincode'],
@@ -70,6 +95,20 @@ function ProfileEdit({ userProfile, onSave }) {
         <input key={key} style={S.input} value={form[key] || ''} placeholder={placeholder}
           onChange={e => setForm({ ...form, [key]: e.target.value })} />
       ))}
+
+      <div style={{ marginTop: 16, marginBottom: 16, textAlign: 'left' }}>
+        <p style={{ fontSize: 13, fontWeight: 700, color: D.navy, marginBottom: 8 }}>Product Notifications</p>
+        <p style={{ fontSize: 11, color: D.textSecondary, marginBottom: 12 }}>Select categories you want updates for (Leave empty for all)</p>
+        <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8 }}>
+          {categories.map(cat => (
+            <button key={cat} type="button" onClick={() => toggleCategoryPref(cat)}
+              style={(form.notificationPrefs || []).includes(cat) ? S.chipActive : S.chip}>
+              {cat}
+            </button>
+          ))}
+        </div>
+      </div>
+
       <div style={{ display: 'flex', gap: 10, marginTop: 8 }}>
         <button style={S.btnPrimary} onClick={handleSave} disabled={loading}>{loading ? 'Saving...' : 'Save'}</button>
         <button style={S.btnGhost} onClick={() => setEditing(false)}>Cancel</button>
@@ -150,7 +189,6 @@ function OrderCard({ order }) {
   const totalItems = order.items?.length || 0;
   const firstItem = order.items?.[0];
 
-  // ESC closes dispatch modal only
   useEffect(() => {
     const handler = (e) => { if (e.key === 'Escape') setShowDispatch(false); };
     document.addEventListener('keydown', handler);
@@ -164,7 +202,6 @@ function OrderCard({ order }) {
   };
   const pLabel = paymentLabel();
 
-  // Format quantity display
   const fmtQty = (item) => {
     if (item.sets) return `${item.sets} sets = ${item.pcs} pcs`;
     const unit = (item.unit || 'pc').replace('pieces', 'pcs').replace('piece', 'pc');
@@ -300,7 +337,11 @@ function BuyerDashboard() {
   const buyerId = auth.currentUser?.uid;
   const navigate = useNavigate();
 
-  const handleLogout = async () => { await signOut(auth); navigate('/'); };
+  const handleLogoutClick = () => {
+    if (window.confirm('Are you sure you want to logout?')) {
+      signOut(auth).then(() => navigate('/'));
+    }
+  };
 
   useEffect(() => {
     if (!buyerId) return;
@@ -330,7 +371,6 @@ function BuyerDashboard() {
     return () => unsubscribe();
   }, []);
 
-  // ESC — product modal band karo
   useEffect(() => {
     const handleEsc = (e) => {
       if (e.key === 'Escape') {
@@ -343,8 +383,16 @@ function BuyerDashboard() {
     return () => document.removeEventListener('keydown', handleEsc);
   }, []);
 
+  // Filter notifications based on preferences
+  const filteredNotifications = notifications.filter(n => {
+    if (n.type !== 'new_product') return true; 
+    const prefs = userProfile?.notificationPrefs;
+    if (!prefs || prefs.length === 0) return true; 
+    return prefs.includes(n.category || 'General'); 
+  });
+
   const markAllRead = async () => {
-    const unread = notifications.filter(n => !n.read);
+    const unread = filteredNotifications.filter(n => !n.read);
     if (!unread.length) return;
     const batch = writeBatch(db);
     unread.forEach(n => batch.update(doc(db, 'notifications', n.id), { read: true }));
@@ -480,7 +528,7 @@ function BuyerDashboard() {
   };
 
   const handleCheckout = () => nightyCart.length > 0 ? setShowNightyCheckout(true) : placeOrder(null);
-  const unreadCount = notifications.filter(n => !n.read).length;
+  const unreadCount = filteredNotifications.filter(n => !n.read).length;
   const totalCartItems = cart.reduce((sum, i) => sum + (i.sets || i.quantity || 0), 0);
 
   if (viewingProduct) {
@@ -528,13 +576,13 @@ function BuyerDashboard() {
               <div style={S.notifDropdown}>
                 <div style={S.notifDropHead}>
                   <span style={{ fontWeight: 700, fontSize: 14, color: D.navy }}>Notifications</span>
-                  <span style={{ fontSize: 12, color: D.textSecondary }}>{notifications.length} total</span>
+                  <span style={{ fontSize: 12, color: D.textSecondary }}>{filteredNotifications.length} total</span>
                 </div>
-                {notifications.length === 0 ? (
+                {filteredNotifications.length === 0 ? (
                   <div style={{ padding: '30px 16px', textAlign: 'center', color: D.textSecondary, fontSize: 13 }}>No notifications yet</div>
                 ) : (
                   <div style={{ maxHeight: 320, overflowY: 'auto' }}>
-                    {notifications.slice(0, 20).map(n => (
+                    {filteredNotifications.slice(0, 20).map(n => (
                       <div key={n.id} style={{ ...S.notifItem, backgroundColor: n.read ? D.surface : '#f0f4ff' }}>
                         <span style={{ fontSize: 16, marginRight: 10 }}>{n.type === 'new_product' ? '📦' : '🔔'}</span>
                         <div style={{ flex: 1 }}>
@@ -551,6 +599,10 @@ function BuyerDashboard() {
               </div>
             )}
           </div>
+          {/* Universal Power Off Button */}
+          <button style={S.iconBtn} onClick={handleLogoutClick} title="Logout">
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke={D.navy} strokeWidth="2.5"><path d="M18.36 6.64a9 9 0 1 1-12.73 0"/><line x1="12" y1="2" x2="12" y2="12"/></svg>
+          </button>
         </div>
       </div>
 
@@ -616,7 +668,7 @@ function BuyerDashboard() {
           </div>
         )}
 
-        {/* CART TAB — redesigned */}
+        {/* CART TAB */}
         {activeTab === 'cart' && (
           <div style={{ padding: '12px 16px' }}>
             {cart.length === 0 ? (
@@ -630,7 +682,6 @@ function BuyerDashboard() {
               </div>
             ) : (
               <>
-                {/* Cart summary header */}
                 <div style={{ backgroundColor: D.navy, borderRadius: 12, padding: '14px 16px', marginBottom: 16, display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                   <div>
                     <p style={{ margin: 0, fontSize: 12, color: 'rgba(255,255,255,0.7)', fontWeight: 500 }}>Cart Total</p>
@@ -642,7 +693,6 @@ function BuyerDashboard() {
                   </div>
                 </div>
 
-                {/* Non-nighty items */}
                 {Object.keys(nonNightyBySupplier).map(sid => (
                   <div key={sid} style={S.supplierSection}>
                     <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 12 }}>
@@ -677,7 +727,6 @@ function BuyerDashboard() {
                   </div>
                 ))}
 
-                {/* Nighty items */}
                 {Object.keys(nightyBySupplier).map(sid => (
                   <div key={sid} style={S.supplierSection}>
                     <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 12 }}>
@@ -740,9 +789,8 @@ function BuyerDashboard() {
 
         {/* PROFILE TAB */}
         {activeTab === 'profile' && userProfile && (
-          <div style={{ padding: '0 16px' }}>
-            <ProfileEdit userProfile={userProfile} onSave={fetchProfile} />
-            <button style={{ ...S.btnGhost, marginTop: 12, borderColor: D.error, color: D.error }} onClick={handleLogout}>Logout</button>
+          <div style={{ padding: '0 16px 80px' }}>
+            <ProfileEdit userProfile={userProfile} onSave={fetchProfile} categories={categories} />
           </div>
         )}
       </div>
@@ -886,7 +934,8 @@ function getStatusStyle(status) {
 }
 
 const S = {
-  appShell: { display: 'flex', flexDirection: 'column', height: '100vh', maxWidth: 480, margin: '0 auto', backgroundColor: D.bg, fontFamily: "'Inter', sans-serif", position: 'relative', overflow: 'hidden' },
+  // RESPONSIVE UPDATE: Removed maxWidth: 480, set width/height to 100% to fit wrapper
+  appShell: { display: 'flex', flexDirection: 'column', height: '100%', width: '100%', backgroundColor: D.bg, fontFamily: "'Inter', sans-serif", position: 'relative', overflow: 'hidden' },
   topBar: { display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '12px 16px', backgroundColor: D.surface, borderBottom: `1px solid ${D.borderLight}`, flexShrink: 0, zIndex: 10 },
   topBarTitle: { fontSize: 16, fontWeight: 700, color: D.navy },
   mainContent: { flex: 1, overflowY: 'auto', paddingBottom: 80 },
@@ -902,7 +951,10 @@ const S = {
   chipRow: { display: 'flex', gap: 8, overflowX: 'auto', padding: '12px 16px', scrollbarWidth: 'none' },
   chip: { flexShrink: 0, padding: '7px 14px', border: `1px solid ${D.border}`, borderRadius: 20, backgroundColor: D.surface, fontSize: 13, color: D.textSecondary, cursor: 'pointer', whiteSpace: 'nowrap' },
   chipActive: { flexShrink: 0, padding: '7px 14px', border: `1px solid ${D.navy}`, borderRadius: 20, backgroundColor: D.navy, fontSize: 13, color: 'white', cursor: 'pointer', whiteSpace: 'nowrap', fontWeight: 600 },
-  productGrid: { display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12, padding: '0 12px 12px' },
+  
+  // RESPONSIVE UPDATE: Dynamic grid sizing instead of fixed columns
+  productGrid: { display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(200px, 1fr))', gap: 16, padding: '0 16px 16px' },
+  
   productCard: { backgroundColor: D.surface, borderRadius: 10, overflow: 'hidden', boxShadow: '0 2px 8px rgba(3,22,50,0.06)', cursor: 'pointer', border: `1px solid ${D.borderLight}` },
   cardImgWrap: { position: 'relative', width: '100%', aspectRatio: '3/4', backgroundColor: D.bg, overflow: 'hidden' },
   cardImg: { width: '100%', height: '100%', objectFit: 'cover', display: 'block' },
@@ -927,14 +979,20 @@ const S = {
   profileRow: { display: 'flex', justifyContent: 'space-between', padding: '8px 0', borderBottom: `1px solid ${D.borderLight}`, textAlign: 'left' },
   profileLabel: { fontSize: 12, color: D.textSecondary, fontWeight: 500 },
   profileValue: { fontSize: 13, color: D.textPrimary, fontWeight: 600, textAlign: 'right', maxWidth: '60%' },
+  prefBadge: { backgroundColor: D.navyMid, color: 'white', padding: '4px 8px', borderRadius: 6, fontSize: 11, fontWeight: 600 },
   input: { display: 'block', width: '100%', padding: '11px 14px', border: `1px solid ${D.border}`, borderRadius: 8, fontSize: 14, color: D.textPrimary, outline: 'none', boxSizing: 'border-box', marginBottom: 10, backgroundColor: D.surface },
   btnPrimary: { display: 'block', width: '100%', padding: '14px', backgroundColor: D.navy, color: 'white', border: 'none', borderRadius: 10, fontSize: 15, fontWeight: 700, cursor: 'pointer', letterSpacing: '-0.01em' },
   btnGhost: { display: 'block', width: '100%', padding: '13px', backgroundColor: 'transparent', color: D.navy, border: `1.5px solid ${D.border}`, borderRadius: 10, fontSize: 14, fontWeight: 600, cursor: 'pointer' },
-  bottomNav: { position: 'fixed', bottom: 0, left: '50%', transform: 'translateX(-50%)', width: '100%', maxWidth: 480, display: 'flex', backgroundColor: D.surface, borderTop: `1px solid ${D.borderLight}`, zIndex: 50, paddingBottom: 'env(safe-area-inset-bottom)' },
+  
+  // RESPONSIVE UPDATE: Removed maxWidth from BottomNav so it spans the wrapper
+  bottomNav: { position: 'fixed', bottom: 0, width: '100%', display: 'flex', backgroundColor: D.surface, borderTop: `1px solid ${D.borderLight}`, zIndex: 50, paddingBottom: 'env(safe-area-inset-bottom)' },
   navBtn: { flex: 1, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', padding: '10px 0', border: 'none', backgroundColor: 'transparent', cursor: 'pointer', minHeight: 56 },
-  modalOverlay: { position: 'fixed', top: 0, bottom: 0, left: '50%', transform: 'translateX(-50%)', width: '100%', maxWidth: 480, backgroundColor: 'rgba(3,22,50,0.5)', zIndex: 200, display: 'flex', alignItems: 'flex-end' },
-  fullModal: { backgroundColor: D.surface, borderRadius: '16px 16px 0 0', padding: '12px 16px 32px', width: '100%', maxHeight: '85vh', overflowY: 'auto', display: 'flex', flexDirection: 'column' },
-  productModal: { backgroundColor: D.surface, borderRadius: '16px 16px 0 0', width: '100%', maxHeight: '88vh', overflowY: 'auto', position: 'relative' },
+  
+  // RESPONSIVE UPDATE: Center modals on larger screens
+  modalOverlay: { position: 'fixed', top: 0, bottom: 0, left: 0, right: 0, backgroundColor: 'rgba(3,22,50,0.5)', zIndex: 200, display: 'flex', alignItems: 'center', justifyContent: 'center' },
+  fullModal: { backgroundColor: D.surface, borderRadius: '16px', padding: '12px 16px 32px', width: '90%', maxWidth: 600, maxHeight: '85vh', overflowY: 'auto', display: 'flex', flexDirection: 'column' },
+  productModal: { backgroundColor: D.surface, borderRadius: '16px', width: '90%', maxWidth: 600, maxHeight: '88vh', overflowY: 'auto', position: 'relative' },
+  
   modalHandle: { width: 36, height: 4, backgroundColor: D.border, borderRadius: 2, margin: '8px auto 12px' },
   modalHeading: { margin: '0 0 16px', fontSize: 18, fontWeight: 700, color: D.navy },
   modalClose: { position: 'absolute', top: 16, right: 16, width: 32, height: 32, borderRadius: '50%', border: 'none', backgroundColor: 'rgba(255,255,255,0.9)', cursor: 'pointer', fontSize: 13, fontWeight: 700, zIndex: 10, display: 'flex', alignItems: 'center', justifyContent: 'center' },
