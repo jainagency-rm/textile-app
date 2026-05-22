@@ -18,6 +18,11 @@ const SIZES = ['M', 'L', 'XL', '2XL', '3XL', '4XL', '5XL'];
 const SET_CUT_OPTIONS = ['2/70', '2/90', '3/20'];
 const RUNNING_CUT_OPTIONS = ['10 Meter', '20 Meter', '40 Meter', 'Full Lump'];
 
+const UNITS = [
+  'Piece', 'Set', 'Dozen', 'Meter', 'KG',
+  'Yard', 'Roll', 'Bale', 'Bundle', 'Box', 'Carton',
+];
+
 const D = {
   navy: '#031632', navyMid: '#1a2b48', gold: '#775a19', goldLight: '#fed488',
   bg: '#f8f9fa', surface: '#ffffff', textPrimary: '#191c1d',
@@ -52,7 +57,7 @@ function AddProductWizard({ categories, onDone, onCancel }) {
   const [newCatTemplate, setNewCatTemplate] = useState('sets');
   
   const [form, setForm] = useState({
-    name: '', categoryId: '', price: '', moq: '', unit: 'sets', description: '',
+    name: '', categoryId: '', price: '', moq: '', unit: 'Piece', description: '',
     cut: '', sizes: [], material: '', productType: 'stitched',
     chudidarTop: '', chudidarBottom: '', chudidarDupatta: '',
     chudidarTopMat: '', chudidarBottomMat: '', chudidarDupattaMat: '',
@@ -180,7 +185,6 @@ function AddProductWizard({ categories, onDone, onCancel }) {
                 )}
               </div>
 
-              {/* DYNAMIC TEMPLATE FIELDS */}
               {isSets && (
                 <div style={W.section}>
                   <label style={W.label}>Sets Cut *</label>
@@ -259,10 +263,11 @@ function AddProductWizard({ categories, onDone, onCancel }) {
               <LabelInput label="Name" value={form.name} onChange={v => setForm({...form, name: v})} />
               <LabelInput label="Price" type="number" value={form.price} onChange={v => setForm({...form, price: v})} />
               <LabelInput label="MOQ" type="number" value={form.moq} onChange={v => setForm({...form, moq: v})} />
-              <div style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '8px 0' }}>
-                <span style={{ fontSize: 13, color: D.textSecondary, fontWeight: 600, minWidth: 80 }}>Unit</span>
-                <select style={W.input} value={form.unit} onChange={e => setForm({...form, unit: e.target.value})}>
-                  <option value="sets">Sets</option><option value="pieces">Pieces</option><option value="meters">Meters</option>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '8px 0', borderBottom: `1px solid ${D.borderLight}` }}>
+                <span style={{ fontSize: 13, color: D.textSecondary, fontWeight: 600, minWidth: 80, flexShrink: 0 }}>Unit</span>
+                <select style={{ flex: 1, border: 'none', outline: 'none', fontSize: 14, color: D.textPrimary, backgroundColor: 'transparent', fontFamily: 'inherit' }}
+                  value={form.unit} onChange={e => setForm({...form, unit: e.target.value})}>
+                  {UNITS.map(u => <option key={u} value={u}>{u}</option>)}
                 </select>
               </div>
             </div>
@@ -367,7 +372,10 @@ function SupplierDashboard() {
                 {expandedOrder === o.id && (
                   <div style={{ marginTop: 12, borderTop: `1px solid ${D.borderLight}`, paddingTop: 10 }}>
                     {o.items?.map((item, i) => (
-                      <p key={i} style={{ fontSize: 12, margin: '4px 0' }}>• {item.productName} ({item.quantity || item.sets} {item.unit})</p>
+                      <p key={i} style={{ fontSize: 12, margin: '4px 0' }}>
+                        • - {item.productName} — {item.orderedQty || item.quantity || item.sets} {item.unit || 'Piece'}{item.size ? ` (${item.size})` : ''}
+                        {item.size ? ` (${item.size})` : ''}
+                      </p>
                     ))}
                   </div>
                 )}
@@ -418,4 +426,3 @@ const S = {
 };
 
 export default SupplierDashboard;
-

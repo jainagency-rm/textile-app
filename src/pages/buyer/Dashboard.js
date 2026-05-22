@@ -185,8 +185,7 @@ function OrderCard({ order }) {
   const [expanded, setExpanded] = useState(false);
   const [showDispatch, setShowDispatch] = useState(false);
 
-  const isPaid = order.paymentStatus === 'Cleared' || order.paymentStatus === 'Advance Received';
-  const totalItems = order.items?.length || 0;
+  const isPaid = order.status === 'Delivered' || order.status === 'Partially Dispatched' || order.status === 'Shipped';  const totalItems = order.items?.length || 0;
   const firstItem = order.items?.[0];
 
   useEffect(() => {
@@ -218,7 +217,6 @@ function OrderCard({ order }) {
             <div style={{ display: 'flex', flexDirection: 'column' }}>
               {[
                 ['Order ID', `#${order.id.slice(0, 8)}`],
-                ['Payment', order.paymentStatus === 'Cleared' ? '✓ Fully Paid' : '◑ Part Paid (Advance)'],
                 ['Bill No', order.billNo || '—'],
                 ['Bill Date', order.billDate || '—'],
                 ['Transport', order.transport || '—'],
@@ -294,14 +292,10 @@ function OrderCard({ order }) {
                 {order.nightyDetails.totalSets} sets · {order.nightyDetails.packingType} sets/bale · <b style={{ color: D.navy }}>{order.nightyDetails.totalBales} bale(s)</b>
               </p>
             )}
-            {isPaid ? (
-              <button style={{ ...S.btnPrimary, marginTop: 12, padding: '11px', fontSize: 13, backgroundColor: D.navyMid }}
-                onClick={() => setShowDispatch(true)}>📦 View Dispatch Details</button>
-            ) : (
-              <div style={{ marginTop: 10, padding: '10px 12px', backgroundColor: '#fff8f0', borderRadius: 8, fontSize: 12, color: '#7a5200', fontWeight: 600, border: '1px solid #fcd34d' }}>
-                ⏳ Awaiting payment clearance
-              </div>
-            )}
+            {isPaid && (
+  <button style={{ ...S.btnPrimary, marginTop: 12, padding: '10px', fontSize: 13, backgroundColor: D.navyMid }}
+    onClick={() => setShowDispatch(true)}>📦 View Dispatch Details</button>
+)}
           </div>
         )}
       </div>
@@ -503,13 +497,13 @@ function BuyerDashboard() {
       const adminId = adminSnap.docs[0]?.id;
       for (const supplierId of Object.keys(nonNightyBySupplier)) {
         const sc = nonNightyBySupplier[supplierId];
-        await addDoc(collection(db, 'orders'), { buyerId: user.uid, buyerFirm: userProfile?.firmName || '', supplierId, supplierFirm: sc.supplierFirm, items: sc.items.map(i => ({ productId: i.productId, productName: i.productName, quantity: i.quantity, price: i.price, unit: i.unit, size: i.size || '' })), status: 'Pending', createdAt: new Date() });
+        await addDoc(collection(db, 'orders'), { buyerId: user.uid, buyerFirm: userProfile?.firmName || '', supplierId, supplierFirm: sc.supplierFirm, items: sc.items.map(i => ({ productId: i.productId, productName: i.productName, quantity: i.quantity, orderedQty: i.quantity, price: i.price, unit: i.unit, size: i.size || '' })), status: 'Pending', createdAt: new Date() });
         if (adminId) await notifyNewOrder(adminId, supplierId, userProfile?.firmName || '');
       }
       for (const supplierId of Object.keys(nightyBySupplier)) {
         const sc = nightyBySupplier[supplierId];
         const currentBaleDetail = supplierBaleDetails?.[supplierId] || null;
-        await addDoc(collection(db, 'orders'), { buyerId: user.uid, buyerFirm: userProfile?.firmName || '', supplierId, supplierFirm: sc.supplierFirm, items: sc.items.map(i => ({ productId: i.productId, productName: i.productName, designNo: i.designNo, dnNumber: i.dnNumber, photoUrl: i.photoUrl, sets: i.sets, pcs: i.sets * i.pcsPerSet, price: i.price })), nightyDetails: currentBaleDetail ? { totalSets: currentBaleDetail.totalSets, totalPcs: currentBaleDetail.totalPcs, packingType: currentBaleDetail.packingType, totalBales: currentBaleDetail.totalBales } : null, status: 'Pending', createdAt: new Date() });
+        await addDoc(collection(db, 'orders'), { buyerId: user.uid, buyerFirm: userProfile?.firmName || '', supplierId, supplierFirm: sc.supplierFirm, items: sc.items.map(i => ({ productId: i.productId, productName: i.productName, designNo: i.designNo, dnNumber: i.dnNumber, photoUrl: i.photoUrl, sets: i.sets, pcs: i.sets * i.pcsPerSet, orderedQty: i.sets, price: i.price, unit: 'Set' })), nightyDetails: currentBaleDetail ? { totalSets: currentBaleDetail.totalSets, totalPcs: currentBaleDetail.totalPcs, packingType: currentBaleDetail.packingType, totalBales: currentBaleDetail.totalBales } : null, status: 'Pending', createdAt: new Date() });
         if (adminId) await notifyNewOrder(adminId, supplierId, userProfile?.firmName || '');
         for (const item of sc.items) {
           const dRef = doc(db, 'products', item.productId, 'designs', item.designId);
