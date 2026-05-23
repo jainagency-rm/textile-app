@@ -1,0 +1,285 @@
+import React, { useState, useEffect, useRef, useCallback } from 'react';
+import { useNavigate } from 'react-router-dom';
+import { signOut } from 'firebase/auth';
+import { collection, getDocs, query, where, doc, getDoc, updateDoc, writeBatch, onSnapshot, orderBy } from 'firebase/firestore';
+import { auth, db } from '../../firebase';
+import { useWindowSize } from '../../hooks/useWindowSize';
+
+import SupplierSideNav from '../../components/supplier/SupplierSideNav';
+import SupplierBottomNav from '../../components/supplier/SupplierBottomNav';
+import SupplierOrderCard from '../../components/supplier/SupplierOrderCard';
+import AddProductWizard from '../../components/supplier/AddProductWizard';
+import EditProductModal from '../../components/supplier/EditProductModal';
+
+const D = { navy: '#031632', gold: '#775a19', bg: '#f8f9fa', surface: '#ffffff', textPrimary: '#191c1d', textSecondary: '#44474d', borderLight: '#e7e8e9', error: '#ba1a1a', success: '#1a6b3c', warning: '#7a5200' };
+
+function SupplierDashboard() {
+  const { isMobile, isTablet } = useWindowSize();
+  const [activeTab, setActiveTab] = useState('products');
+  const [products, setProducts] = useState([]);
+  const [categories, setCategories] = useState([]);
+  const [orders, setOrders] = useState([]);
+  const [notifications, setNotifications] = useState([]);
+  const [showNotifications, setShowNotifications] = useState(false);
+  const [showAdd, setShowAdd] = useState(false);
+  const [editingProduct, setEditingProduct] = useState(null);
+  const [userProfile, setUserProfile] = useState(null);
+  const [supplierId, setSupplierId] = useState(null);
+
+  const notifRef = useRef(null);
+  const navigate = useNavigate();
+  const useSideNav = !isMobile;
+
+  const fetchProfile = useCallback(async (uid) => {
+    if (!uid) return;
+    const snap = await getDoc(doc(db, 'users', uid));
+    if (snap.exists()) setUserProfile(snap.data());
+  }, []);
+
+  const fetchProducts = useCallback(async (uid) => {
+    if (!uid) return;
+    const q = query(collection(db, 'products'), where('supplierId', '==', uid));
+    const snap = await getDocs(q);
+    setProducts(snap.docs.map(d => ({ id: d.id, ...d.data() })));
+  }, []);
+
+  const fetchCategories = useCallback(async () => {
+    const snap = await getDocs(collection(db, 'categories'));
+    setCategories(snap.docs.map(d => ({ id: d.id, ...d.data() })));
+  }, []);
+
+  const fetchOrders = useCallback(async (uid) => {
+    if (!uid) return;
+    const q = query(collection(db, 'orders'), where('supplierId', '==', uid));
+    const snap = await getDocs(q);
+    setOrders(snap.docs.map(d => ({ id: d.id, ...d.data() })));
+  }, []);
+
+  const fetchAll = useCallback(async (uid) => {
+    await Promise.all([fetchProducts(uid), fetchCategories(), fetchOrders(uid), fetchProfile(uid)]);
+  }, [fetchProducts, fetchCategories, fetchOrders, fetchProfile]);
+
+  useEffect(() => {
+    const unsub = auth.onAuthStateChanged(user => {
+      if (user) { setSupplierId(user.uid); fetchAll(user.uid); }
+      else { setSupplierId(null); }
+    });
+    return unsub;
+  }, [fetchAll]);
+
+  useEffect(() => {
+    if (!supplierId) return;
+    const q = query(collection(db, 'notifications'), where('userId', '==', supplierId), orderBy('createdAt', 'desc'));
+    const unsub = onSnapshot(q, snap => setNotifications(snap.docs.map(d => ({ id: d.id, ...d.data() }))));
+    return unsub;
+  }, [supplierId]);
+
+  useEffect(() => {
+    const handleClickOutside = e => { if (notifRef.current && !notifRef.current.contains(e.target)) setShowNotifications(false); };
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => document.removeEventListener('mousedown', handleClickOutside);
+  }, []);
+
+  const markAllRead = async () => {
+    const unread = notifications.filter(n => !n.read);
+    if (!unread.length) return;
+    const batch = writeBatch(db);
+    unread.forEach(n => batch.update(doc(db, 'notifications', n.id), { read: true }));
+    await batch.commit();
+  };
+
+  const handleApprove = async (order) => {
+    await updateDoc(doc(db, 'orders', order.id), { status: 'Processing' });
+    setOrders(orders.map(o => o.id === order.id ? { ...o, status: 'Processing' } : o));
+  };
+
+  const handleReject = async (order) => {
+    if (!window.confirm('Reject this order? Stock will be restored.')) return;
+    try {
+      const batch = writeBatch(db);
+      batch.update(doc(db, 'orders', order.id), { status: 'Cancelled' });
+      for (const item of (order.items || [])) {
+        if (item.designId && item.sets) {
+          const dRef = doc(db, 'products', item.productId, 'designs', item.designId);
+          const dSnap = await getDoc(dRef);
+          if (dSnap.exists()) batch.update(dRef, { sets: (dSnap.data().sets || 0) + item.sets });
+          const pRef = doc(db, 'products', item.productId);
+          const pSnap = await getDoc(pRef);
+          if (pSnap.exists()) batch.update(pRef, { totalSets: (pSnap.data().totalSets || 0) + item.sets });
+        }
+      }
+      await batch.commit();
+      setOrders(orders.map(o => o.id === order.id ? { ...o, status: 'Cancelled' } : o));
+    } catch (err) { console.error('Reject error', err); }
+  };
+
+  const productGridCols = isMobile ? 'repeat(2, 1fr)' : isTablet ? 'repeat(3, 1fr)' : 'repeat(4, 1fr)';
+  const pendingCount = orders.filter(o => o.status === 'Pending').length;
+  const unreadCount = notifications.filter(n => !n.read).length;
+  const handleLogout = () => { if (window.confirm('Logout?')) signOut(auth).then(() => navigate('/')); };
+
+  return (
+    <div style={{ display: 'flex', height: '100vh', backgroundColor: D.bg, fontFamily: "'Inter', sans-serif" }}>
+      {showAdd && (
+        <AddProductWizard
+          categories={categories}
+          onDone={(rc) => { setShowAdd(false); fetchProducts(supplierId); if (rc) fetchCategories(); }}
+          onCancel={() => setShowAdd(false)}
+        />
+      )}
+
+      {editingProduct && (
+        <EditProductModal
+          product={editingProduct}
+          onClose={() => setEditingProduct(null)}
+          onSaved={(updated, shouldClose = true) => {
+            setProducts(products.map(p => p.id === updated.id ? updated : p));
+            if (shouldClose) setEditingProduct(null);
+          }}
+          onDeleted={(deletedId) => {
+            setProducts(products.filter(p => p.id !== deletedId));
+            setEditingProduct(null);
+          }}
+        />
+      )}
+
+      {useSideNav && (
+        <SupplierSideNav
+          activeTab={activeTab}
+          setActiveTab={setActiveTab}
+          pendingCount={pendingCount}
+          onLogout={handleLogout}
+          onAddProduct={() => setShowAdd(true)}
+          isTablet={isTablet}
+          userProfile={userProfile}
+        />
+      )}
+
+      <div style={{ flex: 1, display: 'flex', flexDirection: 'column', overflow: 'hidden' }}>
+        {/* Topbar */}
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '12px 16px', backgroundColor: D.surface, borderBottom: `1px solid ${D.borderLight}`, flexShrink: 0, zIndex: 10 }}>
+          <div style={{ display: 'flex', flexDirection: 'column' }}>
+            {isMobile && <span style={{ fontSize: 10, color: D.gold, fontWeight: 700, letterSpacing: '0.08em', textTransform: 'uppercase' }}>Jain Agency</span>}
+            <span style={{ fontSize: 16, fontWeight: 700, color: D.navy }}>{activeTab === 'products' ? 'Inventory' : 'Orders'}</span>
+          </div>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+            {isMobile && activeTab === 'products' && (
+              <button onClick={() => setShowAdd(true)} style={{ padding: '7px 14px', backgroundColor: D.navy, color: 'white', border: 'none', borderRadius: 20, cursor: 'pointer', fontWeight: 700, fontSize: 13 }}>+ Add</button>
+            )}
+            <div ref={notifRef} style={{ position: 'relative' }}>
+              <button
+                onClick={() => { setShowNotifications(!showNotifications); if (!showNotifications) markAllRead(); }}
+                style={{ width: 40, height: 40, borderRadius: 20, border: 'none', backgroundColor: 'transparent', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', position: 'relative' }}
+              >
+                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke={D.navy} strokeWidth="2"><path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9M13.73 21a2 2 0 0 1-3.46 0"/></svg>
+                {unreadCount > 0 && <span style={{ position: 'absolute', top: 4, right: 4, width: 8, height: 8, borderRadius: '50%', backgroundColor: D.error }} />}
+              </button>
+              {showNotifications && (
+                <div style={{ position: 'absolute', top: 48, right: 0, width: 290, backgroundColor: D.surface, borderRadius: 12, boxShadow: '0 8px 24px rgba(3,22,50,0.12)', zIndex: 100, overflow: 'hidden', border: `1px solid ${D.borderLight}` }}>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '12px 16px', borderBottom: `1px solid ${D.borderLight}`, backgroundColor: D.bg }}>
+                    <span style={{ fontWeight: 700, fontSize: 14, color: D.navy }}>Notifications</span>
+                    <span style={{ fontSize: 12, color: D.textSecondary }}>{notifications.length} total</span>
+                  </div>
+                  {notifications.length === 0 ? (
+                    <div style={{ padding: '28px 16px', textAlign: 'center', color: D.textSecondary, fontSize: 13 }}>No notifications</div>
+                  ) : (
+                    <div style={{ maxHeight: 300, overflowY: 'auto' }}>
+                      {notifications.slice(0, 20).map(n => (
+                        <div key={n.id} style={{ display: 'flex', alignItems: 'flex-start', padding: '12px 16px', borderBottom: `1px solid ${D.borderLight}`, backgroundColor: n.read ? D.surface : '#f0f4ff' }}>
+                          <span style={{ fontSize: 16, marginRight: 10 }}>{n.type === 'new_order' ? '🛒' : '🔔'}</span>
+                          <div style={{ flex: 1 }}>
+                            <p style={{ margin: 0, fontSize: 13, color: D.textPrimary, lineHeight: 1.4 }}>{n.message}</p>
+                            <p style={{ margin: '3px 0 0', fontSize: 11, color: D.textSecondary }}>{n.createdAt?.toDate?.()?.toLocaleString('en-IN', { day: '2-digit', month: 'short', hour: '2-digit', minute: '2-digit' })}</p>
+                          </div>
+                          {!n.read && <div style={{ width: 7, height: 7, borderRadius: '50%', backgroundColor: D.navy, flexShrink: 0, marginTop: 4 }} />}
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                </div>
+              )}
+            </div>
+            <button onClick={handleLogout} title="Logout" style={{ width: 40, height: 40, borderRadius: 20, border: 'none', backgroundColor: 'transparent', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke={D.textSecondary} strokeWidth="2"><path d="M18.36 6.64a9 9 0 1 1-12.73 0"/><line x1="12" y1="2" x2="12" y2="12"/></svg>
+            </button>
+          </div>
+        </div>
+
+        {/* Content */}
+        <div style={{ flex: 1, overflowY: 'auto', paddingBottom: isMobile ? 80 : 20 }}>
+          {activeTab === 'products' && (
+            products.length === 0 ? (
+              <div style={{ padding: '80px 16px', textAlign: 'center' }}>
+                <p style={{ color: D.textPrimary, fontSize: 16, fontWeight: 700, margin: '0 0 6px' }}>No products yet</p>
+                <p style={{ color: D.textSecondary, fontSize: 13, margin: '0 0 20px' }}>Add your first product to get started</p>
+                <button onClick={() => setShowAdd(true)} style={{ padding: '12px 28px', backgroundColor: D.navy, color: 'white', border: 'none', borderRadius: 10, fontSize: 14, fontWeight: 700, cursor: 'pointer' }}>+ Add Product</button>
+              </div>
+            ) : (
+              <div style={{ display: 'grid', gridTemplateColumns: productGridCols, gap: 16, padding: 16 }}>
+                {products.map(p => {
+                  const isApproved = p.status === 'approved';
+                  return (
+                    <div key={p.id} style={{ backgroundColor: D.surface, borderRadius: 12, overflow: 'hidden', boxShadow: '0 2px 8px rgba(3,22,50,0.06)', border: `1px solid ${D.borderLight}` }}>
+                      <div style={{ position: 'relative', width: '100%', aspectRatio: '3/4', backgroundColor: D.bg }}>
+                        {p.imageUrl ? (
+                          <img src={p.imageUrl} alt={p.name} style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+                        ) : (
+                          <div style={{ width: '100%', height: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                            <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke={D.borderLight} strokeWidth="1.5"><rect x="3" y="3" width="18" height="18" rx="2"/><circle cx="8.5" cy="8.5" r="1.5"/><polyline points="21 15 16 10 5 21"/></svg>
+                          </div>
+                        )}
+                        <div style={{ position: 'absolute', top: 8, right: 8, backgroundColor: isApproved ? '#e6f4ea' : '#fef7e0', color: isApproved ? D.success : D.warning, padding: '3px 8px', borderRadius: 20, fontSize: 10, fontWeight: 700 }}>
+                          {isApproved ? '✓ Live' : '⏳ Pending'}
+                        </div>
+                        <button onClick={() => setEditingProduct(p)} style={{ position: 'absolute', top: 8, left: 8, width: 28, height: 28, borderRadius: 8, border: 'none', backgroundColor: 'rgba(255,255,255,0.9)', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke={D.navy} strokeWidth="2.5"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>
+                        </button>
+                      </div>
+                      <div style={{ padding: '10px 12px 12px' }}>
+                        <span style={{ fontSize: 10, fontWeight: 700, color: D.gold, textTransform: 'uppercase', letterSpacing: '0.06em' }}>{p.category || p.categoryName}</span>
+                        <p style={{ margin: '3px 0 2px', fontSize: 13, fontWeight: 700, color: D.textPrimary, lineHeight: 1.3 }}>{p.name}</p>
+                        {p.width && <p style={{ margin: '0 0 2px', fontSize: 11, color: D.textSecondary, fontWeight: 600 }}>Width: {p.width}</p>}
+                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginTop: 6 }}>
+                          {p.isNighty && p.cutRates ? (
+                            <span style={{ fontSize: 12, fontWeight: 700, color: D.navy }}>{Object.entries(p.cutRates).map(([cut, rate]) => `${cut}: ₹${rate}`).join(' · ')}</span>
+                          ) : (
+                            <span style={{ fontSize: 14, fontWeight: 700, color: D.navy }}>₹{p.price}</span>
+                          )}
+                        </div>
+                        <span style={{ fontSize: 11, color: D.textSecondary }}>{p.moq} {p.unit} MOQ</span>
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+            )
+          )}
+
+          {activeTab === 'orders' && (
+            <div style={{ padding: '8px 16px' }}>
+              {pendingCount > 0 && (
+                <div style={{ backgroundColor: '#fff3e0', border: `1px solid #f59e0b`, borderRadius: 10, padding: '10px 14px', marginBottom: 12, display: 'flex', alignItems: 'center', gap: 10 }}>
+                  <span style={{ fontSize: 16 }}>⏳</span>
+                  <p style={{ margin: 0, fontSize: 13, fontWeight: 700, color: D.warning }}>{pendingCount} order{pendingCount > 1 ? 's' : ''} waiting for approval</p>
+                </div>
+              )}
+              {orders.length === 0 ? (
+                <div style={{ padding: '80px 0', textAlign: 'center', color: D.textSecondary }}><p style={{ fontSize: 15 }}>No orders yet</p></div>
+              ) : (
+                orders
+                  .sort((a, b) => (a.status === 'Pending' ? -1 : b.status === 'Pending' ? 1 : 0))
+                  .map(order => (
+                    <SupplierOrderCard key={order.id} order={order} onApprove={handleApprove} onReject={handleReject} />
+                  ))
+              )}
+            </div>
+          )}
+        </div>
+
+        {isMobile && <SupplierBottomNav activeTab={activeTab} setActiveTab={setActiveTab} pendingCount={pendingCount} />}
+      </div>
+    </div>
+  );
+}
+
+export default SupplierDashboard;

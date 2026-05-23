@@ -1,0 +1,15 @@
+export const D = {
+  navy: '#031632', 
+  navyMid: '#1a2b48', 
+  gold: '#775a19', 
+  goldLight: '#fed488',
+  bg: '#f8f9fa', 
+  surface: '#ffffff', 
+  textPrimary: '#191c1d',
+  textSecondary: '#44474d', 
+  border: '#c5c6ce', 
+  borderLight: '#e7e8e9',
+  error: '#ba1a1a', 
+  success: '#1a6b3c', 
+  warning: '#7a5200',
+};

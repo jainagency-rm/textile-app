@@ -1,0 +1,81 @@
+export const generateAdminOrderPDF = async (order) => {
+  const { jsPDF } = await import('jspdf');
+  const pdf = new jsPDF({ orientation: 'portrait', unit: 'mm', format: 'a4' });
+
+  const navy = [3, 22, 50], gray = [100, 116, 139], lightGray = [241, 245, 249];
+  const W = 210, margin = 16;
+
+  pdf.setFillColor(...navy); pdf.rect(0, 0, W, 40, 'F');
+  pdf.setTextColor(255, 255, 255); pdf.setFontSize(20); pdf.setFont('helvetica', 'bold');
+  pdf.text('JAIN AGENCY', margin, 16);
+  pdf.setFontSize(9); pdf.setFont('helvetica', 'normal'); pdf.setTextColor(200, 200, 200);
+  pdf.text('Official Order Receipt', margin, 23);
+  pdf.setFontSize(11); pdf.setTextColor(255, 255, 255);
+  pdf.text(`Order #${order.id.slice(0, 8).toUpperCase()}`, W - margin, 16, { align: 'right' });
+  pdf.setFontSize(9); pdf.setTextColor(200, 200, 200);
+  pdf.text(order.createdAt?.toDate?.()?.toLocaleDateString('en-IN') || new Date().toLocaleDateString('en-IN'), W - margin, 23, { align: 'right' });
+
+  let y = 50;
+  pdf.setFillColor(...lightGray); pdf.roundedRect(margin, y, W - margin * 2, 26, 3, 3, 'F');
+  pdf.setFontSize(10); pdf.setFont('helvetica', 'bold'); pdf.setTextColor(...navy);
+  pdf.text('Buyer:', margin + 4, y + 8); pdf.setFont('helvetica', 'normal');
+  pdf.text(order.buyerFirm || '—', margin + 20, y + 8);
+  pdf.setFont('helvetica', 'bold'); pdf.text('Supplier:', margin + 4, y + 18);
+  pdf.setFont('helvetica', 'normal'); pdf.text(order.supplierFirm || '—', margin + 24, y + 18);
+
+  const statusColors = { 'Delivered': [16, 185, 129], 'Partially Dispatched': [245, 158, 11], 'Shipped': [59, 130, 246], 'Processing': [139, 92, 246], 'Cancelled': [239, 68, 68], 'Pending': [107, 114, 128] };
+  const sc = statusColors[order.status] || [107, 114, 128];
+  pdf.setFillColor(...sc); pdf.roundedRect(W - margin - 42, y + 6, 42, 12, 2, 2, 'F');
+  pdf.setTextColor(255, 255, 255); pdf.setFontSize(8); pdf.setFont('helvetica', 'bold');
+  pdf.text(order.status || 'Pending', W - margin - 21, y + 14, { align: 'center' });
+
+  y += 34;
+  pdf.setTextColor(...navy); pdf.setFontSize(11); pdf.text('ORDER ITEMS', margin, y); y += 6;
+  pdf.setFillColor(...navy); pdf.rect(margin, y, W - margin * 2, 8, 'F');
+  pdf.setTextColor(255, 255, 255); pdf.setFontSize(8);
+  pdf.text('Product', margin + 3, y + 5.5); pdf.text('Size', margin + 90, y + 5.5);
+  pdf.text('Ordered', margin + 115, y + 5.5); pdf.text('Dispatched', margin + 140, y + 5.5);
+  pdf.text('Unit', margin + 165, y + 5.5); y += 8;
+
+  (order.items || []).forEach((item, idx) => {
+    if (idx % 2 === 0) { pdf.setFillColor(248, 250, 252); pdf.rect(margin, y, W - margin * 2, 7, 'F'); }
+    pdf.setTextColor(...navy); pdf.setFontSize(8); pdf.setFont('helvetica', 'normal');
+    const name = item.productName || '';
+    pdf.text(name.length > 35 ? name.slice(0, 35) + '…' : name, margin + 3, y + 5);
+    pdf.text(item.size || '—', margin + 90, y + 5);
+    pdf.text(String(item.orderedQty || item.quantity || item.sets || 0), margin + 115, y + 5);
+    pdf.setTextColor(22, 163, 74); pdf.text(String(item.dispatchedQty || 0), margin + 140, y + 5);
+    pdf.setTextColor(...gray); pdf.text(item.unit || 'Piece', margin + 165, y + 5); y += 7;
+  });
+
+  if (order.nightyDetails) {
+    y += 3; pdf.setTextColor(...gray); pdf.setFontSize(8);
+    pdf.text(`Packing: ${order.nightyDetails.totalSets} sets · ${order.nightyDetails.packingType} sets/bale · ${order.nightyDetails.totalBales} bale(s)`, margin, y); y += 6;
+  }
+
+  const shipments = order.shipments || [];
+  if (shipments.length > 0) {
+    y += 6; pdf.setTextColor(...navy); pdf.setFontSize(11); pdf.setFont('helvetica', 'bold');
+    pdf.text('DISPATCH HISTORY', margin, y); y += 6;
+    shipments.forEach((ship, idx) => {
+      if (y > 250) { pdf.addPage(); y = 20; }
+      pdf.setFillColor(...lightGray); pdf.roundedRect(margin, y, W - margin * 2, 10, 2, 2, 'F');
+      pdf.setFillColor(...navy); pdf.roundedRect(margin, y, 3, 10, 1, 1, 'F');
+      pdf.setTextColor(...navy); pdf.setFontSize(9); pdf.setFont('helvetica', 'bold');
+      pdf.text(`Dispatch ${idx + 1}${ship.billDate ? ` (${ship.billDate})` : ''}`, margin + 6, y + 7); y += 10;
+      pdf.setFontSize(8); pdf.setFont('helvetica', 'normal'); pdf.setTextColor(...gray);
+      const details = [ship.billNo ? `Bill No: ${ship.billNo}` : null, ship.transport ? `Transport: ${ship.transport}` : null, ship.lrNo ? `LR No: ${ship.lrNo}` : null, ship.lrDate ? `LR Date: ${ship.lrDate}` : null].filter(Boolean).join('   ');
+      pdf.text(details, margin + 4, y + 5); y += 8;
+      if (ship.items?.length > 0) {
+        ship.items.forEach(i => { pdf.setTextColor(...navy); pdf.setFontSize(8); pdf.text(`• ${i.productName}${i.size ? ` (${i.size})` : ''}: ${i.qty} ${i.unit || ''}`, margin + 6, y + 4); y += 6; });
+      }
+      y += 4;
+    });
+  }
+
+  y = 285; pdf.setFillColor(...navy); pdf.rect(0, y, W, 12, 'F');
+  pdf.setTextColor(200, 200, 200); pdf.setFontSize(8);
+  pdf.text('Jain Agency — Generated by Admin', margin, y + 8);
+  pdf.text(`Page 1`, W - margin, y + 8, { align: 'right' });
+  pdf.save(`JainAgency_Order_${order.id.slice(0, 8)}.pdf`);
+};

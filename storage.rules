@@ -1,0 +1,36 @@
+rules_version = '2';
+service firebase.storage {
+  match /b/{bucket}/o {
+    
+    // Helper functions
+    function isAuthenticated() {
+      return request.auth != null;
+    }
+    
+    function isImageOrPdf() {
+      // Sirf images aur PDF allow karo, max 5MB size
+      return request.resource.contentType.matches('image/.*') 
+          || request.resource.contentType.matches('application/pdf')
+          && request.resource.size < 5 * 1024 * 1024; // 5 MB limit
+    }
+
+    // 1. User specific folder (e.g., profile pictures or user documents)
+    match /users/{userId}/{fileName} {
+      allow read: if isAuthenticated(); // Logged in log dekh sakte hain
+      allow write: if isAuthenticated() && request.auth.uid == userId && isImageOrPdf(); 
+      // Sirf owner apni file upload/delete kar sakta hai
+    }
+
+    // 2. Products folder (Suppliers ke liye)
+    match /products/{fileName} {
+      allow read: if isAuthenticated();
+      // Yahan aur strict rules lag sakte hain agar admin check add karna ho
+      allow write: if isAuthenticated() && isImageOrPdf();
+    }
+
+    // 3. Default Deny (Baaki sab locked)
+    match /{allPaths=**} {
+      allow read, write: if false;
+    }
+  }
+}

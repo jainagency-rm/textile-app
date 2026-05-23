@@ -1,8 +1,34 @@
 rules_version = '2';
-service firebase.storage {
-  match /b/{bucket}/o {
-    match /{allPaths=**} {
-      allow read, write: if request.auth != null;
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    // 1. Helper Function (Login check)
+    function isAuthenticated() {
+      return request.auth != null;
+    }
+
+    // 2. Users Collection (Profile Data)
+    match /users/{userId} {
+      allow read: if isAuthenticated(); 
+      allow write: if request.auth.uid == userId; // User sirf apna data change kar sake
+    }
+
+    // 3. Products Collection
+    match /products/{productId} {
+      allow read: if isAuthenticated(); // Buyers aur Suppliers dono dekh sakein
+      allow create, update: if isAuthenticated(); // Naya product dalna
+      allow delete: if false; // Delete app se nahi, sirf admin ya strict rule se ho
+    }
+
+    // 4. Orders Collection
+    match /orders/{orderId} {
+      allow read, write: if isAuthenticated(); 
+      // Note: Production mein ise aur strict karna hoga (Buyer apne orders dekhe, Supplier apne)
+    }
+
+    // 5. Default Deny (Sabse important security - Baaki saare collections LOCK)
+    match /{document=**} {
+      allow read, write: if false;
     }
   }
 }

@@ -4,29 +4,28 @@ import { BrowserRouter as Router, Routes, Route, useNavigate } from 'react-route
 import Login from './pages/Login';
 import Register from './pages/Register';
 import Pending from './pages/Pending';
-import AdminDashboard from './pages/admin/Dashboard';
-import SupplierDashboard from './pages/supplier/Dashboard';
-import BuyerDashboard from './pages/buyer/Dashboard';
+
+// Updated import paths to reflect the new folder structure
+import AdminDashboard from './pages/admin/AdminDashboard';
+import SupplierDashboard from './pages/supplier/SupplierDashboard';
+import BuyerDashboard from './pages/buyer/BuyerDashboard';
 
 // Global ESC + Swipe handler
 function GlobalHandlers() {
   const navigate = useNavigate();
 
   useEffect(() => {
-    // ESC — browser back (modals apne aap band honge agar bahar click ya ESC handle kar rahe hain)
     const handleKeyDown = (e) => {
       if (e.key === 'Escape') {
-        // Custom event fire karo — saare components sun sakte hain
         window.dispatchEvent(new CustomEvent('closeModal'));
       }
     };
 
-    // Swipe left to right — ek step back
     let touchStartX = 0;
     const handleTouchStart = (e) => { touchStartX = e.touches[0].clientX; };
     const handleTouchEnd = (e) => {
       const diff = e.changedTouches[0].clientX - touchStartX;
-      if (diff > 80) navigate(-1); // 80px swipe = back
+      if (diff > 80) navigate(-1);
     };
 
     document.addEventListener('keydown', handleKeyDown);
@@ -52,7 +51,7 @@ function App() {
         <Route path="/register" element={<Register />} />
         <Route path="/pending" element={<Pending />} />
         
-        {/* Dashboards ab apne khud ke in-built layouts use karenge */}
+        {/* Dashboards mapped to updated file names/paths */}
         <Route path="/admin" element={<AdminDashboard />} />
         <Route path="/supplier" element={<SupplierDashboard />} />
         <Route path="/buyer" element={<BuyerDashboard />} />
