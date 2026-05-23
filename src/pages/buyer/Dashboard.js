@@ -5,6 +5,7 @@ import { collection, getDocs, query, where, addDoc, doc, getDoc, updateDoc, orde
 import { auth, db } from '../../firebase';
 import ProductDesigns from './ProductDesigns';
 import { notifyNewOrder } from '../../utils/notifications';
+import { useWindowSize } from '../../hooks/useWindowSize';
 
 const NIGHTY_CATEGORIES = ['Nighty', 'Nighty with Dupatta'];
 
@@ -55,7 +56,7 @@ function ProfileEdit({ userProfile, onSave, categories }) {
         </div>
         <h3 style={{ margin: '12px 0 4px', color: D.textPrimary, fontSize: 18, fontWeight: 700 }}>{userProfile.firmName}</h3>
         <p style={{ margin: '0 0 20px', color: D.textSecondary, fontSize: 13 }}>{userProfile.email}</p>
-        
+
         {[['GST Number', userProfile.gstNumber], ['Contact Person', userProfile.contactPerson],
           ['Mobile', userProfile.mobile], ['Address', userProfile.address],
           ['City', userProfile.city], ['District', userProfile.district],
@@ -87,7 +88,7 @@ function ProfileEdit({ userProfile, onSave, categories }) {
     <div style={S.profileCard}>
       <h3 style={{ margin: '0 0 4px', color: D.textPrimary, textAlign: 'left' }}>Edit Profile</h3>
       <p style={{ margin: '0 0 16px', fontSize: 12, color: D.textSecondary, textAlign: 'left' }}>Press ESC to cancel</p>
-      
+
       {[['firmName', 'Firm Name'], ['contactPerson', 'Contact Person'], ['mobile', 'Mobile'],
         ['address', 'Address'], ['city', 'City'], ['district', 'District'],
         ['state', 'State'], ['pincode', 'Pincode'],
@@ -185,7 +186,9 @@ function OrderCard({ order }) {
   const [expanded, setExpanded] = useState(false);
   const [showDispatch, setShowDispatch] = useState(false);
 
-  const isPaid = order.status === 'Delivered' || order.status === 'Partially Dispatched' || order.status === 'Shipped';  const totalItems = order.items?.length || 0;
+  const shipments = order.shipments || [];
+  const hasDispatchData = shipments.length > 0;
+  const totalItems = order.items?.length || 0;
   const firstItem = order.items?.[0];
 
   useEffect(() => {
@@ -214,32 +217,55 @@ function OrderCard({ order }) {
           <div style={S.fullModal} onClick={e => e.stopPropagation()}>
             <div style={S.modalHandle} />
             <h3 style={S.modalHeading}>Dispatch Details</h3>
-            <div style={{ display: 'flex', flexDirection: 'column' }}>
-              {[
-                ['Order ID', `#${order.id.slice(0, 8)}`],
-                ['Bill No', order.billNo || '—'],
-                ['Bill Date', order.billDate || '—'],
-                ['Transport', order.transport || '—'],
-                ['LR No', order.lrNo || '—'],
-                ['LR Date', order.lrDate || '—'],
-              ].map(([label, val]) => (
-                <div key={label} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '11px 0', borderBottom: `1px solid ${D.borderLight}` }}>
-                  <span style={{ fontSize: 13, color: D.textSecondary, fontWeight: 500 }}>{label}</span>
-                  <span style={{ fontSize: 13, color: label === 'Payment' ? (order.paymentStatus === 'Cleared' ? D.success : '#7a5200') : D.textPrimary, fontWeight: 600, textAlign: 'right', maxWidth: '60%' }}>{val}</span>
-                </div>
-              ))}
-              {order.sizeWisePayment && Object.keys(order.sizeWisePayment).length > 0 && (
-                <div style={{ paddingTop: 12 }}>
-                  <p style={{ margin: '0 0 8px', fontSize: 12, fontWeight: 600, color: D.textSecondary, textTransform: 'uppercase', letterSpacing: '0.05em' }}>Size-wise Qty</p>
-                  {Object.entries(order.sizeWisePayment).map(([size, qty]) => (
-                    <div key={size} style={{ display: 'flex', justifyContent: 'space-between', padding: '6px 0', borderBottom: `1px solid ${D.borderLight}` }}>
-                      <span style={{ fontSize: 13, color: D.textSecondary }}>Size {size}</span>
-                      <span style={{ fontSize: 13, fontWeight: 600, color: D.textPrimary }}>{qty} pcs</span>
-                    </div>
-                  ))}
-                </div>
-              )}
+
+            {/* Order ID */}
+            <div style={{ display: 'flex', justifyContent: 'space-between', padding: '10px 0', borderBottom: `1px solid ${D.borderLight}` }}>
+              <span style={{ fontSize: 13, color: D.textSecondary, fontWeight: 500 }}>Order ID</span>
+              <span style={{ fontSize: 13, color: D.textPrimary, fontWeight: 600 }}>#{order.id.slice(0, 8)}</span>
             </div>
+
+            {/* Each shipment */}
+            {shipments.map((ship, idx) => (
+              <div key={idx} style={{ marginTop: 14, paddingBottom: 4, borderBottom: idx < shipments.length - 1 ? `2px solid ${D.borderLight}` : 'none' }}>
+                {/* Shipment header */}
+                <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 10 }}>
+                  <div style={{ width: 3, height: 18, backgroundColor: D.gold, borderRadius: 2 }} />
+                  <span style={{ fontSize: 13, fontWeight: 700, color: D.navy }}>
+                    Dispatch {idx + 1}{ship.billDate ? ` · ${ship.billDate}` : ''}
+                  </span>
+                </div>
+
+                {[
+                  ['Bill No', ship.billNo],
+                  ['Transport', ship.transport],
+                  ['LR No', ship.lrNo],
+                  ['LR Date', ship.lrDate],
+                ].map(([label, val]) => val ? (
+                  <div key={label} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '8px 0', borderBottom: `1px solid ${D.borderLight}` }}>
+                    <span style={{ fontSize: 13, color: D.textSecondary, fontWeight: 500 }}>{label}</span>
+                    <span style={{ fontSize: 13, color: D.textPrimary, fontWeight: 600, textAlign: 'right', maxWidth: '60%' }}>{val}</span>
+                  </div>
+                ) : null)}
+
+                {/* Items in this shipment */}
+                {ship.items?.length > 0 && (
+                  <div style={{ marginTop: 8, backgroundColor: D.bg, borderRadius: 8, padding: '8px 10px' }}>
+                    <p style={{ margin: '0 0 6px', fontSize: 11, fontWeight: 700, color: D.textSecondary, textTransform: 'uppercase', letterSpacing: '0.05em' }}>Items</p>
+                    {ship.items.map((item, iIdx) => (
+                      <div key={iIdx} style={{ display: 'flex', justifyContent: 'space-between', padding: '5px 0', borderBottom: `1px solid ${D.borderLight}` }}>
+                        <span style={{ fontSize: 12, color: D.textPrimary }}>
+                          {item.productName}{item.size ? ` (${item.size})` : ''}
+                        </span>
+                        <span style={{ fontSize: 12, fontWeight: 700, color: D.navy }}>
+                          {item.qty} {item.unit || ''}
+                        </span>
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </div>
+            ))}
+
             <button style={{ ...S.btnGhost, marginTop: 20 }} onClick={() => setShowDispatch(false)}>Close</button>
           </div>
         </div>
@@ -292,10 +318,10 @@ function OrderCard({ order }) {
                 {order.nightyDetails.totalSets} sets · {order.nightyDetails.packingType} sets/bale · <b style={{ color: D.navy }}>{order.nightyDetails.totalBales} bale(s)</b>
               </p>
             )}
-            {isPaid && (
-  <button style={{ ...S.btnPrimary, marginTop: 12, padding: '10px', fontSize: 13, backgroundColor: D.navyMid }}
-    onClick={() => setShowDispatch(true)}>📦 View Dispatch Details</button>
-)}
+            {hasDispatchData && (
+              <button style={{ ...S.btnPrimary, marginTop: 12, padding: '10px', fontSize: 13, backgroundColor: D.navyMid }}
+                onClick={() => setShowDispatch(true)}>📦 View Dispatch Details</button>
+            )}
           </div>
         )}
       </div>
@@ -303,8 +329,129 @@ function OrderCard({ order }) {
   );
 }
 
+// ── SideNav ─────────────────────────────────────────────────
+function SideNav({ activeTab, setActiveTab, cartCount, userProfile, isTablet, onLogout }) {
+  const navWidth = isTablet ? 200 : 240;
+
+  const tabs = [
+    {
+      id: 'browse', label: 'Marketplace',
+      icon: <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/><polyline points="9 22 9 12 15 12 15 22"/></svg>
+    },
+    {
+      id: 'orders', label: 'My Orders',
+      icon: <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/></svg>
+    },
+    {
+      id: 'cart', label: 'Cart',
+      icon: <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M6 2L3 6v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2V6l-3-4z"/><line x1="3" y1="6" x2="21" y2="6"/><path d="M16 10a4 4 0 0 1-8 0"/></svg>
+    },
+    {
+      id: 'profile', label: 'Profile',
+      icon: <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>
+    },
+  ];
+
+  return (
+    <div style={{
+      width: navWidth, flexShrink: 0,
+      backgroundColor: D.navy,
+      display: 'flex', flexDirection: 'column',
+      height: '100vh', position: 'sticky', top: 0,
+      boxShadow: '2px 0 12px rgba(3,22,50,0.15)',
+    }}>
+      {/* Logo */}
+      <div style={{ padding: '20px 16px 16px', borderBottom: `1px solid rgba(255,255,255,0.08)` }}>
+        <span style={{ fontSize: 10, color: D.goldLight, fontWeight: 700, letterSpacing: '0.1em', textTransform: 'uppercase', display: 'block', marginBottom: 2 }}>Jain Agency</span>
+        <span style={{ fontSize: isTablet ? 14 : 16, fontWeight: 800, color: 'white', display: 'block' }}>Marketplace</span>
+        {userProfile?.firmName && (
+          <span style={{ fontSize: 11, color: 'rgba(255,255,255,0.5)', display: 'block', marginTop: 6, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{userProfile.firmName}</span>
+        )}
+      </div>
+
+      {/* Nav Items */}
+      <nav style={{ flex: 1, padding: '12px 8px', display: 'flex', flexDirection: 'column', gap: 2 }}>
+        {tabs.map(tab => {
+          const isActive = activeTab === tab.id;
+          return (
+            <button key={tab.id} onClick={() => setActiveTab(tab.id)} style={{
+              display: 'flex', alignItems: 'center', gap: 10,
+              padding: isTablet ? '10px 12px' : '11px 14px',
+              borderRadius: 8, border: 'none', cursor: 'pointer',
+              backgroundColor: isActive ? 'rgba(255,255,255,0.12)' : 'transparent',
+              color: isActive ? 'white' : 'rgba(255,255,255,0.55)',
+              fontSize: isTablet ? 13 : 14, fontWeight: isActive ? 700 : 500,
+              textAlign: 'left', transition: 'background 0.15s, color 0.15s',
+              position: 'relative',
+            }}>
+              {/* Active indicator */}
+              {isActive && <div style={{ position: 'absolute', left: 0, top: '20%', bottom: '20%', width: 3, backgroundColor: D.goldLight, borderRadius: '0 2px 2px 0' }} />}
+              {React.cloneElement(tab.icon, { stroke: isActive ? 'white' : 'rgba(255,255,255,0.55)', strokeWidth: isActive ? 2.5 : 1.8 })}
+              <span style={{ flex: 1 }}>{tab.label}</span>
+              {tab.id === 'cart' && cartCount > 0 && (
+                <span style={{ backgroundColor: D.gold, color: 'white', fontSize: 10, fontWeight: 700, borderRadius: 10, padding: '1px 6px', minWidth: 18, textAlign: 'center' }}>
+                  {cartCount > 99 ? '99+' : cartCount}
+                </span>
+              )}
+            </button>
+          );
+        })}
+      </nav>
+
+      {/* Logout */}
+      <div style={{ padding: '12px 8px', borderTop: `1px solid rgba(255,255,255,0.08)` }}>
+        <button onClick={onLogout} style={{
+          display: 'flex', alignItems: 'center', gap: 10,
+          padding: '10px 14px', width: '100%',
+          borderRadius: 8, border: 'none', cursor: 'pointer',
+          backgroundColor: 'transparent', color: 'rgba(255,255,255,0.45)',
+          fontSize: 13, fontWeight: 500,
+        }}>
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="rgba(255,255,255,0.45)" strokeWidth="2.5"><path d="M18.36 6.64a9 9 0 1 1-12.73 0"/><line x1="12" y1="2" x2="12" y2="12"/></svg>
+          Logout
+        </button>
+      </div>
+    </div>
+  );
+}
+
+// ── BottomNav (mobile only) ─────────────────────────────────
+function BottomNav({ activeTab, setActiveTab, cartCount }) {
+  const tabs = [
+    { id: 'browse', label: 'Home', icon: <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/><polyline points="9 22 9 12 15 12 15 22"/></svg> },
+    { id: 'orders', label: 'Orders', icon: <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/></svg> },
+    { id: 'cart', label: 'Cart', icon: <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M6 2L3 6v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2V6l-3-4z"/><line x1="3" y1="6" x2="21" y2="6"/><path d="M16 10a4 4 0 0 1-8 0"/></svg> },
+    { id: 'profile', label: 'Profile', icon: <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg> },
+  ];
+  return (
+    <div style={S.bottomNav}>
+      {tabs.map(tab => (
+        <button key={tab.id} style={{ ...S.navBtn, color: activeTab === tab.id ? D.navy : D.textSecondary }} onClick={() => setActiveTab(tab.id)}>
+          <div style={{ position: 'relative' }}>
+            {React.cloneElement(tab.icon, { stroke: activeTab === tab.id ? D.navy : D.textSecondary, strokeWidth: activeTab === tab.id ? 2.5 : 1.8 })}
+            {tab.id === 'cart' && cartCount > 0 && (
+              <span style={{ position: 'absolute', top: -6, right: -8, backgroundColor: D.gold, color: 'white', fontSize: 9, fontWeight: 700, borderRadius: 20, padding: '1px 5px', minWidth: 14, textAlign: 'center' }}>{cartCount > 99 ? '99+' : cartCount}</span>
+            )}
+          </div>
+          <span style={{ fontSize: 10, fontWeight: activeTab === tab.id ? 700 : 500, marginTop: 2 }}>{tab.label}</span>
+        </button>
+      ))}
+    </div>
+  );
+}
+
+function getStatusStyle(status) {
+  if (status === 'Delivered') return { backgroundColor: '#e6f4ea', color: '#1a6b3c' };
+  if (status === 'Shipped') return { backgroundColor: '#e8f0fe', color: '#1a3a8f' };
+  if (status === 'Processing') return { backgroundColor: '#fef7e0', color: '#7a5200' };
+  if (status === 'Cancelled') return { backgroundColor: '#fce8e6', color: '#ba1a1a' };
+  return { backgroundColor: '#f1f3f4', color: '#44474d' };
+}
+
 // ── BuyerDashboard ──────────────────────────────────────────
 function BuyerDashboard() {
+  const { isMobile, isTablet, isDesktop } = useWindowSize();
+
   const [activeTab, setActiveTab] = useState('browse');
   const [products, setProducts] = useState([]);
   const [productDesigns, setProductDesigns] = useState({});
@@ -377,12 +524,11 @@ function BuyerDashboard() {
     return () => document.removeEventListener('keydown', handleEsc);
   }, []);
 
-  // Filter notifications based on preferences
   const filteredNotifications = notifications.filter(n => {
-    if (n.type !== 'new_product') return true; 
+    if (n.type !== 'new_product') return true;
     const prefs = userProfile?.notificationPrefs;
-    if (!prefs || prefs.length === 0) return true; 
-    return prefs.includes(n.category || 'General'); 
+    if (!prefs || prefs.length === 0) return true;
+    return prefs.includes(n.category || 'General');
   });
 
   const markAllRead = async () => {
@@ -525,272 +671,327 @@ function BuyerDashboard() {
   const unreadCount = filteredNotifications.filter(n => !n.read).length;
   const totalCartItems = cart.reduce((sum, i) => sum + (i.sets || i.quantity || 0), 0);
 
+  // Responsive grid: 2 col mobile, 3 col tablet, 4 col desktop
+  const productGridCols = isMobile
+    ? 'repeat(2, 1fr)'
+    : isTablet
+      ? 'repeat(3, 1fr)'
+      : 'repeat(4, 1fr)';
+
+  const useSideNav = !isMobile; // tablet + desktop
+
+  // ProductDesigns view
   if (viewingProduct) {
     return (
-      <div style={S.appShell}>
-        <div style={S.topBar}>
-          <button style={S.backBtn} onClick={() => setViewingProduct(null)}>
-            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><path d="M19 12H5M12 5l-7 7 7 7"/></svg>
-          </button>
-          <span style={S.topBarTitle}>{viewingProduct.name}</span>
-          <div style={{ width: 40 }} />
+      <div style={{ display: 'flex', height: '100vh', backgroundColor: D.bg, fontFamily: "'Inter', sans-serif" }}>
+        {useSideNav && (
+          <SideNav
+            activeTab={activeTab}
+            setActiveTab={t => { setViewingProduct(null); setActiveTab(t); }}
+            cartCount={totalCartItems}
+            userProfile={userProfile}
+            isTablet={isTablet}
+            onLogout={handleLogoutClick}
+          />
+        )}
+        <div style={{ flex: 1, display: 'flex', flexDirection: 'column', overflow: 'hidden' }}>
+          <div style={S.topBar}>
+            <button style={S.backBtn} onClick={() => setViewingProduct(null)}>
+              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><path d="M19 12H5M12 5l-7 7 7 7"/></svg>
+            </button>
+            <span style={S.topBarTitle}>{viewingProduct.name}</span>
+            <div style={{ width: 40 }} />
+          </div>
+          <div style={{ flex: 1, overflowY: 'auto', paddingBottom: isMobile ? 90 : 20 }}>
+            <ProductDesigns
+              product={viewingProduct}
+              designs={productDesigns[viewingProduct.id] || []}
+              cart={cart}
+              onAddSet={addDesignToCart}
+              onRemoveSet={removeDesignFromCart}
+              onBack={() => setViewingProduct(null)}
+            />
+          </div>
+          {isMobile && (
+            <BottomNav
+              activeTab={activeTab}
+              setActiveTab={t => { setViewingProduct(null); setActiveTab(t); }}
+              cartCount={totalCartItems}
+            />
+          )}
         </div>
-        <div style={{ flex: 1, overflowY: 'auto', paddingBottom: 90 }}>
-          <ProductDesigns product={viewingProduct} designs={productDesigns[viewingProduct.id] || []} cart={cart} onAddSet={addDesignToCart} onRemoveSet={removeDesignFromCart} onBack={() => setViewingProduct(null)} />
-        </div>
-        <BottomNav activeTab={activeTab} setActiveTab={t => { setViewingProduct(null); setActiveTab(t); }} cartCount={totalCartItems} />
       </div>
     );
   }
 
+  // Main layout
   return (
-    <div style={S.appShell}>
-      {showNightyCheckout && <NightyCheckout nightyBySupplier={nightyBySupplier} onConfirm={placeOrder} onCancel={() => setShowNightyCheckout(false)} />}
+    <div style={{ display: 'flex', height: '100vh', backgroundColor: D.bg, fontFamily: "'Inter', sans-serif" }}>
+      {/* Side Nav — tablet & desktop */}
+      {useSideNav && (
+        <SideNav
+          activeTab={activeTab}
+          setActiveTab={setActiveTab}
+          cartCount={totalCartItems}
+          userProfile={userProfile}
+          isTablet={isTablet}
+          onLogout={handleLogoutClick}
+        />
+      )}
 
-      {/* TOP BAR */}
-      <div style={S.topBar}>
-        <div style={{ display: 'flex', flexDirection: 'column' }}>
-          <span style={{ fontSize: 11, color: D.gold, fontWeight: 600, letterSpacing: '0.08em', textTransform: 'uppercase' }}>Jain Agency</span>
-          <span style={{ fontSize: 16, fontWeight: 700, color: D.navy, lineHeight: 1.2 }}>
-            {activeTab === 'browse' ? 'Marketplace' : activeTab === 'cart' ? 'My Cart' : activeTab === 'orders' ? 'My Orders' : 'Profile'}
-          </span>
-        </div>
-        <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-          {activeTab === 'browse' && (
-            <button style={S.iconBtn} onClick={() => setShowSearch(!showSearch)}>
-              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke={D.navy} strokeWidth="2"><circle cx="11" cy="11" r="8"/><path d="M21 21l-4.35-4.35"/></svg>
-            </button>
-          )}
-          <div ref={notifRef} style={{ position: 'relative' }}>
-            <button style={S.iconBtn} onClick={() => { setShowNotifications(!showNotifications); if (!showNotifications) markAllRead(); }}>
-              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke={D.navy} strokeWidth="2"><path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9M13.73 21a2 2 0 0 1-3.46 0"/></svg>
-              {unreadCount > 0 && <span style={S.notifBadge}>{unreadCount > 9 ? '9+' : unreadCount}</span>}
-            </button>
-            {showNotifications && (
-              <div style={S.notifDropdown}>
-                <div style={S.notifDropHead}>
-                  <span style={{ fontWeight: 700, fontSize: 14, color: D.navy }}>Notifications</span>
-                  <span style={{ fontSize: 12, color: D.textSecondary }}>{filteredNotifications.length} total</span>
-                </div>
-                {filteredNotifications.length === 0 ? (
-                  <div style={{ padding: '30px 16px', textAlign: 'center', color: D.textSecondary, fontSize: 13 }}>No notifications yet</div>
-                ) : (
-                  <div style={{ maxHeight: 320, overflowY: 'auto' }}>
-                    {filteredNotifications.slice(0, 20).map(n => (
-                      <div key={n.id} style={{ ...S.notifItem, backgroundColor: n.read ? D.surface : '#f0f4ff' }}>
-                        <span style={{ fontSize: 16, marginRight: 10 }}>{n.type === 'new_product' ? '📦' : '🔔'}</span>
-                        <div style={{ flex: 1 }}>
-                          <p style={{ margin: 0, fontSize: 13, color: D.textPrimary, lineHeight: 1.4 }}>{n.message}</p>
-                          <p style={{ margin: '3px 0 0', fontSize: 11, color: D.textSecondary }}>
-                            {n.createdAt?.toDate?.()?.toLocaleString('en-IN', { day: '2-digit', month: 'short', hour: '2-digit', minute: '2-digit' })}
-                          </p>
-                        </div>
-                        {!n.read && <div style={{ width: 7, height: 7, borderRadius: '50%', backgroundColor: D.navy, flexShrink: 0 }} />}
-                      </div>
-                    ))}
-                  </div>
-                )}
-              </div>
-            )}
+      {/* Main Column */}
+      <div style={{ flex: 1, display: 'flex', flexDirection: 'column', overflow: 'hidden' }}>
+        {showNightyCheckout && (
+          <NightyCheckout nightyBySupplier={nightyBySupplier} onConfirm={placeOrder} onCancel={() => setShowNightyCheckout(false)} />
+        )}
+
+        {/* TOP BAR */}
+        <div style={S.topBar}>
+          <div style={{ display: 'flex', flexDirection: 'column' }}>
+            {isMobile && <span style={{ fontSize: 11, color: D.gold, fontWeight: 600, letterSpacing: '0.08em', textTransform: 'uppercase' }}>Jain Agency</span>}
+            <span style={{ fontSize: 16, fontWeight: 700, color: D.navy, lineHeight: 1.2 }}>
+              {activeTab === 'browse' ? 'Marketplace' : activeTab === 'cart' ? 'My Cart' : activeTab === 'orders' ? 'My Orders' : 'Profile'}
+            </span>
           </div>
-          {/* Universal Power Off Button */}
-          <button style={S.iconBtn} onClick={handleLogoutClick} title="Logout">
-            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke={D.navy} strokeWidth="2.5"><path d="M18.36 6.64a9 9 0 1 1-12.73 0"/><line x1="12" y1="2" x2="12" y2="12"/></svg>
-          </button>
-        </div>
-      </div>
-
-      {/* MAIN CONTENT */}
-      <div style={S.mainContent}>
-
-        {/* BROWSE TAB */}
-        {activeTab === 'browse' && (
-          <div>
-            {showSearch && (
-              <div style={{ padding: '0 16px 12px' }}>
-                <div style={S.searchBox}>
-                  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke={D.textSecondary} strokeWidth="2" style={{ flexShrink: 0 }}><circle cx="11" cy="11" r="8"/><path d="M21 21l-4.35-4.35"/></svg>
-                  <input autoFocus style={S.searchInput} placeholder="Search products, designs, suppliers..." value={searchTerm} onChange={e => setSearchTerm(e.target.value)} />
-                  {searchTerm && <button style={{ background: 'none', border: 'none', cursor: 'pointer', padding: 0, color: D.textSecondary }} onClick={() => setSearchTerm('')}>✕</button>}
-                </div>
-                <div style={{ display: 'flex', gap: 8, marginTop: 8 }}>
-                  <input style={{ ...S.priceInput, flex: 1 }} type="number" placeholder="Min ₹" value={minPrice} onChange={e => setMinPrice(e.target.value)} />
-                  <span style={{ color: D.textSecondary, alignSelf: 'center' }}>—</span>
-                  <input style={{ ...S.priceInput, flex: 1 }} type="number" placeholder="Max ₹" value={maxPrice} onChange={e => setMaxPrice(e.target.value)} />
-                </div>
-              </div>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+            {activeTab === 'browse' && (
+              <button style={S.iconBtn} onClick={() => setShowSearch(!showSearch)}>
+                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke={D.navy} strokeWidth="2"><circle cx="11" cy="11" r="8"/><path d="M21 21l-4.35-4.35"/></svg>
+              </button>
             )}
-            <div style={S.chipRow}>
-              <button style={!selectedCategory ? S.chipActive : S.chip} onClick={() => setSelectedCategory('')}>All</button>
-              {categories.map(cat => <button key={cat} style={selectedCategory === cat ? S.chipActive : S.chip} onClick={() => setSelectedCategory(cat)}>{cat}</button>)}
+            <div ref={notifRef} style={{ position: 'relative' }}>
+              <button style={S.iconBtn} onClick={() => { setShowNotifications(!showNotifications); if (!showNotifications) markAllRead(); }}>
+                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke={D.navy} strokeWidth="2"><path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9M13.73 21a2 2 0 0 1-3.46 0"/></svg>
+                {unreadCount > 0 && <span style={S.notifBadge}>{unreadCount > 9 ? '9+' : unreadCount}</span>}
+              </button>
+              {showNotifications && (
+                <div style={S.notifDropdown}>
+                  <div style={S.notifDropHead}>
+                    <span style={{ fontWeight: 700, fontSize: 14, color: D.navy }}>Notifications</span>
+                    <span style={{ fontSize: 12, color: D.textSecondary }}>{filteredNotifications.length} total</span>
+                  </div>
+                  {filteredNotifications.length === 0 ? (
+                    <div style={{ padding: '30px 16px', textAlign: 'center', color: D.textSecondary, fontSize: 13 }}>No notifications yet</div>
+                  ) : (
+                    <div style={{ maxHeight: 320, overflowY: 'auto' }}>
+                      {filteredNotifications.slice(0, 20).map(n => (
+                        <div key={n.id} style={{ ...S.notifItem, backgroundColor: n.read ? D.surface : '#f0f4ff' }}>
+                          <span style={{ fontSize: 16, marginRight: 10 }}>{n.type === 'new_product' ? '📦' : '🔔'}</span>
+                          <div style={{ flex: 1 }}>
+                            <p style={{ margin: 0, fontSize: 13, color: D.textPrimary, lineHeight: 1.4 }}>{n.message}</p>
+                            <p style={{ margin: '3px 0 0', fontSize: 11, color: D.textSecondary }}>
+                              {n.createdAt?.toDate?.()?.toLocaleString('en-IN', { day: '2-digit', month: 'short', hour: '2-digit', minute: '2-digit' })}
+                            </p>
+                          </div>
+                          {!n.read && <div style={{ width: 7, height: 7, borderRadius: '50%', backgroundColor: D.navy, flexShrink: 0 }} />}
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                </div>
+              )}
             </div>
-            {searchedAndFilteredProducts.length === 0 ? (
-              <div style={{ padding: '60px 16px', textAlign: 'center', color: D.textSecondary }}><p style={{ fontSize: 15 }}>No products found</p></div>
-            ) : (
-              <div style={S.productGrid}>
-                {searchedAndFilteredProducts.map(product => {
-                  const designs = getProductDesignsList(product);
-                  const idx = cardDesignIndices[product.id] || 0;
-                  const img = designs[idx]?.photoUrl || 'https://via.placeholder.com/200';
-                  return (
-                    <div key={product.id} style={S.productCard}
-                      onClick={() => { setSelectedProductDetails(product); setModalDesignIdx(idx); setSizeQuantities({}); setCartAdded(false); }}>
-                      <div style={S.cardImgWrap}>
-                        <img src={img} alt={product.name} style={S.cardImg} />
-                        {designs.length > 1 && (
-                          <>
-                            <button style={S.cardArrow('left')} onClick={e => { e.stopPropagation(); setCardDesignIndices(p => ({ ...p, [product.id]: ((p[product.id] || 0) - 1 + designs.length) % designs.length })); }}>‹</button>
-                            <button style={S.cardArrow('right')} onClick={e => { e.stopPropagation(); setCardDesignIndices(p => ({ ...p, [product.id]: ((p[product.id] || 0) + 1) % designs.length })); }}>›</button>
-                            <div style={S.designCountBadge}>{idx + 1}/{designs.length}</div>
-                          </>
-                        )}
-                      </div>
-                      <div style={S.cardInfo}>
-                        <span style={S.cardCategory}>{product.category}</span>
-                        <p style={S.cardName}>{product.name}</p>
-                        <p style={S.cardSupplier}>{product.supplierFirm}</p>
-                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginTop: 8 }}>
-                          <span style={S.cardPrice}>₹{product.price}<span style={{ fontSize: 11, fontWeight: 400, color: D.textSecondary }}>/pc</span></span>
-                          <span style={S.detailsTag}>View →</span>
-                        </div>
-                      </div>
-                    </div>
-                  );
-                })}
+            {/* Logout — mobile topbar mein, desktop/tablet mein side nav mein already hai but topbar pe bhi subtle */}
+            <button style={S.iconBtn} onClick={handleLogoutClick} title="Logout">
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke={D.textSecondary} strokeWidth="2"><path d="M18.36 6.64a9 9 0 1 1-12.73 0"/><line x1="12" y1="2" x2="12" y2="12"/></svg>
+            </button>
+          </div>
+        </div>
+
+        {/* MAIN CONTENT */}
+        <div style={{ flex: 1, overflowY: 'auto', paddingBottom: isMobile ? 80 : 20 }}>
+
+          {/* BROWSE TAB */}
+          {activeTab === 'browse' && (
+            <div>
+              {showSearch && (
+                <div style={{ padding: '0 16px 12px' }}>
+                  <div style={S.searchBox}>
+                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke={D.textSecondary} strokeWidth="2" style={{ flexShrink: 0 }}><circle cx="11" cy="11" r="8"/><path d="M21 21l-4.35-4.35"/></svg>
+                    <input autoFocus style={S.searchInput} placeholder="Search products, designs, suppliers..." value={searchTerm} onChange={e => setSearchTerm(e.target.value)} />
+                    {searchTerm && <button style={{ background: 'none', border: 'none', cursor: 'pointer', padding: 0, color: D.textSecondary }} onClick={() => setSearchTerm('')}>✕</button>}
+                  </div>
+                  <div style={{ display: 'flex', gap: 8, marginTop: 8 }}>
+                    <input style={{ ...S.priceInput, flex: 1 }} type="number" placeholder="Min ₹" value={minPrice} onChange={e => setMinPrice(e.target.value)} />
+                    <span style={{ color: D.textSecondary, alignSelf: 'center' }}>—</span>
+                    <input style={{ ...S.priceInput, flex: 1 }} type="number" placeholder="Max ₹" value={maxPrice} onChange={e => setMaxPrice(e.target.value)} />
+                  </div>
+                </div>
+              )}
+              <div style={S.chipRow}>
+                <button style={!selectedCategory ? S.chipActive : S.chip} onClick={() => setSelectedCategory('')}>All</button>
+                {categories.map(cat => <button key={cat} style={selectedCategory === cat ? S.chipActive : S.chip} onClick={() => setSelectedCategory(cat)}>{cat}</button>)}
               </div>
-            )}
-          </div>
-        )}
-
-        {/* CART TAB */}
-        {activeTab === 'cart' && (
-          <div style={{ padding: '12px 16px' }}>
-            {cart.length === 0 ? (
-              <div style={{ padding: '80px 0', textAlign: 'center' }}>
-                <div style={{ width: 72, height: 72, borderRadius: '50%', backgroundColor: '#e8edf5', display: 'flex', alignItems: 'center', justifyContent: 'center', margin: '0 auto 16px' }}>
-                  <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke={D.navy} strokeWidth="1.5"><path d="M6 2L3 6v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2V6l-3-4z"/><line x1="3" y1="6" x2="21" y2="6"/><path d="M16 10a4 4 0 0 1-8 0"/></svg>
-                </div>
-                <p style={{ color: D.textPrimary, fontSize: 16, fontWeight: 700, margin: '0 0 6px' }}>Your cart is empty</p>
-                <p style={{ color: D.textSecondary, fontSize: 13, margin: '0 0 24px' }}>Browse products and add items to your cart</p>
-                <button style={{ ...S.btnPrimary, width: 'auto', padding: '12px 28px', margin: '0 auto' }} onClick={() => setActiveTab('browse')}>Browse Products</button>
-              </div>
-            ) : (
-              <>
-                <div style={{ backgroundColor: D.navy, borderRadius: 12, padding: '14px 16px', marginBottom: 16, display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                  <div>
-                    <p style={{ margin: 0, fontSize: 12, color: 'rgba(255,255,255,0.7)', fontWeight: 500 }}>Cart Total</p>
-                    <p style={{ margin: '2px 0 0', fontSize: 22, fontWeight: 800, color: 'white' }}>₹{cartTotal.toLocaleString('en-IN')}</p>
-                  </div>
-                  <div style={{ textAlign: 'right' }}>
-                    <p style={{ margin: 0, fontSize: 12, color: 'rgba(255,255,255,0.7)' }}>{totalCartItems} items</p>
-                    <p style={{ margin: '2px 0 0', fontSize: 12, color: D.goldLight }}>{cart.length} product{cart.length !== 1 ? 's' : ''}</p>
-                  </div>
-                </div>
-
-                {Object.keys(nonNightyBySupplier).map(sid => (
-                  <div key={sid} style={S.supplierSection}>
-                    <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 12 }}>
-                      <div style={{ width: 28, height: 28, borderRadius: '50%', backgroundColor: '#e8edf5', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
-                        <span style={{ fontSize: 11, fontWeight: 800, color: D.navy }}>{nonNightyBySupplier[sid].supplierFirm?.[0]?.toUpperCase()}</span>
-                      </div>
-                      <span style={S.supplierLabel}>{nonNightyBySupplier[sid].supplierFirm}</span>
-                    </div>
-                    {nonNightyBySupplier[sid].items.map(item => (
-                      <div key={item.cartKey} style={{ ...S.cartItem, padding: '12px 0' }}>
-                        <div style={{ flex: 1 }}>
-                          <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginBottom: 4 }}>
-                            <p style={{ margin: 0, fontWeight: 700, fontSize: 14, color: D.textPrimary }}>{item.productName}</p>
-                            {item.size && <span style={S.sizeBadge}>{item.size}</span>}
+              {searchedAndFilteredProducts.length === 0 ? (
+                <div style={{ padding: '60px 16px', textAlign: 'center', color: D.textSecondary }}><p style={{ fontSize: 15 }}>No products found</p></div>
+              ) : (
+                <div style={{ ...S.productGrid, gridTemplateColumns: productGridCols }}>
+                  {searchedAndFilteredProducts.map(product => {
+                    const designs = getProductDesignsList(product);
+                    const idx = cardDesignIndices[product.id] || 0;
+                    const img = designs[idx]?.photoUrl || 'https://via.placeholder.com/200';
+                    return (
+                      <div key={product.id} style={S.productCard}
+                        onClick={() => { setSelectedProductDetails(product); setModalDesignIdx(idx); setSizeQuantities({}); setCartAdded(false); }}>
+                        <div style={S.cardImgWrap}>
+                          <img src={img} alt={product.name} style={S.cardImg} />
+                          {designs.length > 1 && (
+                            <>
+                              <button style={S.cardArrow('left')} onClick={e => { e.stopPropagation(); setCardDesignIndices(p => ({ ...p, [product.id]: ((p[product.id] || 0) - 1 + designs.length) % designs.length })); }}>‹</button>
+                              <button style={S.cardArrow('right')} onClick={e => { e.stopPropagation(); setCardDesignIndices(p => ({ ...p, [product.id]: ((p[product.id] || 0) + 1) % designs.length })); }}>›</button>
+                              <div style={S.designCountBadge}>{idx + 1}/{designs.length}</div>
+                            </>
+                          )}
+                        </div>
+                        <div style={S.cardInfo}>
+                          <span style={S.cardCategory}>{product.category}</span>
+                          <p style={S.cardName}>{product.name}</p>
+                          <p style={S.cardSupplier}>{product.supplierFirm}</p>
+                          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginTop: 8 }}>
+                            <span style={S.cardPrice}>₹{product.price}<span style={{ fontSize: 11, fontWeight: 400, color: D.textSecondary }}>/pc</span></span>
+                            <span style={S.detailsTag}>View →</span>
                           </div>
-                          <p style={{ margin: 0, fontSize: 12, color: D.textSecondary }}>₹{item.price}/pc · Total: <b style={{ color: D.navy }}>₹{(item.price * item.quantity).toLocaleString('en-IN')}</b></p>
-                        </div>
-                        <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-                          <div style={{ display: 'flex', alignItems: 'center', border: `1px solid ${D.border}`, borderRadius: 8, overflow: 'hidden' }}>
-                            <button style={{ width: 32, height: 36, border: 'none', backgroundColor: D.bg, cursor: 'pointer', fontSize: 16, color: D.navy, fontWeight: 700 }}
-                              onClick={() => { if (item.quantity <= 1) removeFromCart(item.cartKey); else updateQuantity(item.cartKey, item.quantity - 1); }}>−</button>
-                            <input type="number" min={1} value={item.quantity} onChange={e => updateQuantity(item.cartKey, e.target.value)}
-                              style={{ width: 44, height: 36, border: 'none', textAlign: 'center', fontSize: 13, fontWeight: 700, color: D.navy, backgroundColor: D.surface, outline: 'none' }} />
-                            <button style={{ width: 32, height: 36, border: 'none', backgroundColor: D.bg, cursor: 'pointer', fontSize: 16, color: D.navy, fontWeight: 700 }}
-                              onClick={() => updateQuantity(item.cartKey, item.quantity + 1)}>+</button>
-                          </div>
-                          <button style={{ width: 30, height: 30, borderRadius: 8, border: 'none', backgroundColor: '#fce8e6', color: D.error, cursor: 'pointer', fontSize: 14, fontWeight: 700, display: 'flex', alignItems: 'center', justifyContent: 'center' }}
-                            onClick={() => removeFromCart(item.cartKey)}>✕</button>
                         </div>
                       </div>
-                    ))}
-                  </div>
-                ))}
-
-                {Object.keys(nightyBySupplier).map(sid => (
-                  <div key={sid} style={S.supplierSection}>
-                    <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 12 }}>
-                      <div style={{ width: 28, height: 28, borderRadius: '50%', backgroundColor: '#e8edf5', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
-                        <span style={{ fontSize: 11, fontWeight: 800, color: D.navy }}>{nightyBySupplier[sid].supplierFirm?.[0]?.toUpperCase()}</span>
-                      </div>
-                      <span style={S.supplierLabel}>{nightyBySupplier[sid].supplierFirm}</span>
-                      <span style={{ fontSize: 10, color: D.gold, fontWeight: 600, backgroundColor: '#fef7e0', padding: '2px 7px', borderRadius: 10 }}>{nightyBySupplier[sid].category}</span>
-                    </div>
-                    {nightyBySupplier[sid].items.map(item => (
-                      <div key={item.cartKey} style={{ ...S.cartItem, padding: '10px 0' }}>
-                        <img src={item.photoUrl} alt="" style={{ width: 48, height: 48, objectFit: 'cover', borderRadius: 8, flexShrink: 0, border: `1px solid ${D.borderLight}` }} />
-                        <div style={{ flex: 1 }}>
-                          <p style={{ margin: '0 0 2px', fontWeight: 700, fontSize: 13, color: D.textPrimary }}>{item.productName}</p>
-                          <p style={{ margin: 0, fontSize: 12, color: D.textSecondary }}>DN {item.designNo}{item.dnNumber ? ` (${item.dnNumber})` : ''} · {item.pcsPerSet} pcs/set</p>
-                        </div>
-                        <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
-                          <button style={{ width: 30, height: 30, borderRadius: '50%', border: `1.5px solid ${D.border}`, backgroundColor: D.surface, cursor: 'pointer', fontSize: 16, fontWeight: 700, color: D.navy, display: 'flex', alignItems: 'center', justifyContent: 'center' }}
-                            onClick={() => removeDesignFromCart(item.cartKey)}>−</button>
-                          <span style={{ fontSize: 15, fontWeight: 800, minWidth: 24, textAlign: 'center', color: D.navy }}>{item.sets}</span>
-                          <button style={{ width: 30, height: 30, borderRadius: '50%', border: `1.5px solid ${D.border}`, backgroundColor: D.surface, cursor: 'pointer', fontSize: 16, fontWeight: 700, color: D.navy, display: 'flex', alignItems: 'center', justifyContent: 'center' }}
-                            onClick={() => addDesignToCart(products.find(p => p.id === item.productId), { id: item.designId, designNo: item.designNo, dnNumber: item.dnNumber, photoUrl: item.photoUrl, sets: item.availableSets })}>+</button>
-                          <button style={{ width: 30, height: 30, borderRadius: 8, border: 'none', backgroundColor: '#fce8e6', color: D.error, cursor: 'pointer', fontSize: 14, fontWeight: 700, display: 'flex', alignItems: 'center', justifyContent: 'center' }}
-                            onClick={() => removeFromCart(item.cartKey)}>✕</button>
-                        </div>
-                      </div>
-                    ))}
-                  </div>
-                ))}
-
-                <div style={{ padding: '8px 0 100px' }}>
-                  {nightyCart.length > 0 && (
-                    <p style={{ fontSize: 12, color: D.textSecondary, marginBottom: 12, padding: '10px 14px', backgroundColor: '#f0f4ff', borderRadius: 8, border: `1px solid #c5d0f0` }}>
-                      📦 Bale packing details will be confirmed at checkout
-                    </p>
-                  )}
-                  {orderSuccess && (
-                    <div style={{ backgroundColor: '#e6f4ea', borderRadius: 10, padding: '12px 16px', marginBottom: 12, display: 'flex', alignItems: 'center', gap: 10 }}>
-                      <span style={{ fontSize: 20 }}>✓</span>
-                      <p style={{ margin: 0, color: D.success, fontWeight: 700, fontSize: 14 }}>Order placed successfully!</p>
-                    </div>
-                  )}
-                  <button style={S.btnPrimary} onClick={handleCheckout} disabled={loading}>
-                    {loading ? 'Placing Order...' : `Proceed to Checkout · ₹${cartTotal.toLocaleString('en-IN')}`}
-                  </button>
+                    );
+                  })}
                 </div>
-              </>
-            )}
-          </div>
-        )}
+              )}
+            </div>
+          )}
 
-        {/* ORDERS TAB */}
-        {activeTab === 'orders' && (
-          <div style={{ padding: '8px 16px' }}>
-            {orders.length === 0 ? (
-              <div style={{ padding: '80px 0', textAlign: 'center', color: D.textSecondary }}><p style={{ fontSize: 15 }}>No orders yet</p></div>
-            ) : orders.map(order => <OrderCard key={order.id} order={order} />)}
-          </div>
-        )}
+          {/* CART TAB */}
+          {activeTab === 'cart' && (
+            <div style={{ padding: '12px 16px' }}>
+              {cart.length === 0 ? (
+                <div style={{ padding: '80px 0', textAlign: 'center' }}>
+                  <div style={{ width: 72, height: 72, borderRadius: '50%', backgroundColor: '#e8edf5', display: 'flex', alignItems: 'center', justifyContent: 'center', margin: '0 auto 16px' }}>
+                    <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke={D.navy} strokeWidth="1.5"><path d="M6 2L3 6v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2V6l-3-4z"/><line x1="3" y1="6" x2="21" y2="6"/><path d="M16 10a4 4 0 0 1-8 0"/></svg>
+                  </div>
+                  <p style={{ color: D.textPrimary, fontSize: 16, fontWeight: 700, margin: '0 0 6px' }}>Your cart is empty</p>
+                  <p style={{ color: D.textSecondary, fontSize: 13, margin: '0 0 24px' }}>Browse products and add items to your cart</p>
+                  <button style={{ ...S.btnPrimary, width: 'auto', padding: '12px 28px', margin: '0 auto' }} onClick={() => setActiveTab('browse')}>Browse Products</button>
+                </div>
+              ) : (
+                <>
+                  <div style={{ backgroundColor: D.navy, borderRadius: 12, padding: '14px 16px', marginBottom: 16, display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                    <div>
+                      <p style={{ margin: 0, fontSize: 12, color: 'rgba(255,255,255,0.7)', fontWeight: 500 }}>Cart Total</p>
+                      <p style={{ margin: '2px 0 0', fontSize: 22, fontWeight: 800, color: 'white' }}>₹{cartTotal.toLocaleString('en-IN')}</p>
+                    </div>
+                    <div style={{ textAlign: 'right' }}>
+                      <p style={{ margin: 0, fontSize: 12, color: 'rgba(255,255,255,0.7)' }}>{totalCartItems} items</p>
+                      <p style={{ margin: '2px 0 0', fontSize: 12, color: D.goldLight }}>{cart.length} product{cart.length !== 1 ? 's' : ''}</p>
+                    </div>
+                  </div>
 
-        {/* PROFILE TAB */}
-        {activeTab === 'profile' && userProfile && (
-          <div style={{ padding: '0 16px 80px' }}>
-            <ProfileEdit userProfile={userProfile} onSave={fetchProfile} categories={categories} />
-          </div>
+                  {Object.keys(nonNightyBySupplier).map(sid => (
+                    <div key={sid} style={S.supplierSection}>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 12 }}>
+                        <div style={{ width: 28, height: 28, borderRadius: '50%', backgroundColor: '#e8edf5', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
+                          <span style={{ fontSize: 11, fontWeight: 800, color: D.navy }}>{nonNightyBySupplier[sid].supplierFirm?.[0]?.toUpperCase()}</span>
+                        </div>
+                        <span style={S.supplierLabel}>{nonNightyBySupplier[sid].supplierFirm}</span>
+                      </div>
+                      {nonNightyBySupplier[sid].items.map(item => (
+                        <div key={item.cartKey} style={{ ...S.cartItem, padding: '12px 0' }}>
+                          <div style={{ flex: 1 }}>
+                            <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginBottom: 4 }}>
+                              <p style={{ margin: 0, fontWeight: 700, fontSize: 14, color: D.textPrimary }}>{item.productName}</p>
+                              {item.size && <span style={S.sizeBadge}>{item.size}</span>}
+                            </div>
+                            <p style={{ margin: 0, fontSize: 12, color: D.textSecondary }}>₹{item.price}/pc · Total: <b style={{ color: D.navy }}>₹{(item.price * item.quantity).toLocaleString('en-IN')}</b></p>
+                          </div>
+                          <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                            <div style={{ display: 'flex', alignItems: 'center', border: `1px solid ${D.border}`, borderRadius: 8, overflow: 'hidden' }}>
+                              <button style={{ width: 32, height: 36, border: 'none', backgroundColor: D.bg, cursor: 'pointer', fontSize: 16, color: D.navy, fontWeight: 700 }}
+                                onClick={() => { if (item.quantity <= 1) removeFromCart(item.cartKey); else updateQuantity(item.cartKey, item.quantity - 1); }}>−</button>
+                              <input type="number" min={1} value={item.quantity} onChange={e => updateQuantity(item.cartKey, e.target.value)}
+                                style={{ width: 44, height: 36, border: 'none', textAlign: 'center', fontSize: 13, fontWeight: 700, color: D.navy, backgroundColor: D.surface, outline: 'none' }} />
+                              <button style={{ width: 32, height: 36, border: 'none', backgroundColor: D.bg, cursor: 'pointer', fontSize: 16, color: D.navy, fontWeight: 700 }}
+                                onClick={() => updateQuantity(item.cartKey, item.quantity + 1)}>+</button>
+                            </div>
+                            <button style={{ width: 30, height: 30, borderRadius: 8, border: 'none', backgroundColor: '#fce8e6', color: D.error, cursor: 'pointer', fontSize: 14, fontWeight: 700, display: 'flex', alignItems: 'center', justifyContent: 'center' }}
+                              onClick={() => removeFromCart(item.cartKey)}>✕</button>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  ))}
+
+                  {Object.keys(nightyBySupplier).map(sid => (
+                    <div key={sid} style={S.supplierSection}>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 12 }}>
+                        <div style={{ width: 28, height: 28, borderRadius: '50%', backgroundColor: '#e8edf5', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
+                          <span style={{ fontSize: 11, fontWeight: 800, color: D.navy }}>{nightyBySupplier[sid].supplierFirm?.[0]?.toUpperCase()}</span>
+                        </div>
+                        <span style={S.supplierLabel}>{nightyBySupplier[sid].supplierFirm}</span>
+                        <span style={{ fontSize: 10, color: D.gold, fontWeight: 600, backgroundColor: '#fef7e0', padding: '2px 7px', borderRadius: 10 }}>{nightyBySupplier[sid].category}</span>
+                      </div>
+                      {nightyBySupplier[sid].items.map(item => (
+                        <div key={item.cartKey} style={{ ...S.cartItem, padding: '10px 0' }}>
+                          <img src={item.photoUrl} alt="" style={{ width: 48, height: 48, objectFit: 'cover', borderRadius: 8, flexShrink: 0, border: `1px solid ${D.borderLight}` }} />
+                          <div style={{ flex: 1 }}>
+                            <p style={{ margin: '0 0 2px', fontWeight: 700, fontSize: 13, color: D.textPrimary }}>{item.productName}</p>
+                            <p style={{ margin: 0, fontSize: 12, color: D.textSecondary }}>DN {item.designNo}{item.dnNumber ? ` (${item.dnNumber})` : ''} · {item.pcsPerSet} pcs/set</p>
+                          </div>
+                          <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+                            <button style={{ width: 30, height: 30, borderRadius: '50%', border: `1.5px solid ${D.border}`, backgroundColor: D.surface, cursor: 'pointer', fontSize: 16, fontWeight: 700, color: D.navy, display: 'flex', alignItems: 'center', justifyContent: 'center' }}
+                              onClick={() => removeDesignFromCart(item.cartKey)}>−</button>
+                            <span style={{ fontSize: 15, fontWeight: 800, minWidth: 24, textAlign: 'center', color: D.navy }}>{item.sets}</span>
+                            <button style={{ width: 30, height: 30, borderRadius: '50%', border: `1.5px solid ${D.border}`, backgroundColor: D.surface, cursor: 'pointer', fontSize: 16, fontWeight: 700, color: D.navy, display: 'flex', alignItems: 'center', justifyContent: 'center' }}
+                              onClick={() => addDesignToCart(products.find(p => p.id === item.productId), { id: item.designId, designNo: item.designNo, dnNumber: item.dnNumber, photoUrl: item.photoUrl, sets: item.availableSets })}>+</button>
+                            <button style={{ width: 30, height: 30, borderRadius: 8, border: 'none', backgroundColor: '#fce8e6', color: D.error, cursor: 'pointer', fontSize: 14, fontWeight: 700, display: 'flex', alignItems: 'center', justifyContent: 'center' }}
+                              onClick={() => removeFromCart(item.cartKey)}>✕</button>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  ))}
+
+                  <div style={{ padding: '8px 0 100px' }}>
+                    {nightyCart.length > 0 && (
+                      <p style={{ fontSize: 12, color: D.textSecondary, marginBottom: 12, padding: '10px 14px', backgroundColor: '#f0f4ff', borderRadius: 8, border: `1px solid #c5d0f0` }}>
+                        📦 Bale packing details will be confirmed at checkout
+                      </p>
+                    )}
+                    {orderSuccess && (
+                      <div style={{ backgroundColor: '#e6f4ea', borderRadius: 10, padding: '12px 16px', marginBottom: 12, display: 'flex', alignItems: 'center', gap: 10 }}>
+                        <span style={{ fontSize: 20 }}>✓</span>
+                        <p style={{ margin: 0, color: D.success, fontWeight: 700, fontSize: 14 }}>Order placed successfully!</p>
+                      </div>
+                    )}
+                    <button style={S.btnPrimary} onClick={handleCheckout} disabled={loading}>
+                      {loading ? 'Placing Order...' : `Proceed to Checkout · ₹${cartTotal.toLocaleString('en-IN')}`}
+                    </button>
+                  </div>
+                </>
+              )}
+            </div>
+          )}
+
+          {/* ORDERS TAB */}
+          {activeTab === 'orders' && (
+            <div style={{ padding: '8px 16px' }}>
+              {orders.length === 0 ? (
+                <div style={{ padding: '80px 0', textAlign: 'center', color: D.textSecondary }}><p style={{ fontSize: 15 }}>No orders yet</p></div>
+              ) : orders.map(order => <OrderCard key={order.id} order={order} />)}
+            </div>
+          )}
+
+          {/* PROFILE TAB */}
+          {activeTab === 'profile' && userProfile && (
+            <div style={{ padding: '0 16px 80px' }}>
+              <ProfileEdit userProfile={userProfile} onSave={fetchProfile} categories={categories} />
+            </div>
+          )}
+        </div>
+
+        {/* Bottom Nav — mobile only */}
+        {isMobile && (
+          <BottomNav activeTab={activeTab} setActiveTab={setActiveTab} cartCount={totalCartItems} />
         )}
       </div>
-
-      {/* BOTTOM NAV */}
-      <BottomNav activeTab={activeTab} setActiveTab={setActiveTab} cartCount={totalCartItems} />
 
       {/* PRODUCT DETAIL MODAL */}
       {selectedProductDetails && (
@@ -894,41 +1095,7 @@ function BuyerDashboard() {
   );
 }
 
-// ── BottomNav ───────────────────────────────────────────────
-function BottomNav({ activeTab, setActiveTab, cartCount }) {
-  const tabs = [
-    { id: 'browse', label: 'Home', icon: <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/><polyline points="9 22 9 12 15 12 15 22"/></svg> },
-    { id: 'orders', label: 'Orders', icon: <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/></svg> },
-    { id: 'cart', label: 'Cart', icon: <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M6 2L3 6v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2V6l-3-4z"/><line x1="3" y1="6" x2="21" y2="6"/><path d="M16 10a4 4 0 0 1-8 0"/></svg> },
-    { id: 'profile', label: 'Profile', icon: <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg> },
-  ];
-  return (
-    <div style={S.bottomNav}>
-      {tabs.map(tab => (
-        <button key={tab.id} style={{ ...S.navBtn, color: activeTab === tab.id ? D.navy : D.textSecondary }} onClick={() => setActiveTab(tab.id)}>
-          <div style={{ position: 'relative' }}>
-            {React.cloneElement(tab.icon, { stroke: activeTab === tab.id ? D.navy : D.textSecondary, strokeWidth: activeTab === tab.id ? 2.5 : 1.8 })}
-            {tab.id === 'cart' && cartCount > 0 && (
-              <span style={{ position: 'absolute', top: -6, right: -8, backgroundColor: D.gold, color: 'white', fontSize: 9, fontWeight: 700, borderRadius: 20, padding: '1px 5px', minWidth: 14, textAlign: 'center' }}>{cartCount > 99 ? '99+' : cartCount}</span>
-            )}
-          </div>
-          <span style={{ fontSize: 10, fontWeight: activeTab === tab.id ? 700 : 500, marginTop: 2 }}>{tab.label}</span>
-        </button>
-      ))}
-    </div>
-  );
-}
-
-function getStatusStyle(status) {
-  if (status === 'Delivered') return { backgroundColor: '#e6f4ea', color: '#1a6b3c' };
-  if (status === 'Shipped') return { backgroundColor: '#e8f0fe', color: '#1a3a8f' };
-  if (status === 'Processing') return { backgroundColor: '#fef7e0', color: '#7a5200' };
-  if (status === 'Cancelled') return { backgroundColor: '#fce8e6', color: '#ba1a1a' };
-  return { backgroundColor: '#f1f3f4', color: '#44474d' };
-}
-
 const S = {
-  // RESPONSIVE UPDATE: Removed maxWidth: 480, set width/height to 100% to fit wrapper
   appShell: { display: 'flex', flexDirection: 'column', height: '100%', width: '100%', backgroundColor: D.bg, fontFamily: "'Inter', sans-serif", position: 'relative', overflow: 'hidden' },
   topBar: { display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '12px 16px', backgroundColor: D.surface, borderBottom: `1px solid ${D.borderLight}`, flexShrink: 0, zIndex: 10 },
   topBarTitle: { fontSize: 16, fontWeight: 700, color: D.navy },
@@ -945,10 +1112,7 @@ const S = {
   chipRow: { display: 'flex', gap: 8, overflowX: 'auto', padding: '12px 16px', scrollbarWidth: 'none' },
   chip: { flexShrink: 0, padding: '7px 14px', border: `1px solid ${D.border}`, borderRadius: 20, backgroundColor: D.surface, fontSize: 13, color: D.textSecondary, cursor: 'pointer', whiteSpace: 'nowrap' },
   chipActive: { flexShrink: 0, padding: '7px 14px', border: `1px solid ${D.navy}`, borderRadius: 20, backgroundColor: D.navy, fontSize: 13, color: 'white', cursor: 'pointer', whiteSpace: 'nowrap', fontWeight: 600 },
-  
-  // RESPONSIVE UPDATE: Dynamic grid sizing instead of fixed columns
-  productGrid: { display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(200px, 1fr))', gap: 16, padding: '0 16px 16px' },
-  
+  productGrid: { display: 'grid', gap: 16, padding: '0 16px 16px' },
   productCard: { backgroundColor: D.surface, borderRadius: 10, overflow: 'hidden', boxShadow: '0 2px 8px rgba(3,22,50,0.06)', cursor: 'pointer', border: `1px solid ${D.borderLight}` },
   cardImgWrap: { position: 'relative', width: '100%', aspectRatio: '3/4', backgroundColor: D.bg, overflow: 'hidden' },
   cardImg: { width: '100%', height: '100%', objectFit: 'cover', display: 'block' },
@@ -977,16 +1141,11 @@ const S = {
   input: { display: 'block', width: '100%', padding: '11px 14px', border: `1px solid ${D.border}`, borderRadius: 8, fontSize: 14, color: D.textPrimary, outline: 'none', boxSizing: 'border-box', marginBottom: 10, backgroundColor: D.surface },
   btnPrimary: { display: 'block', width: '100%', padding: '14px', backgroundColor: D.navy, color: 'white', border: 'none', borderRadius: 10, fontSize: 15, fontWeight: 700, cursor: 'pointer', letterSpacing: '-0.01em' },
   btnGhost: { display: 'block', width: '100%', padding: '13px', backgroundColor: 'transparent', color: D.navy, border: `1.5px solid ${D.border}`, borderRadius: 10, fontSize: 14, fontWeight: 600, cursor: 'pointer' },
-  
-  // RESPONSIVE UPDATE: Removed maxWidth from BottomNav so it spans the wrapper
   bottomNav: { position: 'fixed', bottom: 0, width: '100%', display: 'flex', backgroundColor: D.surface, borderTop: `1px solid ${D.borderLight}`, zIndex: 50, paddingBottom: 'env(safe-area-inset-bottom)' },
   navBtn: { flex: 1, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', padding: '10px 0', border: 'none', backgroundColor: 'transparent', cursor: 'pointer', minHeight: 56 },
-  
-  // RESPONSIVE UPDATE: Center modals on larger screens
   modalOverlay: { position: 'fixed', top: 0, bottom: 0, left: 0, right: 0, backgroundColor: 'rgba(3,22,50,0.5)', zIndex: 200, display: 'flex', alignItems: 'center', justifyContent: 'center' },
   fullModal: { backgroundColor: D.surface, borderRadius: '16px', padding: '12px 16px 32px', width: '90%', maxWidth: 600, maxHeight: '85vh', overflowY: 'auto', display: 'flex', flexDirection: 'column' },
   productModal: { backgroundColor: D.surface, borderRadius: '16px', width: '90%', maxWidth: 600, maxHeight: '88vh', overflowY: 'auto', position: 'relative' },
-  
   modalHandle: { width: 36, height: 4, backgroundColor: D.border, borderRadius: 2, margin: '8px auto 12px' },
   modalHeading: { margin: '0 0 16px', fontSize: 18, fontWeight: 700, color: D.navy },
   modalClose: { position: 'absolute', top: 16, right: 16, width: 32, height: 32, borderRadius: '50%', border: 'none', backgroundColor: 'rgba(255,255,255,0.9)', cursor: 'pointer', fontSize: 13, fontWeight: 700, zIndex: 10, display: 'flex', alignItems: 'center', justifyContent: 'center' },
