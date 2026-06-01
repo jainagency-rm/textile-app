@@ -10,6 +10,7 @@ import SupplierBottomNav from '../../components/supplier/SupplierBottomNav';
 import SupplierOrderCard from '../../components/supplier/SupplierOrderCard';
 import AddProductWizard from '../../components/supplier/AddProductWizard';
 import EditProductModal from '../../components/supplier/EditProductModal';
+import SupplierProfileTab from '../../components/supplier/SupplierProfileTab';
 
 const D = { navy: '#031632', gold: '#775a19', bg: '#f8f9fa', surface: '#ffffff', textPrimary: '#191c1d', textSecondary: '#44474d', borderLight: '#e7e8e9', error: '#ba1a1a', success: '#1a6b3c', warning: '#7a5200' };
 
@@ -202,7 +203,7 @@ function SupplierDashboard() {
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '12px 16px', backgroundColor: D.surface, borderBottom: `1px solid ${D.borderLight}`, flexShrink: 0, zIndex: 10 }}>
           <div style={{ display: 'flex', flexDirection: 'column' }}>
             {isMobile && <span style={{ fontSize: 10, color: D.gold, fontWeight: 700, letterSpacing: '0.08em', textTransform: 'uppercase' }}>Jain Agency</span>}
-            <span style={{ fontSize: 16, fontWeight: 700, color: D.navy }}>{activeTab === 'products' ? 'Inventory' : 'Orders'}</span>
+            <span style={{ fontSize: 16, fontWeight: 700, color: D.navy }}>{activeTab === 'products' ? 'Inventory' : activeTab === 'orders' ? 'Orders' : 'Profile'}</span>
           </div>
           <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
             {isMobile && activeTab === 'products' && (
@@ -315,6 +316,12 @@ function SupplierDashboard() {
                   ))
               )}
             </div>
+          )}
+
+          {activeTab === 'profile' && (
+            userProfile
+              ? <SupplierProfileTab userProfile={userProfile} fetchProfile={fetchProfile} />
+              : <div style={{ padding: 40, textAlign: 'center', color: '#44474d' }}>Loading profile...</div>
           )}
         </div>
 

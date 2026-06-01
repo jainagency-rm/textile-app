@@ -4,8 +4,8 @@ import { db } from '../../firebase';
 
 const D = { navy: '#031632', navyMid: '#1a2b48', textPrimary: '#191c1d', textSecondary: '#44474d', surface: '#ffffff', border: '#c5c6ce', borderLight: '#e7e8e9' };
 
-function ProfileEdit({ userProfile, onSave, categories }) {
-  const [editing, setEditing] = useState(false);
+function ProfileEdit({ userProfile, onSave, onCancel, categories }) {
+  const [editing, setEditing] = useState(true);
   const [form, setForm] = useState({ ...userProfile });
   const [loading, setLoading] = useState(false);
 
@@ -16,7 +16,7 @@ function ProfileEdit({ userProfile, onSave, categories }) {
   const [postOffices, setPostOffices] = useState([]);
 
   useEffect(() => {
-    const handler = (e) => { if (e.key === 'Escape') setEditing(false); };
+    const handler = (e) => { if (e.key === 'Escape') { setEditing(false); onCancel?.(); } };
     document.addEventListener('keydown', handler);
     return () => document.removeEventListener('keydown', handler);
   }, []);
@@ -28,7 +28,7 @@ function ProfileEdit({ userProfile, onSave, categories }) {
       firmName: form.firmName, contactPerson: form.contactPerson, mobile: form.mobile,
       address: form.address, city: form.city, district: form.district, state: form.state, pincode: form.pincode,
     });
-    setLoading(false); setEditing(false); onSave();
+    setLoading(false); onSave();
   };
 
   // FIX 2 — Pincode fetch
@@ -92,28 +92,8 @@ function ProfileEdit({ userProfile, onSave, categories }) {
     btnGhost: { display: 'block', width: '100%', padding: '13px', backgroundColor: 'transparent', color: D.navy, border: `1.5px solid ${D.border}`, borderRadius: 10, fontSize: 14, fontWeight: 600, cursor: 'pointer' },
   };
 
-  if (!editing) {
-    return (
-      <div style={S.card}>
-        <div style={{ width: 64, height: 64, borderRadius: '50%', backgroundColor: '#e8edf5', display: 'flex', alignItems: 'center', justifyContent: 'center', margin: '0 auto' }}>
-          <span style={{ fontSize: 28, color: D.navy, fontWeight: 700 }}>{userProfile.firmName?.[0]?.toUpperCase()}</span>
-        </div>
-        <h3 style={{ margin: '12px 0 4px', color: D.textPrimary, fontSize: 18, fontWeight: 700 }}>{userProfile.firmName}</h3>
-        <p style={{ margin: '0 0 20px', color: D.textSecondary, fontSize: 13 }}>{userProfile.email}</p>
+  if (!editing) return null;
 
-        {[['GST Number', userProfile.gstNumber], ['Contact Person', userProfile.contactPerson], ['Mobile', userProfile.mobile], ['Address', userProfile.address], ['City', userProfile.city], ['District', userProfile.district], ['State', userProfile.state], ['Pincode', userProfile.pincode]].map(([label, val]) => (
-          <div key={label} style={S.row}>
-            <span style={{ fontSize: 12, color: D.textSecondary, fontWeight: 500 }}>{label}</span>
-            <span style={{ fontSize: 13, color: D.textPrimary, fontWeight: 600, textAlign: 'right', maxWidth: '60%' }}>{val || '—'}</span>
-          </div>
-        ))}
-
-        <button style={{ ...S.btnPrimary, marginTop: 24 }} onClick={() => setEditing(true)}>Edit Profile</button>
-      </div>
-    );
-  }
-
-  // FIX 3 — Edit form with reordered fields
   return (
     <div style={S.card}>
       <h3 style={{ margin: '0 0 4px', color: D.textPrimary, textAlign: 'left' }}>Edit Profile</h3>
@@ -188,7 +168,7 @@ function ProfileEdit({ userProfile, onSave, categories }) {
 
       <div style={{ display: 'flex', gap: 10, marginTop: 8 }}>
         <button style={S.btnPrimary} onClick={handleSave} disabled={loading}>{loading ? 'Saving...' : 'Save'}</button>
-        <button style={S.btnGhost} onClick={() => setEditing(false)}>Cancel</button>
+        <button style={S.btnGhost} onClick={() => { setEditing(false); onCancel?.(); }}>Cancel</button>
       </div>
     </div>
   );
