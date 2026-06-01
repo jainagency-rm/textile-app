@@ -23,6 +23,7 @@ function SupplierDashboard() {
   const [notifications, setNotifications] = useState([]);
   const [showNotifications, setShowNotifications] = useState(false);
   const [showAdd, setShowAdd] = useState(false);
+  const [productSearch, setProductSearch] = useState('');
   const [editingProduct, setEditingProduct] = useState(null);
   const [userProfile, setUserProfile] = useState(null);
   const [supplierId, setSupplierId] = useState(null);
@@ -257,9 +258,28 @@ function SupplierDashboard() {
                 <p style={{ color: D.textSecondary, fontSize: 13, margin: '0 0 20px' }}>Add your first product to get started</p>
                 <button onClick={() => setShowAdd(true)} style={{ padding: '12px 28px', backgroundColor: D.navy, color: 'white', border: 'none', borderRadius: 10, fontSize: 14, fontWeight: 700, cursor: 'pointer' }}>+ Add Product</button>
               </div>
-            ) : (
-              <div style={{ display: 'grid', gridTemplateColumns: productGridCols, gap: 16, padding: 16 }}>
-                {products.map(p => {
+            ) : (() => {
+              const filteredProducts = products.filter(p =>
+                !productSearch ||
+                p.name?.toLowerCase().includes(productSearch.toLowerCase()) ||
+                p.category?.toLowerCase().includes(productSearch.toLowerCase())
+              );
+              return (
+              <>
+                <div style={{ padding: '12px 16px 0' }}>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 10, backgroundColor: 'white', border: '1px solid #c5c6ce', borderRadius: 10, padding: '10px 14px' }}>
+                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#44474d" strokeWidth="2"><circle cx="11" cy="11" r="8"/><path d="M21 21l-4.35-4.35"/></svg>
+                    <input
+                      style={{ flex: 1, border: 'none', outline: 'none', fontSize: 14, color: '#191c1d', backgroundColor: 'transparent' }}
+                      placeholder="Search products..."
+                      value={productSearch}
+                      onChange={e => setProductSearch(e.target.value)}
+                    />
+                    {productSearch && <button onClick={() => setProductSearch('')} style={{ background: 'none', border: 'none', cursor: 'pointer', color: '#44474d', fontSize: 14 }}>✕</button>}
+                  </div>
+                </div>
+                <div style={{ display: 'grid', gridTemplateColumns: productGridCols, gap: 16, padding: 16 }}>
+                {filteredProducts.map(p => {
                   const isApproved = p.status === 'approved';
                   return (
                     <div key={p.id} style={{ backgroundColor: D.surface, borderRadius: 12, overflow: 'hidden', boxShadow: '0 2px 8px rgba(3,22,50,0.06)', border: `1px solid ${D.borderLight}` }}>
@@ -294,8 +314,10 @@ function SupplierDashboard() {
                     </div>
                   );
                 })}
-              </div>
-            )
+                </div>
+              </>
+              );
+            })()
           )}
 
           {activeTab === 'orders' && (
