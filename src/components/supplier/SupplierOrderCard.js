@@ -27,7 +27,7 @@ async function exportOrderPDF(order) {
   pdf.setFontSize(9); pdf.setFont('helvetica', 'normal'); pdf.setTextColor(200, 200, 200);
   pdf.text('Supplier Order Receipt', margin, 22);
   pdf.setFontSize(11); pdf.setTextColor(255, 255, 255);
-  pdf.text(`Order #${order.id.slice(0, 8).toUpperCase()}`, W - margin, 15, { align: 'right' });
+  pdf.text(order.orderNumber ? `Order #${order.orderNumber}` : `Order #${order.id.slice(-6).toUpperCase()}`, W - margin, 15, { align: 'right' });
   pdf.setFontSize(9); pdf.setTextColor(200, 200, 200);
   pdf.text(order.createdAt?.toDate?.()?.toLocaleDateString('en-IN') || '', W - margin, 22, { align: 'right' });
   let y = 46;
@@ -53,7 +53,7 @@ async function exportOrderPDF(order) {
     pdf.text(ds, margin + 85, y + 5);
     pdf.text(String(item.orderedQty || item.quantity || item.sets || 0), margin + 130, y + 5);
     pdf.setTextColor(22, 163, 74); pdf.text(String(item.dispatchedQty || 0), margin + 155, y + 5);
-    pdf.setTextColor(...gray); pdf.text(item.unit || 'Piece', margin + 178, y + 5); y += 7;
+    pdf.setTextColor(...gray); pdf.text(item.moqUnit || item.unit || 'Piece', margin + 178, y + 5); y += 7;
   });
   if (order.nightyDetails) {
     y += 3; pdf.setTextColor(...gray); pdf.setFontSize(8);
@@ -80,7 +80,7 @@ async function exportOrderPDF(order) {
   pdf.setTextColor(200, 200, 200); pdf.setFontSize(8);
   pdf.text('Jain Agency — Supplier Copy', margin, y + 8);
   pdf.text('Page 1', W - margin, y + 8, { align: 'right' });
-  pdf.save(`Order_${order.id.slice(0, 8)}.pdf`);
+  pdf.save(`Order_${order.orderNumber || order.id.slice(-6).toUpperCase()}.pdf`);
 }
 
 function SupplierOrderCard({ order, onApprove, onReject }) {
@@ -92,7 +92,7 @@ function SupplierOrderCard({ order, onApprove, onReject }) {
   const status = order.status || 'Pending';
   const ss = getStatusStyle(status);
   const thumbUrl = order.items?.[0]?.photoUrl || null;
-  const orderLabel = `#${order.orderNumber || order.id.slice(0, 8)}`;
+  const orderLabel = order.orderNumber ? `#${order.orderNumber}` : `#${order.id.slice(-6).toUpperCase()}`;
   const transportName = order.transportDetails?.name || 'No transport';
   const deliveryCity = order.transportDetails?.deliveryAddress || '';
 

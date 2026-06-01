@@ -48,16 +48,9 @@ function SupplierDashboard() {
     setCategories(snap.docs.map(d => ({ id: d.id, ...d.data() })));
   }, []);
 
-  const fetchOrders = useCallback(async (uid) => {
-    if (!uid) return;
-    const q = query(collection(db, 'orders'), where('supplierId', '==', uid));
-    const snap = await getDocs(q);
-    setOrders(snap.docs.map(d => ({ id: d.id, ...d.data() })));
-  }, []);
-
   const fetchAll = useCallback(async (uid) => {
-    await Promise.all([fetchProducts(uid), fetchCategories(), fetchOrders(uid), fetchProfile(uid)]);
-  }, [fetchProducts, fetchCategories, fetchOrders, fetchProfile]);
+    await Promise.all([fetchProducts(uid), fetchCategories(), fetchProfile(uid)]);
+  }, [fetchProducts, fetchCategories, fetchProfile]);
 
   useEffect(() => {
     const unsub = auth.onAuthStateChanged(user => {
@@ -73,6 +66,27 @@ function SupplierDashboard() {
     const unsub = onSnapshot(q, snap => setNotifications(snap.docs.map(d => ({ id: d.id, ...d.data() }))));
     return unsub;
   }, [supplierId]);
+
+  useEffect(() => {
+    const user = auth.currentUser;
+    if (!user) return;
+    const q = query(
+      collection(db, 'orders'),
+      where('supplierId', '==', user.uid)
+    );
+    const unsubscribe = onSnapshot(q, snap => {
+      const fetched = snap.docs.map(d => ({ id: d.id, ...d.data() }));
+      const sorted = fetched.sort((a, b) => {
+        if (a.status === 'Pending' && b.status !== 'Pending') return -1;
+        if (b.status === 'Pending' && a.status !== 'Pending') return 1;
+        const aTime = a.createdAt?.toDate?.() || new Date(0);
+        const bTime = b.createdAt?.toDate?.() || new Date(0);
+        return bTime - aTime;
+      });
+      setOrders(sorted);
+    });
+    return () => unsubscribe();
+  }, []);
 
   useEffect(() => {
     const handleClickOutside = e => { if (notifRef.current && !notifRef.current.contains(e.target)) setShowNotifications(false); };
@@ -98,14 +112,42 @@ function SupplierDashboard() {
     try {
       const batch = writeBatch(db);
       batch.update(doc(db, 'orders', order.id), { status: 'Cancelled' });
-      for (const item of (order.items || [])) {
-        if (item.designId && item.sets) {
-          const dRef = doc(db, 'products', item.productId, 'designs', item.designId);
-          const dSnap = await getDoc(dRef);
-          if (dSnap.exists()) batch.update(dRef, { sets: (dSnap.data().sets || 0) + item.sets });
+      for (const item of order.items) {
+        if (!item.productId) continue;
+        const isNighty = item.cutLabel || item.sets;
+
+        if (isNighty && item.designId && item.cutLabel) {
+          // Nighty: find cut by label, then update design
+          const cutsSnap = await getDocs(
+            collection(db, 'products', item.productId, 'cuts')
+          );
+          for (const cutDoc of cutsSnap.docs) {
+            if (cutDoc.data().label === item.cutLabel) {
+              const dRef = doc(
+                db, 'products', item.productId,
+                'cuts', cutDoc.id,
+                'designs', item.designId
+              );
+              const dSnap = await getDoc(dRef);
+              if (dSnap.exists()) {
+                await updateDoc(dRef, {
+                  sets: (dSnap.data().sets || 0) + (item.sets || 0)
+                });
+              }
+              break;
+            }
+          }
+          // Restore totalSets on product
           const pRef = doc(db, 'products', item.productId);
           const pSnap = await getDoc(pRef);
-          if (pSnap.exists()) batch.update(pRef, { totalSets: (pSnap.data().totalSets || 0) + item.sets });
+          if (pSnap.exists()) {
+            await updateDoc(pRef, {
+              totalSets: (pSnap.data().totalSets || 0) + (item.sets || 0)
+            });
+          }
+        } else if (!isNighty && item.productId) {
+          // Non-nighty: no stock to restore (piece-based)
+          // No action needed
         }
       }
       await batch.commit();
@@ -246,7 +288,7 @@ function SupplierDashboard() {
                             <span style={{ fontSize: 14, fontWeight: 700, color: D.navy }}>₹{p.price}</span>
                           )}
                         </div>
-                        <span style={{ fontSize: 11, color: D.textSecondary }}>{p.moq} {p.unit} MOQ</span>
+                        <span style={{ fontSize: 11, color: D.textSecondary }}>{p.moq} {p.moqUnit || p.unit || 'Piece'} MOQ</span>
                       </div>
                     </div>
                   );

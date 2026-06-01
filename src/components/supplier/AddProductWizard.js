@@ -4,7 +4,7 @@ import { ref, uploadBytes, getDownloadURL } from 'firebase/storage';
 import { auth, db, storage } from '../../firebase';
 import { NIGHTY_CATEGORIES } from '../../constants/product';
 
-const SIZES = ['M', 'L', 'XL', '2XL', '3XL', '4XL', '5XL'];
+const SIZES = ['XS', 'S', 'M', 'L', 'XL', '2XL', '3XL', '4XL', '5XL'];
 const DEFAULT_NIGHTY_CUTS = ['2/70', '2/90', '3/20'];
 const UNITS = ['Piece', 'Set', 'Dozen', 'Meter', 'KG', 'Yard', 'Roll', 'Bale', 'Bundle', 'Box', 'Carton'];
 const RUNNING_WIDTHS = ['36"', '44"', '48"', '54"', '58"', '60"', '72"'];
@@ -67,6 +67,22 @@ function AddProductWizard({ categories, onDone, onCancel }) {
   const [requestSent, setRequestSent] = useState(false);
   const [uploading, setUploading] = useState(false);
   const [form, setForm] = useState(initialFormState);
+  const [dragPhoto, setDragPhoto] = useState({ ctx: null, idx: null });
+
+  const reorderArr = (arr, from, to) => {
+    const a = [...arr]; const [m] = a.splice(from, 1); a.splice(to, 0, m); return a;
+  };
+  const dragProps = (ctx, idx, getArr, setArr) => ({
+    draggable: true,
+    onDragStart: () => setDragPhoto({ ctx, idx }),
+    onDragOver: e => e.preventDefault(),
+    onDragEnter: () => {
+      if (dragPhoto.ctx !== ctx || dragPhoto.idx === idx) return;
+      setArr(reorderArr(getArr(), dragPhoto.idx, idx));
+      setDragPhoto({ ctx, idx });
+    },
+    onDragEnd: () => setDragPhoto({ ctx: null, idx: null }),
+  });
 
   const handleClose = () => { setForm(initialFormState); setStep(1); onCancel(); };
 
@@ -116,11 +132,8 @@ function AddProductWizard({ categories, onDone, onCancel }) {
 
   const handleNightyCutUpload = async (cIdx, files) => {
     setUploading(true);
-    const newDesigns = [];
-    for (const file of Array.from(files).slice(0, 30)) {
-      const url = await uploadFile(file);
-      newDesigns.push({ url, dnNumber: '', sets: '' });
-    }
+    const urls = await Promise.all(Array.from(files).slice(0, 30).map(uploadFile));
+    const newDesigns = urls.map(url => ({ url, dnNumber: '', sets: '' }));
     const cuts = [...form.cuts];
     cuts[cIdx] = { ...cuts[cIdx], designs: [...cuts[cIdx].designs, ...newDesigns] };
     f('cuts', cuts);
@@ -140,22 +153,15 @@ function AddProductWizard({ categories, onDone, onCancel }) {
 
   const handleDesignUpload = async (files) => {
     setUploading(true);
-    const newDesigns = [];
-    for (const file of Array.from(files).slice(0, 30)) {
-      const url = await uploadFile(file);
-      newDesigns.push({ url, dnNumber: '', stock: makeEmptyStock() });
-    }
+    const urls = await Promise.all(Array.from(files).slice(0, 30).map(uploadFile));
+    const newDesigns = urls.map(url => ({ url, dnNumber: '', stock: makeEmptyStock() }));
     f('designs', [...form.designs, ...newDesigns]);
     setUploading(false);
   };
 
   const handleRunningPhotoUpload = async (files) => {
     setUploading(true);
-    const photos = [];
-    for (const file of Array.from(files).slice(0, 10)) {
-      const url = await uploadFile(file);
-      photos.push(url);
-    }
+    const photos = await Promise.all(Array.from(files).slice(0, 10).map(uploadFile));
     f('runningPhotos', [...form.runningPhotos, ...photos]);
     setUploading(false);
   };
@@ -438,7 +444,9 @@ function AddProductWizard({ categories, onDone, onCancel }) {
                   {uploading && <p style={{ fontSize: 12, color: D.warning, textAlign: 'center' }}>Uploading...</p>}
                   <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(90px, 1fr))', gap: 8 }}>
                     {cut.designs.map((d, dIdx) => (
-                      <div key={dIdx} style={{ backgroundColor: D.surface, borderRadius: 8, overflow: 'hidden', border: `1px solid ${D.borderLight}` }}>
+                      <div key={dIdx}
+                        {...dragProps(`cut_${cIdx}`, dIdx, () => form.cuts[cIdx].designs, (newArr) => { const cuts = [...form.cuts]; cuts[cIdx] = { ...cuts[cIdx], designs: newArr }; f('cuts', cuts); })}
+                        style={{ backgroundColor: D.surface, borderRadius: 8, overflow: 'hidden', border: `1px solid ${D.borderLight}`, cursor: 'grab', opacity: dragPhoto.ctx === `cut_${cIdx}` && dragPhoto.idx === dIdx ? 0.4 : 1 }}>
                         <img src={d.url} style={{ width: '100%', aspectRatio: '1', objectFit: 'cover' }} alt="" />
                         <div style={{ padding: '5px 6px 7px' }}>
                           <input className="grid-input" placeholder="DN No." value={d.dnNumber} onFocus={e => e.target.select()} onChange={e => updateNightyCutDesign(cIdx, dIdx, 'dnNumber', e.target.value)} style={{ width: '100%', fontSize: 10, border: `1px solid ${D.borderLight}`, borderRadius: 4, padding: '2px 4px', boxSizing: 'border-box', marginBottom: 3 }} />
@@ -459,7 +467,8 @@ function AddProductWizard({ categories, onDone, onCancel }) {
                     </label>
                     <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(70px, 1fr))', gap: 8 }}>
                       {form.runningPhotos.map((url, idx) => (
-                        <div key={idx} style={{ position: 'relative' }}>
+                        <div key={idx} {...dragProps('running', idx, () => form.runningPhotos, (arr) => f('runningPhotos', arr))}
+                          style={{ position: 'relative', cursor: 'grab', opacity: dragPhoto.ctx === 'running' && dragPhoto.idx === idx ? 0.4 : 1 }}>
                           <img src={url} style={{ width: '100%', aspectRatio: '1', objectFit: 'cover', borderRadius: 8 }} alt="" />
                           <button onClick={() => f('runningPhotos', form.runningPhotos.filter((_, i) => i !== idx))} style={{ position: 'absolute', top: -5, right: -5, width: 18, height: 18, borderRadius: '50%', border: 'none', backgroundColor: D.error, color: 'white', cursor: 'pointer', fontSize: 11, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>✕</button>
                         </div>
@@ -484,7 +493,8 @@ function AddProductWizard({ categories, onDone, onCancel }) {
                     </label>
                     <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(70px, 1fr))', gap: 8 }}>
                       {form.designs.map((d, idx) => (
-                        <div key={idx} style={{ position: 'relative' }}>
+                        <div key={idx} {...dragProps('designs_fs', idx, () => form.designs, (arr) => f('designs', arr))}
+                          style={{ position: 'relative', cursor: 'grab', opacity: dragPhoto.ctx === 'designs_fs' && dragPhoto.idx === idx ? 0.4 : 1 }}>
                           <img src={d.url} style={{ width: '100%', aspectRatio: '1', objectFit: 'cover', borderRadius: 8 }} alt="" />
                           <button onClick={() => f('designs', form.designs.filter((_, i) => i !== idx))} style={{ position: 'absolute', top: -5, right: -5, width: 18, height: 18, borderRadius: '50%', border: 'none', backgroundColor: D.error, color: 'white', cursor: 'pointer', fontSize: 11, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>✕</button>
                         </div>
@@ -519,7 +529,8 @@ function AddProductWizard({ categories, onDone, onCancel }) {
                   </label>
                   <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
                     {form.designs.map((d, idx) => (
-                      <div key={idx} style={{ display: 'flex', gap: 10, backgroundColor: D.surface, borderRadius: 10, padding: 10, border: `1px solid ${D.borderLight}` }}>
+                      <div key={idx} {...dragProps('designs_dw', idx, () => form.designs, (arr) => f('designs', arr))}
+                        style={{ display: 'flex', gap: 10, backgroundColor: D.surface, borderRadius: 10, padding: 10, border: `1px solid ${D.borderLight}`, cursor: 'grab', opacity: dragPhoto.ctx === 'designs_dw' && dragPhoto.idx === idx ? 0.4 : 1 }}>
                         <img src={d.url} style={{ width: 64, height: 64, objectFit: 'cover', borderRadius: 8, flexShrink: 0 }} alt="" />
                         <div style={{ flex: 1, minWidth: 0 }}>
                           <input className="grid-input" placeholder="DN Number (optional)" value={d.dnNumber} onFocus={e => e.target.select()} onChange={e => { const ds = [...form.designs]; ds[idx].dnNumber = e.target.value; f('designs', ds); }} style={{ width: '100%', fontSize: 12, border: `1px solid ${D.borderLight}`, borderRadius: 6, padding: '5px 8px', boxSizing: 'border-box', marginBottom: 6 }} />

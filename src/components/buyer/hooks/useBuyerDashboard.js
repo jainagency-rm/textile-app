@@ -413,7 +413,7 @@ export function useBuyerDashboard() {
           items: sc.items.map(i => ({
             productId: i.productId || '', productName: i.productName || 'Unknown Product',
             quantity: i.quantity || i.orderedQty || 1, orderedQty: i.quantity || i.orderedQty || 1,
-            price: i.price || 0, unit: i.priceUnit || i.unit || 'Piece',
+            price: i.price || 0, unit: i.moqUnit || i.priceUnit || i.unit || 'Piece',
             moqUnit: i.moqUnit || 'Piece',
             pcsPerSet: i.pcsPerSet || null,
             size: i.size || '', category: i.category || '',

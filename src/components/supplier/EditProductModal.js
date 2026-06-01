@@ -84,6 +84,22 @@ export default function EditProductModal({ product, categories = [], onClose, on
   const [nightyCuts, setNightyCuts]       = useState([]);
   const [selectionDesigns, setSelectionDesigns] = useState([]);
   const [uploadingTab2, setUploadingTab2] = useState(false);
+  const [dragPhoto, setDragPhoto] = useState({ ctx: null, idx: null });
+
+  const reorderArr = (arr, from, to) => {
+    const a = [...arr]; const [m] = a.splice(from, 1); a.splice(to, 0, m); return a;
+  };
+  const dragProps = (ctx, idx, getArr, setArr) => ({
+    draggable: true,
+    onDragStart: () => setDragPhoto({ ctx, idx }),
+    onDragOver: e => e.preventDefault(),
+    onDragEnter: () => {
+      if (dragPhoto.ctx !== ctx || dragPhoto.idx === idx) return;
+      setArr(reorderArr(getArr(), dragPhoto.idx, idx));
+      setDragPhoto({ ctx, idx });
+    },
+    onDragEnd: () => setDragPhoto({ ctx: null, idx: null }),
+  });
   const [savingStock, setSavingStock]     = useState(false);
   const [pendingStock, setPendingStock]   = useState(() => product.fullSetStock || {});
 
@@ -212,13 +228,12 @@ export default function EditProductModal({ product, categories = [], onClose, on
     try {
       const cut = nightyCuts.find(c => c.id === cutId);
       const base = cut?.designs?.length || 0;
-      const newDesigns = [];
-      for (let i = 0; i < files.length; i++) {
-        const url = await uploadPhoto(files[i]);
+      const newDesigns = await Promise.all(files.map(async (file, i) => {
+        const url = await uploadPhoto(file);
         const nd = { designNo: base + i + 1, dnNumber: '', sets: 0, photoUrl: url, addedAt: new Date() };
         const ref_ = await addDoc(collection(db, 'products', product.id, 'cuts', cutId, 'designs'), nd);
-        newDesigns.push({ id: ref_.id, ...nd });
-      }
+        return { id: ref_.id, ...nd };
+      }));
       setNightyCuts(prev => prev.map(c => c.id === cutId ? { ...c, designs: [...c.designs, ...newDesigns] } : c));
       showSuccess(`${newDesigns.length} design(s) added`);
     } catch (err) { showError(err.message); }
@@ -249,16 +264,15 @@ export default function EditProductModal({ product, categories = [], onClose, on
     setUploadingTab2(true);
     try {
       const base = selectionDesigns.length;
-      const newDesigns = [];
-      for (let i = 0; i < files.length; i++) {
-        const url = await uploadPhoto(files[i]);
+      const newDesigns = await Promise.all(files.map(async (file, i) => {
+        const url = await uploadPhoto(file);
         const defaultStock = isStitchedCat
           ? (info.sizes || []).reduce((acc, s) => ({ ...acc, [s]: 0 }), {})
           : { sets: 0 };
         const nd = { designNo: base + i + 1, dnNumber: '', stock: defaultStock, photoUrl: url, addedAt: new Date() };
         const ref_ = await addDoc(collection(db, 'products', product.id, 'designs'), nd);
-        newDesigns.push({ id: ref_.id, ...nd });
-      }
+        return { id: ref_.id, ...nd };
+      }));
       setSelectionDesigns(prev => [...prev, ...newDesigns]);
       showSuccess(`${newDesigns.length} design(s) added`);
     } catch (err) { showError(err.message); }
@@ -292,8 +306,8 @@ export default function EditProductModal({ product, categories = [], onClose, on
     if (!files.length) return;
     setUploadingTab2(true);
     try {
-      const newEntries = [];
-      for (const file of files) { const url = await uploadPhoto(file); newEntries.push({ url, dnNumber: '' }); }
+      const urls = await Promise.all(files.map(uploadPhoto));
+      const newEntries = urls.map(url => ({ url, dnNumber: '' }));
       setInfo(prev => {
         const newUrls = [...(prev.imageUrls || []), ...newEntries];
         const newMain = prev.imageUrl || newEntries[0].url;
@@ -513,8 +527,10 @@ export default function EditProductModal({ product, categories = [], onClose, on
                   {info.designMode === 'nighty' && nightyCuts.map(cut => (
                     <SectionBox key={cut.id} title={`Cut: ${cut.label}${info.cutRates?.[cut.label] ? ` · ₹${info.cutRates[cut.label]}/${info.priceUnit || 'Piece'}` : ''}`}>
                       <div style={{ display: 'flex', flexDirection: 'column', gap: 10, marginBottom: 12 }}>
-                        {cut.designs?.map(design => (
-                          <div key={design.id} style={{ display: 'flex', gap: 12, backgroundColor: D.surface, padding: 12, borderRadius: 10, border: `1px solid ${D.borderLight}` }}>
+                        {cut.designs?.map((design, dIdx) => (
+                          <div key={design.id}
+                            {...dragProps(`cut_${cut.id}`, dIdx, () => nightyCuts.find(c => c.id === cut.id)?.designs || [], (arr) => setNightyCuts(prev => prev.map(c => c.id === cut.id ? { ...c, designs: arr } : c)))}
+                            style={{ display: 'flex', gap: 12, backgroundColor: D.surface, padding: 12, borderRadius: 10, border: `1px solid ${D.borderLight}`, cursor: 'grab', opacity: dragPhoto.ctx === `cut_${cut.id}` && dragPhoto.idx === dIdx ? 0.4 : 1 }}>
                             <img src={design.photoUrl} alt="" style={{ width: 64, height: 80, objectFit: 'cover', borderRadius: 6, flexShrink: 0 }} />
                             <div style={{ flex: 1, display: 'flex', flexDirection: 'column', gap: 8 }}>
                               <div><span style={{ fontSize: 10, color: D.textSecondary, fontWeight: 600, display: 'block', marginBottom: 3 }}>Design No</span><span style={{ fontSize: 12, fontWeight: 700, color: D.navy }}>#{design.designNo}</span></div>
@@ -541,8 +557,10 @@ export default function EditProductModal({ product, categories = [], onClose, on
                   {info.designMode === 'design' && (
                     <SectionBox title="Designs & Stock">
                       <div style={{ display: 'flex', flexDirection: 'column', gap: 12, marginBottom: 16 }}>
-                        {selectionDesigns.map(design => (
-                          <div key={design.id} style={{ display: 'flex', gap: 12, backgroundColor: D.surface, padding: 14, borderRadius: 10, border: `1px solid ${D.borderLight}` }}>
+                        {selectionDesigns.map((design, dIdx) => (
+                          <div key={design.id}
+                            {...dragProps('selection', dIdx, () => selectionDesigns, setSelectionDesigns)}
+                            style={{ display: 'flex', gap: 12, backgroundColor: D.surface, padding: 14, borderRadius: 10, border: `1px solid ${D.borderLight}`, cursor: 'grab', opacity: dragPhoto.ctx === 'selection' && dragPhoto.idx === dIdx ? 0.4 : 1 }}>
                             <img src={design.photoUrl} alt="" style={{ width: 80, height: 100, objectFit: 'cover', borderRadius: 8, flexShrink: 0 }} />
                             <div style={{ flex: 1 }}>
                               <span style={{ fontSize: 10, color: D.textSecondary, fontWeight: 600 }}>Design #{design.designNo}</span>
@@ -586,7 +604,13 @@ export default function EditProductModal({ product, categories = [], onClose, on
                       <SectionBox title="Photos">
                         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: 12, marginBottom: 16 }}>
                           {(info.imageUrls || []).map((img, idx) => (
-                            <div key={idx} style={{ backgroundColor: D.surface, padding: 8, borderRadius: 8, border: `1px solid ${D.borderLight}` }}>
+                            <div key={idx}
+                              {...dragProps('imageUrls', idx, () => info.imageUrls, (arr) => {
+                                const newMain = arr[0]?.url || '';
+                                setInfo(prev => ({ ...prev, imageUrls: arr, imageUrl: newMain }));
+                                updateDoc(doc(db, 'products', product.id), { imageUrls: arr, imageUrl: newMain });
+                              })}
+                              style={{ backgroundColor: D.surface, padding: 8, borderRadius: 8, border: `1px solid ${D.borderLight}`, cursor: 'grab', opacity: dragPhoto.ctx === 'imageUrls' && dragPhoto.idx === idx ? 0.4 : 1 }}>
                               <img src={img.url} alt="" style={{ width: '100%', aspectRatio: '1', objectFit: 'cover', borderRadius: 6, marginBottom: 8 }} />
                               {info.designMode === 'fullset' && (
                                 <input type="text" className="grid-input" onFocus={e => e.target.select()} placeholder="D.No" value={img.dnNumber || ''} onChange={e => handleMainPhotoUpdate(idx, e.target.value)}
