@@ -108,21 +108,29 @@ function OrderCard({ order, onCancel, onReorder }) {
 
       <div style={{ backgroundColor: D.surface, borderRadius: 12, marginBottom: 10, boxShadow: '0 1px 6px rgba(3,22,50,0.07)', overflow: 'hidden', border: `1px solid ${D.borderLight}` }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '12px 14px', cursor: 'pointer' }} onClick={() => setExpanded(!expanded)}>
-          {firstItem?.photoUrl ? (
-            <img src={firstItem.photoUrl} alt="" style={{ width: 44, height: 44, objectFit: 'cover', borderRadius: 8, flexShrink: 0, border: `1px solid ${D.borderLight}` }} />
-          ) : (
-            <div style={{ width: 44, height: 44, borderRadius: 8, backgroundColor: D.bg, flexShrink: 0, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke={D.border} strokeWidth="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/></svg>
-            </div>
-          )}
+          {(() => {
+            const thumbUrl = order.items?.[0]?.photoUrl || null;
+            return thumbUrl ? (
+              <img src={thumbUrl} style={{ width: 48, height: 48, objectFit: 'cover', borderRadius: 8, flexShrink: 0 }} alt="" />
+            ) : (
+              <div style={{ width: 48, height: 48, borderRadius: 8, backgroundColor: '#e8edf5', color: '#031632', fontWeight: 700, fontSize: 16, display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
+                {order.supplierFirm?.[0]?.toUpperCase() || '?'}
+              </div>
+            );
+          })()}
           <div style={{ flex: 1, minWidth: 0 }}>
             <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginBottom: 3, flexWrap: 'wrap' }}>
-              <span style={{ fontSize: 12, fontWeight: 700, color: D.navy }}>#{order.id.slice(0, 8)}</span>
+              <span style={{ fontSize: 12, fontWeight: 700, color: D.navy }}>#{order.orderNumber || order.id.slice(-6).toUpperCase()}</span>
               <span style={{ ...getStatusStyle(order.status || 'Pending'), padding: '4px 10px', borderRadius: 20, fontSize: 10, fontWeight: 700 }}>{order.status || 'Pending'}</span>
               {pLabel && <span style={{ fontSize: 10, fontWeight: 700, padding: '2px 7px', borderRadius: 20, backgroundColor: pLabel.bg, color: pLabel.color }}>{pLabel.text}</span>}
             </div>
             <p style={{ margin: 0, fontSize: 12, color: D.textSecondary, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{order.supplierFirm} · {totalItems} item{totalItems !== 1 ? 's' : ''}</p>
-            <p style={{ margin: '2px 0 0', fontSize: 11, color: D.textSecondary }}>{order.createdAt?.toDate?.()?.toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: 'numeric' })}</p>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginTop: 2 }}>
+              {order.totalAmount > 0 && (
+                <span style={{ fontSize: 12, fontWeight: 700, color: D.navy }}>₹{order.totalAmount.toLocaleString('en-IN')}</span>
+              )}
+              <span style={{ fontSize: 11, color: D.textSecondary }}>{order.createdAt?.toDate?.()?.toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: 'numeric' })}</span>
+            </div>
           </div>
           <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke={D.textSecondary} strokeWidth="2" style={{ flexShrink: 0, transform: expanded ? 'rotate(180deg)' : 'rotate(0deg)', transition: 'transform 0.2s' }}><polyline points="6 9 12 15 18 9"/></svg>
         </div>

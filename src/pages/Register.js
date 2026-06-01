@@ -33,7 +33,7 @@ function SmartSelect({ label, value, onChange, options, placeholder, required })
   const filtered = options.filter(o => o.toLowerCase().includes((search || value || '').toLowerCase()));
 
   const handleSelect = (opt) => { onChange(opt); setSearch(''); setOpen(false); };
-  const handleInputChange = (e) => { onChange(e.target.value); setSearch(e.target.value); setOpen(true); };
+  const handleInputChange = (e) => { onChange(e.target.value.toUpperCase()); setSearch(e.target.value.toUpperCase()); setOpen(true); };
   const handleBlur = () => setTimeout(() => setOpen(false), 150);
 
   return (
@@ -191,10 +191,14 @@ function Register() {
       await setDoc(doc(db, 'users', userCred.user.uid), {
         uid: userCred.user.uid, email, role, status: 'pending', createdAt: new Date(),
         gstNumber: formData.gstNumber.trim().toUpperCase(),
-        firmName: formData.firmName,
-        contactPerson: formData.contactPerson, mobile: formData.mobile,
-        address, city: formData.city, district: formData.district,
-        state: formData.state, pincode: formData.pincode,
+        firmName: formData.firmName.toUpperCase(),
+        contactPerson: formData.contactPerson.toUpperCase(),
+        mobile: '+91' + formData.mobile,
+        address: address.toUpperCase(),
+        city: formData.city.toUpperCase(),
+        district: formData.district.toUpperCase(),
+        state: formData.state.toUpperCase(),
+        pincode: formData.pincode,
       });
       const adminSnap = await getDocs(query(collection(db, 'users'), where('role', '==', 'admin')));
       const adminId = adminSnap.docs[0]?.id;
@@ -304,39 +308,47 @@ function Register() {
                     style={S.input} name="gstNumber"
                     placeholder="22AAAAA0000A1Z5"
                     value={formData.gstNumber}
-                    onChange={e => setFormData(prev => ({ ...prev, gstNumber: e.target.value.toUpperCase() }))}
+                    onChange={e => setFormData(prev => ({ ...prev, gstNumber: e.target.value.toUpperCase().replace(/[^A-Z0-9]/g, '').slice(0, 15) }))}
                     required
                   />
                 </div>
 
                 <div style={S.fieldGroup}>
                   <label style={S.label}>Firm Name</label>
-                  <input style={S.input} name="firmName" placeholder="e.g. Shree Textiles"
-                    value={formData.firmName} onChange={handleChange} required />
+                  <input style={S.input} name="firmName" placeholder="e.g. SHREE TEXTILES"
+                    value={formData.firmName} onChange={e => setFormData(prev => ({ ...prev, firmName: e.target.value.toUpperCase() }))} required />
                 </div>
 
                 <div style={S.fieldGroup}>
                   <label style={S.label}>Contact Person</label>
-                  <input style={S.input} name="contactPerson" placeholder="Full name"
-                    value={formData.contactPerson} onChange={handleChange} required />
+                  <input style={S.input} name="contactPerson" placeholder="FULL NAME"
+                    value={formData.contactPerson} onChange={e => setFormData(prev => ({ ...prev, contactPerson: e.target.value.toUpperCase() }))} required />
                 </div>
 
                 <div style={S.fieldGroup}>
                   <label style={S.label}>Mobile Number</label>
-                  <input style={S.input} name="mobile" placeholder="10-digit mobile" type="tel"
-                    value={formData.mobile} onChange={handleChange} required />
+                  <div style={{ display: 'flex' }}>
+                    <div style={{ padding: '11px 13px', border: '1.5px solid #c5c6ce', borderRight: 'none', borderRadius: '8px 0 0 8px', backgroundColor: '#f8f9fa', fontSize: 14, color: '#44474d', fontWeight: 600, flexShrink: 0, display: 'flex', alignItems: 'center' }}>+91</div>
+                    <input
+                      style={{ ...S.input, borderRadius: '0 8px 8px 0', borderLeft: 'none', flex: 1 }}
+                      name="mobile" placeholder="10-digit number" type="tel" maxLength={10}
+                      value={formData.mobile}
+                      onChange={e => setFormData(prev => ({ ...prev, mobile: e.target.value.replace(/\D/g, '').slice(0, 10) }))}
+                      required
+                    />
+                  </div>
                 </div>
 
                 <div style={S.fieldGroup}>
                   <label style={S.label}>Address Line 1</label>
-                  <input style={S.input} name="addressLine1" placeholder="Shop / Building / Street"
-                    value={formData.addressLine1} onChange={handleChange} required />
+                  <input style={S.input} name="addressLine1" placeholder="SHOP / BUILDING / STREET"
+                    value={formData.addressLine1} onChange={e => setFormData(prev => ({ ...prev, addressLine1: e.target.value.toUpperCase() }))} required />
                 </div>
 
                 <div style={S.fieldGroup}>
                   <label style={S.label}>Address Line 2 <span style={{ color: D.textSecondary, fontWeight: 400, textTransform: 'none' }}>(optional)</span></label>
-                  <input style={S.input} name="addressLine2" placeholder="Area / Landmark"
-                    value={formData.addressLine2} onChange={handleChange} />
+                  <input style={S.input} name="addressLine2" placeholder="AREA / LANDMARK"
+                    value={formData.addressLine2} onChange={e => setFormData(prev => ({ ...prev, addressLine2: e.target.value.toUpperCase() }))} />
                 </div>
 
                 <div style={S.fieldGroup}>
@@ -358,7 +370,7 @@ function Register() {
                 <SmartSelect
                   label="City / Block"
                   value={formData.city}
-                  onChange={handleCityChange}
+                  onChange={val => handleCityChange(val.toUpperCase())}
                   options={cityOptions}
                   placeholder={pincodeLoading ? '⏳ Fetching...' : 'Enter pincode first or type manually'}
                   required
@@ -368,7 +380,7 @@ function Register() {
                   <SmartSelect
                     label="District"
                     value={formData.district}
-                    onChange={val => handleFieldChange('district', val)}
+                    onChange={val => handleFieldChange('district', val.toUpperCase())}
                     options={districtOptions}
                     placeholder="Type or select"
                     required
@@ -376,7 +388,7 @@ function Register() {
                   <SmartSelect
                     label="State"
                     value={formData.state}
-                    onChange={val => handleFieldChange('state', val)}
+                    onChange={val => handleFieldChange('state', val.toUpperCase())}
                     options={stateOptions}
                     placeholder="Type or select"
                     required

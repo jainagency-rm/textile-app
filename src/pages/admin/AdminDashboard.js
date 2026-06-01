@@ -589,8 +589,9 @@ function AdminDashboard() {
                 <div key={order.id} style={styles.orderCard}>
                   <div style={styles.orderRow} onClick={() => setExpandedOrder(isExpanded ? null : order.id)}>
                     <div style={{ display: 'flex', alignItems: 'center', gap: 12, flex: 1, minWidth: 0, flexWrap: 'wrap' }}>
-                      <span style={{ fontSize: 13, fontWeight: 'bold', color: '#1e293b' }}>#{order.id.slice(0, 8)}</span>
+                      <span style={{ fontSize: 13, fontWeight: 'bold', color: '#1e293b' }}>#{order.orderNumber || order.id.slice(0, 8)}</span>
                       <span style={{ fontSize: 12, color: '#475569' }}>B: {order.buyerFirm} | S: {order.supplierFirm}</span>
+                      {order.totalAmount > 0 && <span style={{ fontSize: 12, fontWeight: 700, color: '#031632' }}>₹{order.totalAmount.toLocaleString('en-IN')}</span>}
                     </div>
                     <div style={{ display: 'flex', gap: 6, alignItems: 'center', flexWrap: 'wrap' }}>
                       <span style={{ padding: '3px 8px', borderRadius: 12, fontSize: 11, fontWeight: 'bold', backgroundColor: '#fef9c3', color: '#854d0e' }}>{order.status || 'Pending'}</span>

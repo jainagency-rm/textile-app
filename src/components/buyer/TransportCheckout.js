@@ -14,7 +14,6 @@ function TransportCheckout({ suppliers, savedTransporters = [], onConfirm, onCan
   const [selections, setSelections] = useState({});
   const [addingFor, setAddingFor] = useState(null);
   const [newTransport, setNewTransport] = useState({ name: '', gst: '', phone: '' });
-  const [saveNew, setSaveNew] = useState(true);
   const [nameError, setNameError] = useState('');
   const [gstError, setGstError] = useState('');
   const [firestoreTransporters, setFirestoreTransporters] = useState([]);
@@ -77,7 +76,6 @@ function TransportCheckout({ suppliers, savedTransporters = [], onConfirm, onCan
       gst: newTransport.gst.trim(),
       phone: newTransport.phone.trim() ? `+91 ${newTransport.phone.trim()}` : '',
       id: Date.now().toString(),
-      _saveToProfile: saveNew,
     };
     setSelections(prev => ({
       ...prev,
@@ -85,7 +83,6 @@ function TransportCheckout({ suppliers, savedTransporters = [], onConfirm, onCan
     }));
     setAddingFor(null);
     setNewTransport({ name: '', gst: '', phone: '' });
-    setSaveNew(true);
     setNameError(''); setGstError('');
   };
 
@@ -256,7 +253,6 @@ function TransportCheckout({ suppliers, savedTransporters = [], onConfirm, onCan
           const sel = selections[sup.id];
           const isAdding = addingFor === sup.id;
           const selectedTransporter = sel?.transporter;
-          const isSaved = selectedTransporter && savedTransporters.find(t => t.id === selectedTransporter.id);
 
           return (
             <div key={sup.id} style={S.supplierBlock}>
@@ -296,39 +292,12 @@ function TransportCheckout({ suppliers, savedTransporters = [], onConfirm, onCan
               {/* ── TRANSPORTER SELECTION ── */}
               <span style={S.sectionLabel}>Select Transporter</span>
 
-              {/* Saved transporters as radio cards */}
-              {savedTransporters.length > 0 && !isAdding && (
-                <div style={{ marginBottom: 8 }}>
-                  {savedTransporters.map(t => {
-                    const isSelected = selectedTransporter?.id === t.id;
-                    return (
-                      <div key={t.id} style={isSelected ? S.tCardSelected : S.tCard} onClick={() => handleSelectSaved(sup.id, t)}>
-                        <div style={isSelected ? S.radioSelected : S.radioOuter}>
-                          {isSelected && <div style={S.radioDot} />}
-                        </div>
-                        <div style={{ flex: 1 }}>
-                          <p style={{ margin: 0, fontSize: 13, fontWeight: 700, color: D.navy }}>{t.name}</p>
-                          {(t.phone || t.gst) && (
-                            <p style={{ margin: '2px 0 0', fontSize: 11, color: D.textSecondary }}>
-                              {[t.gst, t.phone].filter(Boolean).join(' · ')}
-                            </p>
-                          )}
-                        </div>
-                        {isSelected && (
-                          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke={D.navy} strokeWidth="2.5"><polyline points="20 6 9 17 4 12"/></svg>
-                        )}
-                      </div>
-                    );
-                  })}
-                </div>
-              )}
-
               {/* Preset dropdown */}
               {!isAdding && (
                 <>
                   <select
                     style={S.select}
-                    value={(!isSaved && selectedTransporter?.id?.startsWith('preset_')) ? selectedTransporter.name : ''}
+                    value={selectedTransporter?.id?.startsWith('preset_') ? selectedTransporter.name : ''}
                     onChange={e => handleSelectPreset(sup.id, e.target.value)}
                   >
                     <option value="">— Select from list —</option>
@@ -378,13 +347,6 @@ function TransportCheckout({ suppliers, savedTransporters = [], onConfirm, onCan
                       onChange={e => setNewTransport(prev => ({ ...prev, phone: e.target.value.replace(/\D/g, '') }))}
                       onKeyDown={e => { if (e.key === 'Enter') handleSaveNew(sup.id); }}
                     />
-                  </div>
-
-                  <div style={S.checkRow} onClick={() => setSaveNew(!saveNew)}>
-                    <div style={S.checkbox(saveNew)}>
-                      {saveNew && <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="3"><polyline points="20 6 9 17 4 12"/></svg>}
-                    </div>
-                    <span style={{ fontSize: 12, color: D.textSecondary }}>Save for future orders</span>
                   </div>
 
                   <div style={S.formActions}>

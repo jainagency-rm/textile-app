@@ -1,7 +1,7 @@
 import { useState, useEffect, useRef, useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { signOut } from 'firebase/auth';
-import { collection, getDocs, query, where, addDoc, doc, getDoc, updateDoc, orderBy, onSnapshot, writeBatch } from 'firebase/firestore';
+import { collection, getDocs, query, where, addDoc, doc, getDoc, updateDoc, orderBy, onSnapshot, writeBatch, runTransaction } from 'firebase/firestore';
 import { auth, db } from '../../../firebase';
 import { notifyNewOrder } from '../../../utils/notifications';
 import { useWindowSize } from '../../../hooks/useWindowSize';
@@ -247,6 +247,7 @@ export function useBuyerDashboard() {
             moq: product.moq || 1,
             pcsPerSet: product.pcsPerSet || null,
             dispatchCity: product.dispatchCity || '',
+            photoUrl: product.imageUrl || product.photos?.[0]?.photoUrl || product.imageUrls?.[0]?.photoUrl || '',
           });
         }
       } else if (qty === 0 && idx > -1) {
@@ -327,6 +328,19 @@ export function useBuyerDashboard() {
       const user = auth.currentUser;
       if (!user) throw new Error("User session not found.");
 
+      let orderNumber = null;
+      try {
+        const counterRef = doc(db, 'counters', 'orderCounter');
+        await runTransaction(db, async (transaction) => {
+          const counterSnap = await transaction.get(counterRef);
+          const newNumber = (counterSnap.data()?.lastNumber || 0) + 1;
+          transaction.set(counterRef, { lastNumber: newNumber }, { merge: true });
+          orderNumber = newNumber;
+        });
+      } catch (err) {
+        console.warn('Counter fetch failed:', err);
+      }
+
       let adminId = null;
       try {
         const adminSnap = await getDocs(query(collection(db, 'users'), where('role', '==', 'admin')));
@@ -385,6 +399,7 @@ export function useBuyerDashboard() {
       for (const supplierId of Object.keys(groupedNonNighty)) {
         const sc = groupedNonNighty[supplierId];
         await addDoc(collection(db, 'orders'), {
+          orderNumber: orderNumber,
           buyerId: user.uid, buyerFirm: userProfile?.firmName || 'Unknown Firm',
           supplierId: supplierId || 'Unknown', supplierFirm: sc.supplierFirm || 'Unknown Supplier',
           transportDetails: transportSelections?.[supplierId]
@@ -401,8 +416,13 @@ export function useBuyerDashboard() {
             price: i.price || 0, unit: i.priceUnit || i.unit || 'Piece',
             moqUnit: i.moqUnit || 'Piece',
             pcsPerSet: i.pcsPerSet || null,
-            size: i.size || '', category: i.category || ''
+            size: i.size || '', category: i.category || '',
+            photoUrl: i.photoUrl || ''
           })),
+          totalAmount: sc.items.reduce((sum, i) => {
+            if (i.moqUnit === 'Set' && i.pcsPerSet) return sum + i.price * i.quantity * i.pcsPerSet;
+            return sum + i.price * (i.quantity || 0);
+          }, 0),
           status: 'Pending', createdAt: new Date()
         });
         if (adminId) { try { await notifyNewOrder(adminId, supplierId, userProfile?.firmName || ''); } catch (e) {} }
@@ -412,6 +432,7 @@ export function useBuyerDashboard() {
         const sc = groupedNighty[supplierId];
         const currentBaleDetail = tempNightyDetails ? tempNightyDetails[supplierId] : null;
         await addDoc(collection(db, 'orders'), {
+          orderNumber: orderNumber,
           buyerId: user.uid, buyerFirm: userProfile?.firmName || 'Unknown Firm',
           supplierId: supplierId || 'Unknown', supplierFirm: sc.supplierFirm || 'Unknown Supplier',
           transportDetails: transportSelections?.[supplierId] || null,
@@ -427,6 +448,9 @@ export function useBuyerDashboard() {
             packingType: currentBaleDetail.packingType || 8, totalBales: currentBaleDetail.totalBales || 0,
             looseSets: currentBaleDetail.looseSets || 0
           } : null,
+          totalAmount: sc.items.reduce((sum, i) => {
+            return sum + (i.cutRate || i.price) * (i.sets || 0) * (i.pcsPerSet || 30);
+          }, 0),
           status: 'Pending', createdAt: new Date()
         });
         if (adminId) { try { await notifyNewOrder(adminId, supplierId, userProfile?.firmName || ''); } catch (e) {} }
@@ -496,7 +520,10 @@ export function useBuyerDashboard() {
               quantity: item.quantity || item.orderedQty || 1, price: activeProduct.price,
               unit: item.unit || 'pc', supplierId: order.supplierId, supplierFirm: order.supplierFirm,
               category: activeProduct.category, size: item.size || '',
-              priceUnit: activeProduct.priceUnit || 'Piece', moqUnit: activeProduct.moqUnit || 'Piece'
+              priceUnit: activeProduct.priceUnit || 'Piece', moqUnit: activeProduct.moqUnit || 'Piece',
+              moq: activeProduct.moq || 1,
+              pcsPerSet: activeProduct.pcsPerSet || null,
+              photoUrl: item.photoUrl || '',
             });
           }
         }
@@ -532,7 +559,10 @@ export function useBuyerDashboard() {
               quantity: item.quantity || item.orderedQty || 1, price: activeProduct.price,
               unit: item.unit || 'pc', supplierId: order.supplierId, supplierFirm: order.supplierFirm,
               category: activeProduct.category, size: item.size || '',
-              priceUnit: activeProduct.priceUnit || 'Piece', moqUnit: activeProduct.moqUnit || 'Piece'
+              priceUnit: activeProduct.priceUnit || 'Piece', moqUnit: activeProduct.moqUnit || 'Piece',
+              moq: activeProduct.moq || 1,
+              pcsPerSet: activeProduct.pcsPerSet || null,
+              photoUrl: item.photoUrl || '',
             });
           }
           itemsAdded++;
