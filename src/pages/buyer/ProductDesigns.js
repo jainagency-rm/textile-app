@@ -7,7 +7,7 @@ const D = {
   textSecondary: '#44474d', borderLight: '#e7e8e9', error: '#ba1a1a', success: '#1a6b3c',
 };
 
-function ProductDesigns({ product, designs, cart, onAddSet, onRemoveSet, onBack }) {
+function ProductDesigns({ product, designs, cart, onAddSet, onRemoveSet, onBack, onViewCart }) {
   const [lightbox, setLightbox] = useState(null);
   const { isMobile, isTablet } = useWindowSize();
 
@@ -20,6 +20,8 @@ function ProductDesigns({ product, designs, cart, onAddSet, onRemoveSet, onBack 
   }
 
   const pcsPerSet = product.category === 'Nighty with Dupatta' ? 20 : 30;
+  const pUnit = product.priceUnit || 'Piece';
+  const mUnit = product.moqUnit || 'Set';
 
   const getCartSets = (designId) => {
     const cartKey = `${product.id}_${designId}`;
@@ -28,9 +30,10 @@ function ProductDesigns({ product, designs, cart, onAddSet, onRemoveSet, onBack 
   };
 
   const totalInCart = cart?.filter(i => i.productId === product.id).reduce((s, i) => s + i.sets, 0) || 0;
+  const globalCartTotal = cart?.reduce((s, i) => s + (i.sets || 0), 0) || 0;
+
   const gridCols = isMobile ? 'repeat(2, 1fr)' : isTablet ? 'repeat(3, 1fr)' : 'repeat(4, 1fr)';
 
-  // FIX: Designs ko cut ke hisaab se group karo
   const isNighty = product.isNighty || product.designMode === 'nighty';
   const cutGroups = {};
   if (isNighty && designs?.length > 0 && designs[0]?.cutLabel) {
@@ -52,7 +55,6 @@ function ProductDesigns({ product, designs, cart, onAddSet, onRemoveSet, onBack 
         <div style={styles.imgWrapper} onClick={() => setLightbox(design.photoUrl)}>
           <img src={design.photoUrl} alt="" style={{ ...styles.img, height: isMobile ? 140 : 180 }} />
           <div style={styles.zoomIcon}>🔍</div>
-          {/* Cut badge on image */}
           {design.cutLabel && (
             <div style={{ position: 'absolute', top: 6, left: 6, backgroundColor: D.navy, color: 'white', padding: '2px 7px', borderRadius: 10, fontSize: 10, fontWeight: 700 }}>
               {design.cutLabel}
@@ -63,14 +65,13 @@ function ProductDesigns({ product, designs, cart, onAddSet, onRemoveSet, onBack 
           <p style={{ fontWeight: 700, fontSize: isMobile ? 12 : 14, color: D.navy, margin: '0 0 2px' }}>
             DN {design.designNo}{design.dnNumber ? ` — ${design.dnNumber}` : ''}
           </p>
-          {/* Cut rate per design if available */}
           {design.cutRate && (
             <p style={{ color: D.gold, fontSize: 10, margin: '0 0 2px', fontWeight: 700 }}>
-              ₹{design.cutRate}/set
+              ₹{design.cutRate}/{pUnit}
             </p>
           )}
           <p style={{ color: isOutOfStock ? D.error : D.success, fontSize: 11, margin: '0 0 2px', fontWeight: 600 }}>
-            {isOutOfStock ? 'Out of Stock' : (hasSetsValue ? `${design.sets} sets` : 'In Stock')}
+            {isOutOfStock ? 'Out of Stock' : (hasSetsValue ? `${design.sets} ${mUnit}s` : 'In Stock')}
           </p>
           {hasSetsValue ? (
             <p style={{ color: D.textSecondary, fontSize: 10, margin: '0 0 8px' }}>{design.sets * pcsPerSet} pcs</p>
@@ -85,7 +86,7 @@ function ProductDesigns({ product, designs, cart, onAddSet, onRemoveSet, onBack 
                   style={{ width: '100%', padding: isMobile ? '7px' : '8px', backgroundColor: D.gold, color: 'white', border: 'none', borderRadius: 6, cursor: 'pointer', fontWeight: 700, fontSize: isMobile ? 12 : 13 }}
                   onClick={() => onAddSet(product, design)}
                 >
-                  + Add Set
+                  + Add {mUnit}
                 </button>
               ) : (
                 <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', backgroundColor: D.bg, borderRadius: 8, padding: '3px 6px', border: `1px solid ${D.borderLight}` }}>
@@ -93,10 +94,13 @@ function ProductDesigns({ product, designs, cart, onAddSet, onRemoveSet, onBack 
                     onClick={() => onRemoveSet(`${product.id}_${design.id}`)}>−</button>
                   <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
                     <span style={{ fontWeight: 800, fontSize: 15, color: D.navy, lineHeight: 1 }}>{inCart}</span>
-                    <span style={{ fontSize: 9, color: D.textSecondary }}>sets</span>
+                    <span style={{ fontSize: 9, color: D.textSecondary }}>{mUnit}s</span>
                   </div>
-                  <button style={{ width: 26, height: 26, border: 'none', borderRadius: 6, cursor: 'pointer', backgroundColor: D.navy, color: 'white', fontSize: 15, fontWeight: 700, display: 'flex', alignItems: 'center', justifyContent: 'center' }}
-                    onClick={() => onAddSet(product, design)}>+</button>
+                  <button style={{ width: 26, height: 26, border: 'none', borderRadius: 6, cursor: design.sets !== undefined && inCart >= design.sets ? 'not-allowed' : 'pointer', backgroundColor: design.sets !== undefined && inCart >= design.sets ? '#c5c6ce' : D.navy, color: 'white', fontSize: 15, fontWeight: 700, display: 'flex', alignItems: 'center', justifyContent: 'center' }}
+                    onClick={() => {
+                      if (design.sets !== undefined && inCart >= design.sets) return;
+                      onAddSet(product, design);
+                    }}>+</button>
                 </div>
               )}
               {inCart > 0 && (
@@ -112,7 +116,7 @@ function ProductDesigns({ product, designs, cart, onAddSet, onRemoveSet, onBack 
   };
 
   return (
-    <div style={{ flex: 1, padding: isMobile ? '16px' : '24px 30px', backgroundColor: D.bg, minHeight: '100vh' }}>
+    <div style={{ flex: 1, padding: isMobile ? '16px 16px 80px' : '24px 30px 100px', backgroundColor: D.bg, minHeight: '100vh', position: 'relative' }}>
       {lightbox && (
         <div style={styles.lightboxOverlay} onClick={() => setLightbox(null)}>
           <div style={styles.lightboxContent} onClick={e => e.stopPropagation()}>
@@ -128,31 +132,28 @@ function ProductDesigns({ product, designs, cart, onAddSet, onRemoveSet, onBack 
         <div style={{ flex: 1, minWidth: 0 }}>
           <h2 style={{ color: D.navy, margin: '0 0 4px', fontSize: isMobile ? 16 : 20, fontWeight: 700, lineHeight: 1.2 }}>{product.name}</h2>
           <p style={{ color: D.textSecondary, fontSize: isMobile ? 11 : 13, margin: 0, lineHeight: 1.4 }}>
-            {/* FIX: cutRates dikhao agar nighty hai */}
             {hasCutGroups
-              ? Object.entries(cutGroups).map(([label, g]) => `${label}: ₹${g.rate}/set`).join(' · ')
+              ? Object.entries(cutGroups).map(([label, g]) => `${label}: ₹${g.rate}/${pUnit}`).join(' · ')
               : product.cutRates
-                ? Object.entries(product.cutRates).map(([l, r]) => `${l}: ₹${r}/set`).join(' · ')
-                : `₹${product.price}/set`
+                ? Object.entries(product.cutRates).map(([l, r]) => `${l}: ₹${r}/${pUnit}`).join(' · ')
+                : `₹${product.price}/${pUnit}`
             }
-            {` · 1 set = ${pcsPerSet} pcs`}
+            {` · 1 ${mUnit} = ${pcsPerSet} pcs`}
           </p>
         </div>
-        <div style={{ backgroundColor: '#e63946', color: 'white', padding: '5px 12px', borderRadius: 20, fontWeight: 700, fontSize: 12, whiteSpace: 'nowrap', flexShrink: 0 }}>
+        <div style={{ backgroundColor: '#fce8e6', color: '#e63946', padding: '5px 12px', borderRadius: 6, fontWeight: 700, fontSize: 12, whiteSpace: 'nowrap', flexShrink: 0, border: '1px solid #f8c2c6' }}>
           {totalInCart} in cart
         </div>
       </div>
 
-      {/* FIX: Agar cut groups hain toh section-wise dikhao, warna flat grid */}
       {hasCutGroups ? (
         Object.entries(cutGroups).map(([cutLabel, group]) => (
           <div key={cutLabel} style={{ marginBottom: 28 }}>
-            {/* Cut section header */}
             <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 12 }}>
               <div style={{ backgroundColor: D.navy, color: 'white', padding: '4px 14px', borderRadius: 20, fontSize: 13, fontWeight: 700 }}>
                 {cutLabel}
               </div>
-              <span style={{ fontSize: 13, color: D.gold, fontWeight: 700 }}>₹{group.rate}/set</span>
+              <span style={{ fontSize: 13, color: D.gold, fontWeight: 700 }}>₹{group.rate}/{pUnit}</span>
               <span style={{ fontSize: 12, color: D.textSecondary }}>{group.designs.length} designs</span>
             </div>
             <div style={{ display: 'grid', gridTemplateColumns: gridCols, gap: isMobile ? 10 : 16 }}>
@@ -171,6 +172,21 @@ function ProductDesigns({ product, designs, cart, onAddSet, onRemoveSet, onBack 
           <p style={{ fontSize: 15 }}>No designs available</p>
         </div>
       )}
+
+      {/* Sticky Bottom Cart Bar */}
+      {globalCartTotal > 0 && (
+        <div style={styles.stickyBarContainer}>
+          <div style={styles.stickyBar}>
+            <div style={{ display: 'flex', flexDirection: 'column' }}>
+              <span style={{ fontSize: 12, color: 'rgba(255,255,255,0.7)', fontWeight: 600 }}>Total Selected</span>
+              <span style={{ fontSize: 16, color: 'white', fontWeight: 800 }}>{globalCartTotal} {mUnit}s</span>
+            </div>
+            <button onClick={onViewCart} style={styles.checkoutBtn}>
+              Go to Cart ➔
+            </button>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
@@ -185,6 +201,9 @@ const styles = {
   lightboxContent: { position: 'relative', maxWidth: '90vw', maxHeight: '90vh' },
   lightboxImg: { maxWidth: '90vw', maxHeight: '85vh', objectFit: 'contain', borderRadius: 8 },
   lightboxClose: { position: 'absolute', top: -14, right: -14, width: 32, height: 32, backgroundColor: D.error, color: 'white', border: 'none', borderRadius: '50%', cursor: 'pointer', fontSize: 14, fontWeight: 700, display: 'flex', alignItems: 'center', justifyContent: 'center' },
+  stickyBarContainer: { position: 'fixed', bottom: 0, left: 0, right: 0, display: 'flex', justifyContent: 'center', padding: '16px', pointerEvents: 'none', zIndex: 1000 },
+  stickyBar: { pointerEvents: 'auto', backgroundColor: D.navy, width: '100%', maxWidth: 800, borderRadius: 12, padding: '12px 20px', display: 'flex', justifyContent: 'space-between', alignItems: 'center', boxShadow: '0 -4px 20px rgba(0,0,0,0.15)', border: `1px solid ${D.gold}` },
+  checkoutBtn: { backgroundColor: D.gold, color: 'white', border: 'none', padding: '10px 20px', borderRadius: 8, fontSize: 14, fontWeight: 800, cursor: 'pointer', boxShadow: '0 2px 6px rgba(0,0,0,0.2)' },
 };
 
 export default ProductDesigns;

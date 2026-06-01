@@ -11,28 +11,30 @@ const D = {
   textSecondary: '#44474d', border: '#c5c6ce', error: '#ba1a1a', success: '#1a6b3c',
 };
 
-// Searchable dropdown with free-type
+// ✅ Proper SVG eye icons
+const EyeIcon = () => (
+  <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+    <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/>
+    <circle cx="12" cy="12" r="3"/>
+  </svg>
+);
+
+const EyeOffIcon = () => (
+  <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+    <path d="M17.94 17.94A10.07 10.07 0 0 1 12 20c-7 0-11-8-11-8a18.45 18.45 0 0 1 5.06-5.94"/>
+    <path d="M9.9 4.24A9.12 9.12 0 0 1 12 4c7 0 11 8 11 8a18.5 18.5 0 0 1-2.16 3.19"/>
+    <line x1="1" y1="1" x2="23" y2="23"/>
+  </svg>
+);
+
 function SmartSelect({ label, value, onChange, options, placeholder, required }) {
   const [open, setOpen] = useState(false);
   const [search, setSearch] = useState('');
+  const filtered = options.filter(o => o.toLowerCase().includes((search || value || '').toLowerCase()));
 
-  const filtered = options.filter(o => o.toLowerCase().includes(search.toLowerCase()));
-
-  const handleSelect = (opt) => {
-    onChange(opt);
-    setSearch('');
-    setOpen(false);
-  };
-
-  const handleInputChange = (e) => {
-    onChange(e.target.value);
-    setSearch(e.target.value);
-    setOpen(true);
-  };
-
-  const handleBlur = () => {
-    setTimeout(() => setOpen(false), 150);
-  };
+  const handleSelect = (opt) => { onChange(opt); setSearch(''); setOpen(false); };
+  const handleInputChange = (e) => { onChange(e.target.value); setSearch(e.target.value); setOpen(true); };
+  const handleBlur = () => setTimeout(() => setOpen(false), 150);
 
   return (
     <div style={{ position: 'relative', marginBottom: 12 }}>
@@ -53,26 +55,12 @@ function SmartSelect({ label, value, onChange, options, placeholder, required })
         </span>
       </div>
       {open && options.length > 0 && (
-        <div style={{
-          position: 'absolute', top: '100%', left: 0, right: 0, zIndex: 999,
-          backgroundColor: D.surface, border: `1.5px solid ${D.border}`,
-          borderRadius: 8, boxShadow: '0 8px 24px rgba(3,22,50,0.12)',
-          maxHeight: 180, overflowY: 'auto', marginTop: 4,
-        }}>
+        <div style={{ position: 'absolute', top: '100%', left: 0, right: 0, zIndex: 999, backgroundColor: D.surface, border: `1.5px solid ${D.border}`, borderRadius: 8, boxShadow: '0 8px 24px rgba(3,22,50,0.12)', maxHeight: 180, overflowY: 'auto', marginTop: 4 }}>
           {filtered.length === 0 ? (
-            <div style={{ padding: '10px 14px', fontSize: 13, color: D.textSecondary }}>
-              No match — type to use custom value
-            </div>
+            <div style={{ padding: '10px 14px', fontSize: 13, color: D.textSecondary }}>No match — type to use custom value</div>
           ) : filtered.map((opt, i) => (
-            <div key={i}
-              onMouseDown={() => handleSelect(opt)}
-              style={{
-                padding: '10px 14px', fontSize: 13, cursor: 'pointer',
-                color: opt === value ? D.navy : D.textPrimary,
-                fontWeight: opt === value ? 700 : 400,
-                backgroundColor: opt === value ? '#e8edf5' : 'transparent',
-                borderBottom: i < filtered.length - 1 ? `1px solid ${D.borderLight}` : 'none',
-              }}>
+            <div key={i} onMouseDown={() => handleSelect(opt)}
+              style={{ padding: '10px 14px', fontSize: 13, cursor: 'pointer', color: opt === value ? D.navy : D.textPrimary, fontWeight: opt === value ? 700 : 400, backgroundColor: opt === value ? '#e8edf5' : 'transparent', borderBottom: i < filtered.length - 1 ? `1px solid #e7e8e9` : 'none' }}>
               {opt}
             </div>
           ))}
@@ -95,8 +83,6 @@ function Register() {
   const [loading, setLoading] = useState(false);
   const [pincodeLoading, setPincodeLoading] = useState(false);
   const [pincodeError, setPincodeError] = useState('');
-
-  // All post offices from pincode response
   const [postOffices, setPostOffices] = useState([]);
   const [cityOptions, setCityOptions] = useState([]);
 
@@ -114,30 +100,48 @@ function Register() {
     setPincodeError('');
     setCityOptions([]);
     setPostOffices([]);
+    setFormData(prev => ({ ...prev, city: '', district: '', state: '' }));
+
+    let offices = [];
+
+    // Primary: api.postalpincode.in (direct)
     try {
       const res = await fetch(`https://api.postalpincode.in/pincode/${pin}`);
       const data = await res.json();
       if (data[0]?.Status === 'Success') {
-        const offices = data[0].PostOffice || [];
-        setPostOffices(offices);
-        // Unique city/block names
-        const cities = [...new Set(offices.map(o => o.Block || o.Name).filter(Boolean))];
-        setCityOptions(cities);
-        // Auto-fill from first office
-        const first = offices[0];
-        setFormData(prev => ({
-          ...prev,
-          city: first.Block || first.Name || '',
-          district: first.District || '',
-          state: first.State || '',
-        }));
-      } else {
-        setPincodeError('Invalid pincode — enter details manually');
-        setFormData(prev => ({ ...prev, city: '', district: '', state: '' }));
+        offices = data[0].PostOffice || [];
       }
-    } catch {
-      setPincodeError('Could not fetch — enter details manually');
+    } catch (_) {}
+
+    // Fallback: allorigins proxy — bypasses CORS issues
+    if (offices.length === 0) {
+      try {
+        const proxyUrl = `https://api.allorigins.win/get?url=${encodeURIComponent(`https://api.postalpincode.in/pincode/${pin}`)}`;
+        const res2 = await fetch(proxyUrl);
+        const wrapper = await res2.json();
+        const data2 = JSON.parse(wrapper.contents);
+        if (data2[0]?.Status === 'Success') {
+          offices = data2[0].PostOffice || [];
+        }
+      } catch (_) {}
     }
+
+    if (offices.length > 0) {
+      setPostOffices(offices);
+      const cities = [...new Set(offices.map(o => o.Block || o.Name).filter(Boolean))];
+      setCityOptions(cities);
+      const first = offices[0];
+      setFormData(prev => ({
+        ...prev,
+        city: first.Block || first.Name || '',
+        district: first.District || '',
+        state: first.State || '',
+      }));
+      setPincodeError('');
+    } else {
+      setPincodeError('Pincode not found — enter details manually');
+    }
+
     setPincodeLoading(false);
   };
 
@@ -146,21 +150,17 @@ function Register() {
     setFormData(prev => ({ ...prev, pincode: val, city: '', district: '', state: '' }));
     setPincodeError('');
     setCityOptions([]);
+    setPostOffices([]);
     if (val.length === 6) fetchPincodeDetails(val);
   };
 
-  // When city changes, auto-update district from matching post office
   const handleCityChange = (val) => {
     handleFieldChange('city', val);
     const match = postOffices.find(o => (o.Block || o.Name) === val);
-    if (match) {
-      handleFieldChange('district', match.District || formData.district);
-    }
+    if (match) handleFieldChange('district', match.District || formData.district);
   };
 
-  // Unique districts from fetched offices
   const districtOptions = [...new Set(postOffices.map(o => o.District).filter(Boolean))];
-  // Unique states
   const stateOptions = [...new Set(postOffices.map(o => o.State).filter(Boolean))];
 
   const handleStep1 = (e) => {
@@ -173,27 +173,36 @@ function Register() {
     e.preventDefault();
     setLoading(true); setError('');
     try {
+      // ✅ Duplicate GST check
+      if (formData.gstNumber.trim()) {
+        const gstSnap = await getDocs(query(
+          collection(db, 'users'),
+          where('gstNumber', '==', formData.gstNumber.trim().toUpperCase())
+        ));
+        if (!gstSnap.empty) {
+          setError('This GST number is already registered. Please login or use a different GST number.');
+          setLoading(false);
+          return;
+        }
+      }
+
       const userCred = await createUserWithEmailAndPassword(auth, email, password);
       const address = [formData.addressLine1, formData.addressLine2].filter(Boolean).join(', ');
       await setDoc(doc(db, 'users', userCred.user.uid), {
         uid: userCred.user.uid, email, role, status: 'pending', createdAt: new Date(),
-        gstNumber: formData.gstNumber,
+        gstNumber: formData.gstNumber.trim().toUpperCase(),
         firmName: formData.firmName,
-        contactPerson: formData.contactPerson,
-        mobile: formData.mobile,
-        address,
-        city: formData.city,
-        district: formData.district,
-        state: formData.state,
-        pincode: formData.pincode,
+        contactPerson: formData.contactPerson, mobile: formData.mobile,
+        address, city: formData.city, district: formData.district,
+        state: formData.state, pincode: formData.pincode,
       });
       const adminSnap = await getDocs(query(collection(db, 'users'), where('role', '==', 'admin')));
       const adminId = adminSnap.docs[0]?.id;
       if (adminId) await notifyNewUser(adminId, formData.firmName, role);
       navigate('/pending');
     } catch (err) {
-      if (err.code === 'auth/email-already-in-use') setError('Email already registered');
-      else setError('Something went wrong. Try again.');
+      if (err.code === 'auth/email-already-in-use') setError('This email is already registered. Please login.');
+      else if (!err.message?.includes('GST')) setError('Something went wrong. Try again.');
     }
     setLoading(false);
   };
@@ -203,7 +212,6 @@ function Register() {
       <div style={S.bgPattern} />
       <div style={S.card}>
 
-        {/* Header */}
         <div style={S.logoArea}>
           <div style={S.logoMark}>
             <svg width="28" height="28" viewBox="0 0 24 24" fill="none">
@@ -224,7 +232,6 @@ function Register() {
           <span>{role === 'buyer' ? 'Buyer' : 'Supplier'} Registration</span>
         </div>
 
-        {/* Step indicator */}
         <div style={S.stepRow}>
           <div style={{ ...S.stepDot, backgroundColor: D.navy }}>
             {step > 1
@@ -246,7 +253,6 @@ function Register() {
           <span style={S.stepLabel}>Done</span>
         </div>
 
-        {/* ── STEP 1 ── */}
         {step === 1 && (
           <div>
             <h2 style={S.formTitle}>Create Account</h2>
@@ -260,10 +266,18 @@ function Register() {
               <div style={S.fieldGroup}>
                 <label style={S.label}>Password</label>
                 <div style={S.passWrap}>
-                  <input style={{ ...S.input, paddingRight: 44 }} type={showPass ? 'text' : 'password'}
-                    placeholder="Min. 6 characters" value={password} onChange={e => setPassword(e.target.value)} required />
-                  <button type="button" style={S.eyeBtn} onClick={() => setShowPass(!showPass)}>
-                    {showPass ? '🙈' : '👁'}
+                  <input
+                    style={{ ...S.input, paddingRight: 44 }}
+                    type={showPass ? 'text' : 'password'}
+                    placeholder="Min. 6 characters"
+                    value={password}
+                    onChange={e => setPassword(e.target.value)}
+                    required
+                  />
+                  <button type="button" style={S.eyeBtn} onClick={() => setShowPass(!showPass)} title={showPass ? 'Hide password' : 'Show password'}>
+                    <span style={{ color: D.textSecondary, display: 'flex', alignItems: 'center' }}>
+                      {showPass ? <EyeOffIcon /> : <EyeIcon />}
+                    </span>
                   </button>
                 </div>
               </div>
@@ -271,24 +285,28 @@ function Register() {
               <button style={S.primaryBtn} type="submit">Continue →</button>
             </form>
             <div style={{ display: 'flex', flexDirection: 'column', gap: 10, marginTop: 16 }}>
-  <p style={{ ...S.loginText, margin: 0 }}>Already registered? <Link to="/" style={S.linkText}>Sign in</Link></p>
-  <Link to="/" style={{ textAlign: 'center', fontSize: 13, color: D.textSecondary, textDecoration: 'none', display: 'block' }}>← Back to Login</Link>
-</div>
+              <p style={{ ...S.loginText, margin: 0 }}>Already registered? <Link to="/" style={S.linkText}>Sign in</Link></p>
+              <Link to="/" style={{ textAlign: 'center', fontSize: 13, color: D.textSecondary, textDecoration: 'none', display: 'block' }}>← Back to Login</Link>
+            </div>
           </div>
         )}
 
-        {/* ── STEP 2 ── */}
         {step === 2 && (
           <div>
             <h2 style={S.formTitle}>Business Details</h2>
             <p style={S.formSubtitle}>Helps us verify your account</p>
             <form onSubmit={handleSubmit}>
-              <div style={{ maxHeight: '50vh', overflowY: 'auto', paddingRight: 4 }}>
+              <div style={{ maxHeight: '52vh', overflowY: 'auto', paddingRight: 4 }}>
 
                 <div style={S.fieldGroup}>
                   <label style={S.label}>GST Number</label>
-                  <input style={S.input} name="gstNumber" placeholder="22AAAAA0000A1Z5"
-                    value={formData.gstNumber} onChange={handleChange} required />
+                  <input
+                    style={S.input} name="gstNumber"
+                    placeholder="22AAAAA0000A1Z5"
+                    value={formData.gstNumber}
+                    onChange={e => setFormData(prev => ({ ...prev, gstNumber: e.target.value.toUpperCase() }))}
+                    required
+                  />
                 </div>
 
                 <div style={S.fieldGroup}>
@@ -321,7 +339,6 @@ function Register() {
                     value={formData.addressLine2} onChange={handleChange} />
                 </div>
 
-                {/* Pincode */}
                 <div style={S.fieldGroup}>
                   <label style={S.label}>
                     Pincode
@@ -330,22 +347,23 @@ function Register() {
                       <span style={{ marginLeft: 8, fontSize: 11, color: D.success, fontWeight: 600, textTransform: 'none' }}>✓ Details loaded</span>
                     )}
                   </label>
-                  <input style={S.input} placeholder="6-digit pincode" type="tel"
-                    value={formData.pincode} onChange={handlePincodeChange} maxLength={6} required />
-                  {pincodeError && <p style={{ margin: '5px 0 0', fontSize: 12, color: D.error }}>{pincodeError}</p>}
+                  <input
+                    style={{ ...S.input, letterSpacing: formData.pincode ? '0.1em' : 'normal' }}
+                    placeholder="6-digit pincode" type="tel"
+                    value={formData.pincode} onChange={handlePincodeChange} maxLength={6} required
+                  />
+                  {pincodeError && <p style={{ margin: '5px 0 0', fontSize: 12, color: D.error }}>⚠ {pincodeError}</p>}
                 </div>
 
-                {/* City — searchable dropdown */}
                 <SmartSelect
                   label="City / Block"
                   value={formData.city}
                   onChange={handleCityChange}
                   options={cityOptions}
-                  placeholder={pincodeLoading ? 'Fetching...' : 'Type or select'}
+                  placeholder={pincodeLoading ? '⏳ Fetching...' : 'Enter pincode first or type manually'}
                   required
                 />
 
-                {/* District + State side by side */}
                 <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10 }}>
                   <SmartSelect
                     label="District"
@@ -402,7 +420,7 @@ const S = {
   label: { display: 'block', fontSize: 11, fontWeight: 600, color: D.textSecondary, marginBottom: 5, textTransform: 'uppercase', letterSpacing: '0.05em' },
   input: { display: 'block', width: '100%', padding: '11px 13px', border: `1.5px solid ${D.border}`, borderRadius: 8, fontSize: 14, color: D.textPrimary, outline: 'none', boxSizing: 'border-box', backgroundColor: D.bg, fontFamily: 'inherit' },
   passWrap: { position: 'relative' },
-  eyeBtn: { position: 'absolute', right: 12, top: '50%', transform: 'translateY(-50%)', background: 'none', border: 'none', cursor: 'pointer', fontSize: 16, padding: 4 },
+  eyeBtn: { position: 'absolute', right: 12, top: '50%', transform: 'translateY(-50%)', background: 'none', border: 'none', cursor: 'pointer', padding: 4, display: 'flex', alignItems: 'center', justifyContent: 'center' },
   primaryBtn: { display: 'block', width: '100%', padding: '13px', backgroundColor: D.navy, color: 'white', border: 'none', borderRadius: 10, fontSize: 15, fontWeight: 700, cursor: 'pointer', marginTop: 12, letterSpacing: '-0.01em', fontFamily: 'inherit' },
   ghostBtn: { display: 'block', width: '100%', padding: '11px', backgroundColor: 'transparent', color: D.textSecondary, border: `1.5px solid ${D.border}`, borderRadius: 10, fontSize: 14, fontWeight: 600, cursor: 'pointer', marginTop: 10, fontFamily: 'inherit' },
   errorMsg: { fontSize: 13, color: D.error, margin: '8px 0 0', fontWeight: 500 },

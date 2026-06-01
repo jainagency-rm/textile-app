@@ -1,14 +1,20 @@
-import React, { useEffect } from 'react';
+import React, { useEffect, Suspense } from 'react';
 import { BrowserRouter as Router, Routes, Route, useNavigate } from 'react-router-dom';
 
 import Login from './pages/Login';
 import Register from './pages/Register';
 import Pending from './pages/Pending';
+import ProtectedRoute from './components/shared/ProtectedRoute';
 
-// Updated import paths to reflect the new folder structure
-import AdminDashboard from './pages/admin/AdminDashboard';
-import SupplierDashboard from './pages/supplier/SupplierDashboard';
-import BuyerDashboard from './pages/buyer/BuyerDashboard';
+const AdminDashboard = React.lazy(() => import('./pages/admin/AdminDashboard'));
+const SupplierDashboard = React.lazy(() => import('./pages/supplier/SupplierDashboard'));
+const BuyerDashboard = React.lazy(() => import('./pages/buyer/BuyerDashboard'));
+
+const LoadingScreen = () => (
+  <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', height: '100vh', backgroundColor: '#f8f9fa', fontFamily: 'sans-serif' }}>
+    <p style={{ color: '#44474d', fontSize: 14 }}>Loading...</p>
+  </div>
+);
 
 // Global ESC + Swipe handler
 function GlobalHandlers() {
@@ -50,11 +56,30 @@ function App() {
         <Route path="/" element={<Login />} />
         <Route path="/register" element={<Register />} />
         <Route path="/pending" element={<Pending />} />
-        
-        {/* Dashboards mapped to updated file names/paths */}
-        <Route path="/admin" element={<AdminDashboard />} />
-        <Route path="/supplier" element={<SupplierDashboard />} />
-        <Route path="/buyer" element={<BuyerDashboard />} />
+
+        <Route path="/admin" element={
+          <ProtectedRoute requiredRole="admin">
+            <Suspense fallback={<LoadingScreen />}>
+              <AdminDashboard />
+            </Suspense>
+          </ProtectedRoute>
+        } />
+
+        <Route path="/supplier" element={
+          <ProtectedRoute requiredRole="supplier">
+            <Suspense fallback={<LoadingScreen />}>
+              <SupplierDashboard />
+            </Suspense>
+          </ProtectedRoute>
+        } />
+
+        <Route path="/buyer" element={
+          <ProtectedRoute requiredRole="buyer">
+            <Suspense fallback={<LoadingScreen />}>
+              <BuyerDashboard />
+            </Suspense>
+          </ProtectedRoute>
+        } />
       </Routes>
     </Router>
   );

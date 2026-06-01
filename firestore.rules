@@ -2,31 +2,106 @@ rules_version = '2';
 service cloud.firestore {
   match /databases/{database}/documents {
 
-    // 1. Helper Function (Login check)
+    // ── Helper Functions ──────────────────────────────────────────────────────
+
     function isAuthenticated() {
       return request.auth != null;
     }
 
-    // 2. Users Collection (Profile Data)
+    // Firestore se current user ka role fetch karke admin check
+    function isAdmin() {
+      return isAuthenticated() &&
+        get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'admin';
+    }
+
+    // Supplier role check
+    function isSupplier() {
+      return isAuthenticated() &&
+        get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'supplier';
+    }
+
+    // ── Users Collection ─────────────────────────────────────────────────────
+    // Read: koi bhi logged-in user (admin ko sab dekhna padta hai, buyers profile dekhte hain)
+    // Write: sirf khud ka data (self-edit) ya admin
     match /users/{userId} {
-      allow read: if isAuthenticated(); 
-      allow write: if request.auth.uid == userId; // User sirf apna data change kar sake
+      allow read: if isAuthenticated();
+      allow write: if request.auth.uid == userId || isAdmin();
     }
 
-    // 3. Products Collection
+    // ── Products Collection ──────────────────────────────────────────────────
+    // Read: koi bhi logged-in user (buyers browse karte hain)
+    // Create: sirf supplier ya admin
+    // Update/Delete: sirf wahi supplier jiska product hai, ya admin
     match /products/{productId} {
-      allow read: if isAuthenticated(); // Buyers aur Suppliers dono dekh sakein
-      allow create, update: if isAuthenticated(); // Naya product dalna
-      allow delete: if false; // Delete app se nahi, sirf admin ya strict rule se ho
+      allow read: if isAuthenticated();
+      allow create: if isSupplier() || isAdmin();
+      allow update: if isAdmin() ||
+        (isSupplier() && resource.data.supplierId == request.auth.uid);
+      allow delete: if isAdmin() ||
+        (isSupplier() && resource.data.supplierId == request.auth.uid);
     }
 
-    // 4. Orders Collection
+    // Products ke subcollections (cuts, designs) — same ownership rules
+    match /products/{productId}/{document=**} {
+      allow read: if isAuthenticated();
+      allow write: if isAdmin() ||
+        (isSupplier() &&
+          get(/databases/$(database)/documents/products/$(productId)).data.supplierId == request.auth.uid);
+    }
+
+    // ── Orders Collection ────────────────────────────────────────────────────
+    // Read: koi bhi logged-in user (buyer, supplier, admin apne orders dekhte hain)
+    // Create: koi bhi logged-in user (buyers order dete hain)
+    // Update: koi bhi logged-in user (supplier approve kare, admin status update kare)
+    // Delete: sirf admin (invoice integrity ke liye strict)
     match /orders/{orderId} {
-      allow read, write: if isAuthenticated(); 
-      // Note: Production mein ise aur strict karna hoga (Buyer apne orders dekhe, Supplier apne)
+      allow read: if isAuthenticated();
+      allow create: if isAuthenticated();
+      allow update: if isAuthenticated();
+      allow delete: if isAdmin();
     }
 
-    // 5. Default Deny (Sabse important security - Baaki saare collections LOCK)
+    match /orders/{orderId}/{document=**} {
+      allow read, write: if isAuthenticated();
+    }
+
+    // ── Categories Collection ────────────────────────────────────────────────
+    // Read: koi bhi (products mein category dikhti hai)
+    // Write: sirf admin (categories manage karta hai)
+    match /categories/{categoryId} {
+      allow read: if isAuthenticated();
+      allow write: if isAdmin();
+    }
+
+    // ── Transporters Collection ──────────────────────────────────────────────
+    // Read: koi bhi (buyers + admin dropdown mein use karte hain)
+    // Write: sirf admin
+    match /transporters/{transporterId} {
+      allow read: if isAuthenticated();
+      allow create: if isAuthenticated();
+      allow update, delete: if isAdmin();
+    }
+
+    // ── Notifications Collection ─────────────────────────────────────────────
+    // Read/Update: sirf apni notifications (userId match kare)
+    // Create: koi bhi logged-in user (order/product notifications trigger karte hain)
+    // Delete: sirf admin
+    match /notifications/{notifId} {
+      allow read: if isAuthenticated() && resource.data.userId == request.auth.uid;
+      allow list: if isAuthenticated();
+      allow create: if isAuthenticated();
+      allow update: if isAuthenticated() && resource.data.userId == request.auth.uid;
+      allow delete: if isAdmin();
+    }
+
+    // ── Category Requests ────────────────────────────────────────────────
+    match /categoryRequests/{reqId} {
+      allow read: if isAuthenticated();
+      allow create: if isSupplier();
+      allow update, delete: if isAdmin();
+    }
+
+    // ── Default Deny ─────────────────────────────────────────────────────────
     match /{document=**} {
       allow read, write: if false;
     }

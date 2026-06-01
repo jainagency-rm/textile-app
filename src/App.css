@@ -1,11 +1,24 @@
-/* ── App.css - Optimized for Responsive Dashboard ── */
+/* ── App.css - Optimized for Responsive Dashboard & PWA ── */
 
-/* Smooth scrolling for the entire app */
-html {
+/* ── 1. PWA Native Feel Enhancements ── */
+* {
+  /* Mobile par buttons/links tap karne par aane wale blue ajeeb flash ko hatane ke liye */
+  -webkit-tap-highlight-color: transparent;
+}
+
+/* Humne index.css mein scroll #root ko diya hai, isliye smooth scroll bhi yahin aayega */
+#root {
   scroll-behavior: smooth;
 }
 
-/* ── Modern Custom Scrollbar for Desktop & Tablet ── */
+/* Sabse Important: Product images ko screen ke bahar nikalne se rokne ke liye */
+img, video {
+  max-width: 100%;
+  height: auto;
+  /* object-fit: contain ya cover use kar sakte hain depending on design */
+}
+
+/* ── 2. Modern Custom Scrollbar for Desktop & Tablet ── */
 ::-webkit-scrollbar {
   width: 6px;  /* Vertical scrollbar ki motai */
   height: 6px; /* Horizontal scrollbar ki motai (Tables ke liye useful) */
@@ -24,7 +37,7 @@ html {
   background: #94a3b8; /* Hover par thoda dark gray */
 }
 
-/* ── Hide Scrollbar on Mobile for Native App Feel ── */
+/* ── 3. Hide Scrollbar on Mobile for Native App Feel ── */
 /* Mobile par touch scroll use hota hai, isliye scrollbar chhupana better UX hai */
 @media (max-width: 768px) {
   ::-webkit-scrollbar {
@@ -35,4 +48,9 @@ html {
     -ms-overflow-style: none;  /* IE and Edge */
     scrollbar-width: none;  /* Firefox */
   }
+}
+/* Tab dabane par Input box highlight hone ke liye */
+input.grid-input:focus {
+  outline: 2px solid #031632 !important; /* Navy blue color ka border aayega */
+  outline-offset: 1px;
 }

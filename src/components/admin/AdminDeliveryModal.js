@@ -1,99 +1,234 @@
-import React from 'react';
-import { D } from '../../constants/design';
-import TextInput from '../shared/TextInput';
+import React, { useState, useEffect } from 'react';
 
-export default function AdminDeliveryModal({ 
-  deliveryModal, deliveryStatus, setDeliveryStatus, 
-  shippingForm, setShippingForm, onSave, onCancel 
+const navy = '#031632';
+const gold = '#775a19';
+const bg = '#f8f9fa';
+const border = '#e2e8f0';
+const textSecondary = '#64748b';
+const error = '#ef4444';
+const success = '#10b981';
+
+const Field = ({ label, children, half }) => (
+  <div style={{ display: 'flex', flexDirection: 'column', gap: 6, flex: half ? '1 1 140px' : '1 1 100%' }}>
+    <label style={{ fontSize: 11, fontWeight: 700, color: '#64748b', textTransform: 'uppercase', letterSpacing: '0.05em' }}>{label}</label>
+    {children}
+  </div>
+);
+
+export default function AdminDeliveryModal({
+  deliveryModal, deliveryStatus, setDeliveryStatus,
+  shippingForm, setShippingForm, onSave, onCancel, users, transporters = [], onAddTransporter
 }) {
+  const [localForm, setLocalForm] = useState(shippingForm);
+  const [addingNewTransport, setAddingNewTransport] = useState(false);
+  const [newTransportName, setNewTransportName] = useState('');
+  const [newTransportError, setNewTransportError] = useState('');
+
+  useEffect(() => {
+    setLocalForm(shippingForm);
+  }, [deliveryModal?.id]);
+
+  useEffect(() => {
+    const handler = (e) => { if (e.key === 'Escape') onCancel(); };
+    document.addEventListener('keydown', handler);
+    return () => document.removeEventListener('keydown', handler);
+  }, [onCancel]);
+
   if (!deliveryModal) return null;
 
+  const inputStyle = {
+    padding: '10px 12px', border: `1.5px solid ${border}`, borderRadius: 8,
+    fontSize: 14, color: navy, outline: 'none', backgroundColor: 'white',
+    width: '100%', boxSizing: 'border-box', fontFamily: 'inherit'
+  };
+
   return (
-    <div style={styles.modalOverlay} onClick={onCancel}>
-      <div style={styles.modal} onClick={e => e.stopPropagation()}>
-        <h3 style={{ marginTop: 0, color: D.navy }}>Update Order Status</h3>
-        <p style={{ fontSize: 13, color: D.textSecondary, margin: '0 0 12px' }}>
-          Buyer: <b>{deliveryModal.buyerFirm}</b> | Supplier: <b>{deliveryModal.supplierFirm}</b>
-        </p>
+    <div style={{ position: 'fixed', inset: 0, backgroundColor: 'rgba(3,22,50,0.6)', backdropFilter: 'blur(4px)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 2000, padding: 16 }} onClick={onCancel}>
+      <div style={{ backgroundColor: 'white', borderRadius: 16, width: '100%', maxWidth: 480, maxHeight: '90vh', overflowY: 'auto', boxShadow: '0 25px 60px rgba(3,22,50,0.25)', boxSizing: 'border-box' }} onClick={e => e.stopPropagation()}>
 
-        <label style={styles.label}>Status</label>
-        <select style={styles.inputFull} value={deliveryStatus} onChange={e => setDeliveryStatus(e.target.value)}>
-          <option value="Pending">Pending</option>
-          <option value="Processing">Processing</option>
-          <option value="Shipped">Shipped (Add Dispatch)</option>
-          <option value="Cancelled">Cancelled</option>
-        </select>
-        <p style={{ fontSize: 11, color: '#94a3b8', margin: '4px 0 12px' }}>
-          Note: "Delivered" and "Partially Dispatched" are set automatically based on dispatch quantities.
-        </p>
-
-        {deliveryStatus === 'Shipped' && (
-          <div style={{ marginTop: 12, backgroundColor: '#f8fafc', padding: 16, borderRadius: 10 }}>
-            <p style={{ margin: '0 0 12px', fontWeight: 'bold', fontSize: 13, color: D.navy }}>New Dispatch Details</p>
-            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10 }}>
-              <TextInput label="Bill No *" value={shippingForm.billNo} onChange={v => setShippingForm({ ...shippingForm, billNo: v })} placeholder="Bill No" />
-              <div>
-                <label style={styles.label}>Bill Date</label>
-                <input type="date" style={styles.inputFull} value={shippingForm.billDate} onChange={e => setShippingForm({ ...shippingForm, billDate: e.target.value })} />
-              </div>
-              <TextInput label="Transport" value={shippingForm.transport} onChange={v => setShippingForm({ ...shippingForm, transport: v })} placeholder="Transport" />
-              <TextInput label="LR No" value={shippingForm.lrNo} onChange={v => setShippingForm({ ...shippingForm, lrNo: v })} placeholder="LR No" />
-              <div style={{ gridColumn: '1 / -1' }}>
-                <label style={styles.label}>LR Date</label>
-                <input type="date" style={{ ...styles.inputFull, maxWidth: 200 }} value={shippingForm.lrDate} onChange={e => setShippingForm({ ...shippingForm, lrDate: e.target.value })} />
-              </div>
+        {/* Header */}
+        <div style={{ background: `linear-gradient(135deg, ${navy} 0%, #1a2b48 100%)`, padding: '20px 24px', borderRadius: '16px 16px 0 0' }}>
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
+            <div>
+              <p style={{ margin: 0, fontSize: 11, color: 'rgba(255,255,255,0.5)', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.08em' }}>Order #{deliveryModal.id?.slice(0, 8).toUpperCase()}</p>
+              <h3 style={{ margin: '4px 0 0', color: 'white', fontSize: 18, fontWeight: 800 }}>Update Status</h3>
             </div>
-
-            <div style={{ marginTop: 16 }}>
-              <p style={{ fontWeight: 700, fontSize: 13, color: D.navy, margin: '0 0 10px' }}>Quantity to Dispatch Now</p>
-              {shippingForm.dispatchItems.map((item, idx) => {
-                const remaining = item.orderedQty - item.previouslyDispatched;
-                const isDisabled = remaining <= 0;
-                return (
-                  <div key={idx} style={{ display: 'flex', gap: 10, marginBottom: 10, alignItems: 'center', opacity: isDisabled ? 0.5 : 1, backgroundColor: isDisabled ? '#f1f5f9' : 'white', padding: '8px 10px', borderRadius: 8, border: '1px solid #e2e8f0' }}>
-                    <div style={{ flex: 1 }}>
-                      <div style={{ fontSize: 13, fontWeight: 600, color: D.navy }}>
-                        {item.productName}{item.size ? ` (${item.size})` : ''}
-                      </div>
-                      <div style={{ fontSize: 11, color: D.textSecondary, marginTop: 2 }}>
-                        Ordered: <b>{item.orderedQty} {item.unit}</b> | Prev: <b style={{ color: D.success }}>{item.previouslyDispatched}</b> | Rem: <b style={{ color: isDisabled ? '#94a3b8' : D.error }}>{remaining}</b>
-                      </div>
-                    </div>
-                    <div>
-                      <label style={{ ...styles.label, marginBottom: 2 }}>Now</label>
-                      <input type="number" min="0" max={remaining}
-                        value={item.dispatchingNow}
-                        disabled={isDisabled}
-                        style={{ width: 72, padding: '7px', borderRadius: 6, border: '1px solid #d1d5db', backgroundColor: isDisabled ? '#e2e8f0' : 'white', textAlign: 'center', fontSize: 14 }}
-                        onChange={e => {
-                          let val = Math.max(0, Math.min(Number(e.target.value), remaining));
-                          const updated = [...shippingForm.dispatchItems];
-                          updated[idx] = { ...updated[idx], dispatchingNow: val };
-                          setShippingForm({ ...shippingForm, dispatchItems: updated });
-                        }}
-                      />
-                    </div>
-                  </div>
-                );
-              })}
+            <button onClick={onCancel} style={{ background: 'rgba(255,255,255,0.1)', border: 'none', color: 'white', width: 32, height: 32, borderRadius: 8, cursor: 'pointer', fontSize: 16, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>✕</button>
+          </div>
+          <div style={{ marginTop: 12, display: 'flex', gap: 16, flexWrap: 'wrap' }}>
+            <div>
+              <p style={{ margin: 0, fontSize: 10, color: 'rgba(255,255,255,0.5)', textTransform: 'uppercase', letterSpacing: '0.05em' }}>Buyer</p>
+              <p style={{ margin: '2px 0 0', fontSize: 13, color: 'white', fontWeight: 600 }}>{deliveryModal.buyerFirm}</p>
+            </div>
+            <div>
+              <p style={{ margin: 0, fontSize: 10, color: 'rgba(255,255,255,0.5)', textTransform: 'uppercase', letterSpacing: '0.05em' }}>Supplier</p>
+              <p style={{ margin: '2px 0 0', fontSize: 13, color: 'white', fontWeight: 600 }}>{deliveryModal.supplierFirm}</p>
             </div>
           </div>
-        )}
+        </div>
 
-        <div style={{ display: 'flex', gap: 10, marginTop: 20 }}>
-          <button style={styles.btnApprove} onClick={onSave}>Save Status</button>
-          <button style={styles.btnEdit} onClick={onCancel}>Cancel</button>
+        {/* Body */}
+        <div style={{ padding: '20px 24px' }}>
+
+          {/* Status Select */}
+          <Field label="Order Status">
+            <select style={{ ...inputStyle, cursor: 'pointer' }} value={deliveryStatus} onChange={e => setDeliveryStatus(e.target.value)}>
+              <option value="Pending">Pending</option>
+              <option value="Processing">Processing</option>
+              <option value="Shipped">Shipped — Add Dispatch Details</option>
+              <option value="Cancelled">Cancelled</option>
+            </select>
+          </Field>
+          <p style={{ fontSize: 11, color: textSecondary, margin: '6px 0 0', fontStyle: 'italic' }}>
+            "Delivered" and "Partially Dispatched" are set automatically based on quantities.
+          </p>
+
+          {/* Dispatch Section */}
+          {deliveryStatus === 'Shipped' && (
+            <div style={{ marginTop: 20 }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 16 }}>
+                <div style={{ height: 1, flex: 1, backgroundColor: border }} />
+                <span style={{ fontSize: 11, fontWeight: 700, color: textSecondary, textTransform: 'uppercase', letterSpacing: '0.08em', whiteSpace: 'nowrap' }}>Dispatch Details</span>
+                <div style={{ height: 1, flex: 1, backgroundColor: border }} />
+              </div>
+
+              <div style={{ display: 'flex', flexWrap: 'wrap', gap: 12 }}>
+                <Field label="Bill No *" half>
+                  <input style={inputStyle} placeholder="e.g. 1234" value={localForm.billNo} onChange={e => setLocalForm({ ...localForm, billNo: e.target.value })} />
+                </Field>
+                <Field label="Bill Date" half>
+                  <input type="date" style={inputStyle} value={localForm.billDate} onChange={e => setLocalForm({ ...localForm, billDate: e.target.value })} />
+                </Field>
+                <Field label="Transport" half>
+                  {!addingNewTransport ? (
+                    <div>
+                      <input
+                        style={inputStyle}
+                        placeholder="Type or select transport"
+                        value={localForm.transport}
+                        list="transport-master-list"
+                        onChange={e => setLocalForm({ ...localForm, transport: e.target.value })}
+                        onFocus={e => setTimeout(() => e.target.select(), 0)}
+                      />
+                      <datalist id="transport-master-list">
+                        {transporters.map((t) => (
+                          <option key={t.id} value={t.name} />
+                        ))}
+                      </datalist>
+                      <button
+                        type="button"
+                        style={{ marginTop: 6, fontSize: 12, color: navy, backgroundColor: 'transparent', border: `1.5px dashed ${border}`, borderRadius: 6, padding: '6px 10px', cursor: 'pointer', fontWeight: 600, width: '100%' }}
+                        onClick={() => { setAddingNewTransport(true); setNewTransportName(''); setNewTransportError(''); }}
+                      >
+                        + Add New Transport
+                      </button>
+                    </div>
+                  ) : (
+                    <div style={{ backgroundColor: '#f8f9fa', borderRadius: 8, padding: 12, border: `1.5px solid ${border}` }}>
+                      <p style={{ margin: '0 0 8px', fontSize: 12, fontWeight: 700, color: navy }}>New Transporter Name</p>
+                      <input
+                        style={inputStyle}
+                        placeholder="e.g. VRL LOGISTICS"
+                        value={newTransportName}
+                        onChange={e => {
+                          const upper = e.target.value.toUpperCase();
+                          if (upper && !/^[A-Z0-9& .-]+$/.test(upper)) {
+                            setNewTransportError('Only capital letters, numbers & spaces allowed');
+                          } else { setNewTransportError(''); }
+                          setNewTransportName(upper);
+                        }}
+                        autoFocus
+                      />
+                      {newTransportError && <p style={{ margin: '0 0 6px', fontSize: 11, color: error }}>{newTransportError}</p>}
+                      <div style={{ display: 'flex', gap: 8, marginTop: 6 }}>
+                        <button
+                          type="button"
+                          style={{ flex: 1, padding: '8px', borderRadius: 8, border: `1.5px solid ${border}`, backgroundColor: 'white', color: textSecondary, fontSize: 13, fontWeight: 600, cursor: 'pointer' }}
+                          onClick={() => { setAddingNewTransport(false); setNewTransportName(''); setNewTransportError(''); }}
+                        >Cancel</button>
+                        <button
+                          type="button"
+                          style={{ flex: 1, padding: '8px', borderRadius: 8, border: 'none', backgroundColor: navy, color: 'white', fontSize: 13, fontWeight: 700, cursor: 'pointer' }}
+                          onClick={() => {
+                            if (!newTransportName.trim() || newTransportError) return;
+                            const name = newTransportName.trim();
+                            setLocalForm({ ...localForm, transport: name });
+                            if (onAddTransporter) onAddTransporter(name);
+                            setAddingNewTransport(false);
+                            setNewTransportName('');
+                          }}
+                        >Add & Select</button>
+                      </div>
+                    </div>
+                  )}
+                </Field>
+                <Field label="LR No" half>
+                  <input style={inputStyle} placeholder="e.g. 9876543" value={localForm.lrNo} onChange={e => setLocalForm({ ...localForm, lrNo: e.target.value })} />
+                </Field>
+                <Field label="LR Date" half>
+                  <input type="date" style={inputStyle} value={localForm.lrDate} onChange={e => setLocalForm({ ...localForm, lrDate: e.target.value })} />
+                </Field>
+              </div>
+
+              {/* Dispatch Items */}
+              <div style={{ marginTop: 20 }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 12 }}>
+                  <div style={{ height: 1, flex: 1, backgroundColor: border }} />
+                  <span style={{ fontSize: 11, fontWeight: 700, color: textSecondary, textTransform: 'uppercase', letterSpacing: '0.08em', whiteSpace: 'nowrap' }}>Quantities</span>
+                  <div style={{ height: 1, flex: 1, backgroundColor: border }} />
+                </div>
+                {localForm.dispatchItems.map((item, idx) => {
+                  const remaining = item.orderedQty - item.previouslyDispatched;
+                  const isDisabled = remaining <= 0;
+                  const unit = item.sets ? 'Set' : (item.moqUnit || item.unit || 'Piece');
+                  return (
+                    <div key={idx} style={{ display: 'flex', alignItems: 'center', gap: 12, padding: '12px 14px', borderRadius: 10, border: `1.5px solid ${isDisabled ? border : (item.dispatchingNow > 0 ? '#bbf7d0' : border)}`, backgroundColor: isDisabled ? bg : (item.dispatchingNow > 0 ? '#f0fdf4' : 'white'), marginBottom: 8, opacity: 1 }}>
+                      <div style={{ flex: 1, minWidth: 0 }}>
+                        <p style={{ margin: 0, fontSize: 13, fontWeight: 700, color: navy }}>{item.productName}{item.size ? ` — ${item.size}` : ''}</p>
+                        <p style={{ margin: '3px 0 0', fontSize: 11, color: textSecondary }}>
+                          Ordered: <b style={{ color: navy }}>{item.orderedQty} {unit}</b>
+                          {' · '}Prev: <b style={{ color: success }}>{item.previouslyDispatched}</b>
+                          {' · '}Rem: <b style={{ color: isDisabled ? textSecondary : error }}>{remaining}</b>
+                        </p>
+                        {item.dispatchingNow > remaining && remaining >= 0 && (
+                          <p style={{ margin: '2px 0 0', fontSize: 11, color: '#f59e0b', fontWeight: 600 }}>
+                            ⚠ {item.dispatchingNow - remaining} extra — over dispatch
+                          </p>
+                        )}
+                      </div>
+                      <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 3, flexShrink: 0 }}>
+                        <span style={{ fontSize: 10, fontWeight: 700, color: textSecondary, textTransform: 'uppercase' }}>Now</span>
+                        <input
+                          type="number" min="0"
+                          value={item.dispatchingNow || ''}
+                          disabled={isDisabled}
+                          style={{ width: 64, padding: '8px 6px', borderRadius: 8, border: `1.5px solid ${item.dispatchingNow > 0 ? success : border}`, backgroundColor: item.dispatchingNow > remaining && remaining >= 0 ? '#fff7ed' : 'white', textAlign: 'center', fontSize: 15, fontWeight: 700, color: navy, outline: 'none' }}
+                          onChange={e => {
+                            const val = Math.max(0, Number(e.target.value));
+                            const updated = [...localForm.dispatchItems];
+                            updated[idx] = { ...updated[idx], dispatchingNow: val };
+                            setLocalForm({ ...localForm, dispatchItems: updated });
+                          }}
+                        />
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+            </div>
+          )}
+
+          {/* Footer Buttons */}
+          <div style={{ display: 'flex', gap: 10, marginTop: 24 }}>
+            <button onClick={onCancel} style={{ flex: 1, padding: '13px', borderRadius: 10, border: `1.5px solid ${border}`, backgroundColor: 'white', color: textSecondary, fontSize: 14, fontWeight: 700, cursor: 'pointer' }}>
+              Cancel
+            </button>
+            <button onClick={() => { setShippingForm(localForm); onSave(localForm); }} style={{ flex: 2, padding: '13px', borderRadius: 10, border: 'none', background: `linear-gradient(135deg, ${navy} 0%, #1a2b48 100%)`, color: 'white', fontSize: 14, fontWeight: 700, cursor: 'pointer' }}>
+              Save & Update Order
+            </button>
+          </div>
         </div>
       </div>
     </div>
   );
 }
-
-const styles = {
-  modalOverlay: { position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, backgroundColor: 'rgba(15,23,42,0.6)', backdropFilter: 'blur(4px)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 2000 },
-  modal: { backgroundColor: 'white', padding: 25, borderRadius: 16, width: '90%', maxWidth: 520, boxShadow: '0 25px 50px -12px rgba(0,0,0,0.25)', maxHeight: '90vh', overflowY: 'auto' },
-  label: { fontSize: 12, color: '#64748b', fontWeight: 700, display: 'block', marginBottom: 4, marginTop: 10 },
-  inputFull: { padding: '10px 14px', border: '1px solid #cbd5e1', borderRadius: 8, width: '100%', boxSizing: 'border-box', fontSize: 14, outline: 'none' },
-  btnApprove: { backgroundColor: '#10b981', color: 'white', border: 'none', padding: '12px 16px', borderRadius: 8, cursor: 'pointer', fontSize: 14, fontWeight: 700, flex: 1 },
-  btnEdit: { backgroundColor: '#64748b', color: 'white', border: 'none', padding: '12px 16px', borderRadius: 8, cursor: 'pointer', fontSize: 14, fontWeight: 700, flex: 1 },
-};
