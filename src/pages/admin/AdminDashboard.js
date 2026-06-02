@@ -580,23 +580,56 @@ function AdminDashboard() {
 
         {/* Content */}
         {activeTab === 'analytics' && (
-          <div style={styles.gridStats}>
-            {[
-              { label: 'Total Orders', value: stats.totalOrders, color: '#031632' },
-              { label: 'Pending Orders', value: stats.pendingOrders, color: '#f59e0b' },
-              { label: 'Processing', value: stats.processingOrders, color: '#3b82f6' },
-              { label: 'Delivered', value: stats.deliveredOrders, color: '#10b981' },
-              { label: 'Active Buyers', value: stats.activeBuyers, color: '#8b5cf6' },
-              { label: 'Active Suppliers', value: stats.activeSuppliers, color: '#ec4899' },
-              { label: 'Pending Users', value: stats.pendingUsers, color: '#f59e0b' },
-              { label: 'Pending Products', value: stats.pendingProducts, color: '#ef4444' },
-            ].map(s => (
-              <div key={s.label} style={styles.statCard}>
-                <p style={styles.statLabel}>{s.label}</p>
-                <h2 style={{ ...styles.statValue, color: s.color }}>{s.value}</h2>
+          <>
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(160px, 1fr))', gap: 12, padding: '16px' }}>
+              {[
+                { label: 'Total Orders', value: stats.totalOrders, color: '#031632' },
+                { label: 'Pending Orders', value: stats.pendingOrders, color: '#e65100' },
+                { label: 'Processing', value: stats.processingOrders, color: '#1565c0' },
+                { label: 'Delivered', value: stats.deliveredOrders, color: '#1a6b3c' },
+                { label: 'Active Buyers', value: stats.activeBuyers, color: '#6a1b9a' },
+                { label: 'Active Suppliers', value: stats.activeSuppliers, color: '#c2185b' },
+                { label: 'Pending Users', value: stats.pendingUsers, color: '#f57f17' },
+                { label: 'Pending Products', value: stats.pendingProducts, color: '#ba1a1a' },
+              ].map(s => (
+                <div key={s.label} style={{ backgroundColor: 'white', borderRadius: 12, padding: 16, boxShadow: '0 2px 8px rgba(3,22,50,0.06)', border: '1px solid #e7e8e9' }}>
+                  <p style={{ margin: '0 0 8px', fontSize: 11, color: '#44474d', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.05em' }}>{s.label}</p>
+                  <h2 style={{ margin: 0, fontSize: 28, fontWeight: 800, color: s.color }}>{s.value}</h2>
+                </div>
+              ))}
+            </div>
+            <div style={{ padding: '0 16px 16px' }}>
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 12 }}>
+                <span style={{ fontSize: 14, fontWeight: 700, color: '#031632' }}>Recent Orders</span>
+                <button onClick={() => setActiveTab('orders')} style={{ fontSize: 12, color: '#775a19', fontWeight: 600, background: 'none', border: 'none', cursor: 'pointer' }}>View All →</button>
               </div>
-            ))}
-          </div>
+              {[...orders]
+                .sort((a, b) => (b.orderNumber || 0) - (a.orderNumber || 0))
+                .slice(0, 5)
+                .map(order => (
+                  <div key={order.id} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '10px 0', borderBottom: '1px solid #e7e8e9' }}>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+                      <span style={{ fontSize: 13, fontWeight: 700, color: '#031632', minWidth: 40 }}>
+                        {order.orderNumber ? `#${order.orderNumber}` : `#${order.id.slice(-4).toUpperCase()}`}
+                      </span>
+                      <div>
+                        <p style={{ margin: 0, fontSize: 13, color: '#191c1d', fontWeight: 600 }}>{order.buyerFirm}</p>
+                        <p style={{ margin: 0, fontSize: 11, color: '#44474d' }}>{order.supplierFirm}</p>
+                      </div>
+                    </div>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+                      {order.totalAmount > 0 && (
+                        <span style={{ fontSize: 13, fontWeight: 700, color: '#031632' }}>₹{order.totalAmount.toLocaleString('en-IN')}</span>
+                      )}
+                      <span style={{ padding: '3px 10px', borderRadius: 20, fontSize: 11, fontWeight: 600, backgroundColor: { 'Pending': '#fff3e0', 'Processing': '#e3f2fd', 'Delivered': '#e8f5e9', 'Cancelled': '#fce8e6', 'Shipped': '#f3e5f5' }[order.status] || '#f5f5f5', color: { 'Pending': '#e65100', 'Processing': '#1565c0', 'Delivered': '#1a6b3c', 'Cancelled': '#ba1a1a', 'Shipped': '#6a1b9a' }[order.status] || '#44474d' }}>
+                        {order.status}
+                      </span>
+                    </div>
+                  </div>
+                ))
+              }
+            </div>
+          </>
         )}
 
         {activeTab === 'users' && (
@@ -686,57 +719,79 @@ function AdminDashboard() {
                 ))}
               </div>
             </div>
-            {displayOrders.map(order => {
-              const isExpanded = expandedOrder === order.id;
-              return (
-                <div key={order.id} style={styles.orderCard}>
-                  <div style={styles.orderRow} onClick={() => setExpandedOrder(isExpanded ? null : order.id)}>
-                    <div style={{ display: 'flex', alignItems: 'center', gap: 12, flex: 1, minWidth: 0, flexWrap: 'wrap' }}>
-                      <span style={{ fontSize: 13, fontWeight: 'bold', color: '#1e293b' }}>#{order.orderNumber || order.id.slice(0, 8)}</span>
-                      <span style={{ fontSize: 12, color: '#475569' }}>B: {order.buyerFirm} | S: {order.supplierFirm}</span>
-                      {order.totalAmount > 0 && <span style={{ fontSize: 12, fontWeight: 700, color: '#031632' }}>₹{order.totalAmount.toLocaleString('en-IN')}</span>}
-                    </div>
-                    <div style={{ display: 'flex', gap: 6, alignItems: 'center', flexWrap: 'wrap' }}>
-                      {(() => { const statusColor = { 'Pending': { bg: '#fff3e0', color: '#e65100' }, 'Processing': { bg: '#e3f2fd', color: '#1565c0' }, 'Shipped': { bg: '#f3e5f5', color: '#6a1b9a' }, 'Partially Dispatched': { bg: '#fff8e1', color: '#f57f17' }, 'Delivered': { bg: '#e8f5e9', color: '#1a6b3c' }, 'Cancelled': { bg: '#fce8e6', color: '#ba1a1a' } }[order.status] || { bg: '#f5f5f5', color: '#44474d' }; return <span style={{ padding: '3px 8px', borderRadius: 12, fontSize: 11, fontWeight: 'bold', backgroundColor: statusColor.bg, color: statusColor.color }}>{order.status || 'Pending'}</span>; })()}
-                      <button style={styles.btnDelivery} onClick={e => { e.stopPropagation(); openDeliveryModal(order); }}>Status</button>
-                      <button style={{ ...styles.btnShare, backgroundColor: '#8b5cf6' }} onClick={e => { e.stopPropagation(); setShareModal(order); }}>Share</button>
-                      <button style={{ ...styles.btnShare, backgroundColor: '#ef4444' }} onClick={e => { e.stopPropagation(); handleDeleteOrder(order.id); }}>Delete</button>
-                      <span style={{ color: '#94a3b8', fontSize: 16 }}>{isExpanded ? '▲' : '▼'}</span>
-                    </div>
+            {displayOrders.map(order => (
+              <div key={order.id} style={{ backgroundColor: 'white', borderRadius: 12, padding: '14px 16px', marginBottom: 10, boxShadow: '0 1px 6px rgba(3,22,50,0.06)', border: '1px solid #e7e8e9' }}>
+                {/* Header row */}
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 8 }}>
+                  <span style={{ fontSize: 14, fontWeight: 800, color: '#031632' }}>
+                    {order.orderNumber ? `#${order.orderNumber}` : `#${order.id.slice(-6).toUpperCase()}`}
+                  </span>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                    <span style={{ fontSize: 11, color: '#44474d' }}>
+                      {order.createdAt?.toDate?.()?.toLocaleString('en-IN', { day: '2-digit', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit' })}
+                    </span>
+                    <span style={{ padding: '3px 10px', borderRadius: 20, fontSize: 11, fontWeight: 600, backgroundColor: { 'Pending': '#fff3e0', 'Processing': '#e3f2fd', 'Delivered': '#e8f5e9', 'Cancelled': '#fce8e6', 'Shipped': '#f3e5f5', 'Partially Dispatched': '#fff8e1' }[order.status] || '#f5f5f5', color: { 'Pending': '#e65100', 'Processing': '#1565c0', 'Delivered': '#1a6b3c', 'Cancelled': '#ba1a1a', 'Shipped': '#6a1b9a', 'Partially Dispatched': '#f57f17' }[order.status] || '#44474d' }}>
+                      {order.status}
+                    </span>
                   </div>
-                  {isExpanded && (
-                    <div style={styles.orderBody}>
-                      {order.items?.map((item, idx) => (
-                        <div key={idx} style={{ fontSize: 13, padding: '4px 0', color: '#334155' }}>
-                          {item.productName}{item.size ? ` (${item.size})` : ''} — Ordered: <b>{item.orderedQty || item.quantity || item.sets || 0} {item.sets ? 'Set' : (item.moqUnit || item.unit || 'Piece')}</b> | Dispatched: <b style={{ color: '#16a34a' }}>{item.dispatchedQty || 0}</b>
-                        </div>
-                      ))}
-                      {order.shipments?.length > 0 && (
-                        <div style={{ marginTop: 10, borderTop: '1px solid #e2e8f0', paddingTop: 10 }}>
-                          <p style={{ margin: '0 0 6px', fontSize: 12, fontWeight: 700, color: '#475569', textTransform: 'uppercase', letterSpacing: '0.05em' }}>Dispatch History</p>
-                          {order.shipments.map((ship, sIdx) => (
-                            <div key={sIdx} style={{ fontSize: 12, color: '#475569', padding: '6px 10px', backgroundColor: '#f0fdf4', borderRadius: 6, marginBottom: 4 }}>
-                              <span style={{ fontWeight: 700, color: '#16a34a' }}>Dispatch {sIdx + 1}</span>
-                              {ship.billNo && ` · Bill: ${ship.billNo}`}
-                              {ship.billDate && ` · Date: ${ship.billDate}`}
-                              {ship.transport && ` · ${ship.transport}`}
-                              {ship.lrNo && ` · LR: ${ship.lrNo}`}
-                              <div style={{ marginTop: 4 }}>
-                                {ship.items?.map((si, siIdx) => (
-                                  <span key={siIdx} style={{ marginRight: 12 }}>
-                                    {si.productName}{si.size ? ` (${si.size})` : ''}: <b>{si.qty} {si.unit}</b>
-                                  </span>
-                                ))}
-                              </div>
-                            </div>
-                          ))}
-                        </div>
-                      )}
-                    </div>
+                </div>
+                {/* Middle row */}
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 8 }}>
+                  <div>
+                    <p style={{ margin: 0, fontSize: 13, fontWeight: 700, color: '#191c1d' }}>B: {order.buyerFirm}</p>
+                    <p style={{ margin: '2px 0 0', fontSize: 12, color: '#44474d' }}>
+                      S: {order.supplierFirm} · {order.items?.length || 0} items{order.totalAmount > 0 ? ` · ₹${order.totalAmount.toLocaleString('en-IN')}` : ''}
+                    </p>
+                  </div>
+                  {order.transportDetails?.name && (
+                    <p style={{ margin: 0, fontSize: 12, color: '#44474d' }}>🚚 {order.transportDetails.name}</p>
                   )}
                 </div>
-              );
-            })}
+                {/* Action buttons */}
+                <div style={{ display: 'flex', gap: 8, justifyContent: 'flex-end' }}>
+                  <button onClick={() => setExpandedOrder(expandedOrder === order.id ? null : order.id)} style={{ padding: '5px 12px', fontSize: 12, fontWeight: 600, backgroundColor: '#f8f9fa', color: '#031632', border: '1px solid #e7e8e9', borderRadius: 6, cursor: 'pointer' }}>
+                    {expandedOrder === order.id ? 'Close' : 'Details →'}
+                  </button>
+                  <button onClick={() => openDeliveryModal(order)} style={{ padding: '5px 12px', fontSize: 12, fontWeight: 600, backgroundColor: '#031632', color: 'white', border: 'none', borderRadius: 6, cursor: 'pointer' }}>Status</button>
+                  <button onClick={() => setShareModal(order)} style={{ padding: '5px 12px', fontSize: 12, fontWeight: 600, backgroundColor: '#e8f0fe', color: '#1565c0', border: 'none', borderRadius: 6, cursor: 'pointer' }}>Share</button>
+                  <button onClick={() => handleDeleteOrder(order.id)} style={{ padding: '5px 12px', fontSize: 12, fontWeight: 600, backgroundColor: '#fce8e6', color: '#ba1a1a', border: 'none', borderRadius: 6, cursor: 'pointer' }}>Delete</button>
+                </div>
+                {/* Expanded details */}
+                {expandedOrder === order.id && (
+                  <div style={{ marginTop: 12, borderTop: '1px solid #e7e8e9', paddingTop: 12 }}>
+                    {order.items?.map((item, idx) => (
+                      <div key={idx} style={{ display: 'flex', justifyContent: 'space-between', padding: '6px 0', borderBottom: '1px solid #f5f5f5', fontSize: 13 }}>
+                        <span style={{ color: '#191c1d' }}>
+                          {item.productName}{item.size ? ` · Size ${item.size}` : ''}{item.designNo ? ` · DN${item.designNo}` : ''}
+                        </span>
+                        <span style={{ color: '#031632', fontWeight: 600 }}>
+                          {item.sets || item.quantity || item.orderedQty} {item.moqUnit || item.unit || 'Piece'} | Dispatched: <b style={{ color: '#1a6b3c' }}>{item.dispatchedQty || 0}</b>
+                        </span>
+                      </div>
+                    ))}
+                    {order.shipments?.length > 0 && (
+                      <div style={{ marginTop: 10, borderTop: '1px solid #e7e8e9', paddingTop: 10 }}>
+                        <p style={{ margin: '0 0 6px', fontSize: 12, fontWeight: 700, color: '#44474d', textTransform: 'uppercase', letterSpacing: '0.05em' }}>Dispatch History</p>
+                        {order.shipments.map((ship, sIdx) => (
+                          <div key={sIdx} style={{ fontSize: 12, color: '#44474d', padding: '6px 10px', backgroundColor: '#f0fdf4', borderRadius: 6, marginBottom: 4 }}>
+                            <span style={{ fontWeight: 700, color: '#1a6b3c' }}>Dispatch {sIdx + 1}</span>
+                            {ship.billNo && ` · Bill: ${ship.billNo}`}
+                            {ship.billDate && ` · Date: ${ship.billDate}`}
+                            {ship.transport && ` · ${ship.transport}`}
+                            {ship.lrNo && ` · LR: ${ship.lrNo}`}
+                            <div style={{ marginTop: 4 }}>
+                              {ship.items?.map((si, siIdx) => (
+                                <span key={siIdx} style={{ marginRight: 12 }}>{si.productName}{si.size ? ` (${si.size})` : ''}: <b>{si.qty} {si.unit}</b></span>
+                              ))}
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+                    )}
+                  </div>
+                )}
+              </div>
+            ))}
           </div>
         )}
 
