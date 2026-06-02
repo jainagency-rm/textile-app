@@ -11,12 +11,13 @@ import SupplierOrderCard from '../../components/supplier/SupplierOrderCard';
 import AddProductWizard from '../../components/supplier/AddProductWizard';
 import EditProductModal from '../../components/supplier/EditProductModal';
 import SupplierProfileTab from '../../components/supplier/SupplierProfileTab';
+import SupplierDashboardHome from '../../components/supplier/SupplierDashboardHome';
 
 const D = { navy: '#031632', gold: '#775a19', bg: '#f8f9fa', surface: '#ffffff', textPrimary: '#191c1d', textSecondary: '#44474d', borderLight: '#e7e8e9', error: '#ba1a1a', success: '#1a6b3c', warning: '#7a5200' };
 
 function SupplierDashboard() {
   const { isMobile, isTablet } = useWindowSize();
-  const [activeTab, setActiveTab] = useState('products');
+  const [activeTab, setActiveTab] = useState('home');
   const [products, setProducts] = useState([]);
   const [categories, setCategories] = useState([]);
   const [orders, setOrders] = useState([]);
@@ -24,6 +25,8 @@ function SupplierDashboard() {
   const [showNotifications, setShowNotifications] = useState(false);
   const [showAdd, setShowAdd] = useState(false);
   const [productSearch, setProductSearch] = useState('');
+  const [orderFilter, setOrderFilter] = useState('All');
+  const [orderSort, setOrderSort] = useState('newest');
   const [editingProduct, setEditingProduct] = useState(null);
   const [userProfile, setUserProfile] = useState(null);
   const [supplierId, setSupplierId] = useState(null);
@@ -79,8 +82,9 @@ function SupplierDashboard() {
     const unsubscribe = onSnapshot(q, snap => {
       const fetched = snap.docs.map(d => ({ id: d.id, ...d.data() }));
       const sorted = fetched.sort((a, b) => {
-        if (a.status === 'Pending' && b.status !== 'Pending') return -1;
-        if (b.status === 'Pending' && a.status !== 'Pending') return 1;
+        const aNum = a.orderNumber || 0;
+        const bNum = b.orderNumber || 0;
+        if (bNum !== aNum) return bNum - aNum;
         const aTime = a.createdAt?.toDate?.() || new Date(0);
         const bTime = b.createdAt?.toDate?.() || new Date(0);
         return bTime - aTime;
@@ -204,7 +208,7 @@ function SupplierDashboard() {
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '12px 16px', backgroundColor: D.surface, borderBottom: `1px solid ${D.borderLight}`, flexShrink: 0, zIndex: 10 }}>
           <div style={{ display: 'flex', flexDirection: 'column' }}>
             {isMobile && <span style={{ fontSize: 10, color: D.gold, fontWeight: 700, letterSpacing: '0.08em', textTransform: 'uppercase' }}>Jain Agency</span>}
-            <span style={{ fontSize: 16, fontWeight: 700, color: D.navy }}>{activeTab === 'products' ? 'Inventory' : activeTab === 'orders' ? 'Orders' : 'Profile'}</span>
+            <span style={{ fontSize: 16, fontWeight: 700, color: D.navy }}>{activeTab === 'home' ? 'Dashboard' : activeTab === 'products' ? 'Inventory' : activeTab === 'orders' ? 'Orders' : 'Profile'}</span>
           </div>
           <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
             {isMobile && activeTab === 'products' && (
@@ -251,6 +255,10 @@ function SupplierDashboard() {
 
         {/* Content */}
         <div style={{ flex: 1, overflowY: 'auto', paddingBottom: isMobile ? 80 : 20 }}>
+          {activeTab === 'home' && (
+            <SupplierDashboardHome orders={orders} products={products} userProfile={userProfile} setActiveTab={setActiveTab} />
+          )}
+
           {activeTab === 'products' && (
             products.length === 0 ? (
               <div style={{ padding: '80px 16px', textAlign: 'center' }}>
@@ -328,15 +336,74 @@ function SupplierDashboard() {
                   <p style={{ margin: 0, fontSize: 13, fontWeight: 700, color: D.warning }}>{pendingCount} order{pendingCount > 1 ? 's' : ''} waiting for approval</p>
                 </div>
               )}
-              {orders.length === 0 ? (
-                <div style={{ padding: '80px 0', textAlign: 'center', color: D.textSecondary }}><p style={{ fontSize: 15 }}>No orders yet</p></div>
-              ) : (
-                orders
-                  .sort((a, b) => (a.status === 'Pending' ? -1 : b.status === 'Pending' ? 1 : 0))
-                  .map(order => (
+              <div style={{ display: 'flex', gap: 8, overflowX: 'auto', paddingBottom: 8, marginBottom: 8 }}>
+                {['All', 'Pending', 'Processing', 'Delivered', 'Cancelled'].map(f => (
+                  <button
+                    key={f}
+                    onClick={() => setOrderFilter(f)}
+                    style={{
+                      flexShrink: 0, padding: '6px 14px', borderRadius: 20, fontSize: 13, fontWeight: 600, cursor: 'pointer',
+                      border: orderFilter === f ? 'none' : '1px solid #c5c6ce',
+                      backgroundColor: orderFilter === f ? D.navy : 'white',
+                      color: orderFilter === f ? 'white' : '#44474d',
+                    }}
+                  >{f}</button>
+                ))}
+              </div>
+              <div style={{ marginBottom: 12 }}>
+                <select
+                  value={orderSort}
+                  onChange={e => setOrderSort(e.target.value)}
+                  style={{
+                    padding: '8px 12px', border: '1px solid #c5c6ce',
+                    borderRadius: 8, fontSize: 13, color: '#191c1d',
+                    backgroundColor: 'white', cursor: 'pointer', outline: 'none'
+                  }}
+                >
+                  <option value="newest">Order # — Newest First</option>
+                  <option value="oldest">Order # — Oldest First</option>
+                  <option value="buyer">Buyer Name — A to Z</option>
+                  <option value="items">Item Name — A to Z</option>
+                  <option value="amount">Amount — High to Low</option>
+                </select>
+              </div>
+              {(() => {
+                const displayOrders = orders
+                  .filter(o => orderFilter === 'All' || o.status === orderFilter)
+                  .sort((a, b) => {
+                    if (orderSort === 'newest') {
+                      const aNum = a.orderNumber || 0;
+                      const bNum = b.orderNumber || 0;
+                      if (bNum !== aNum) return bNum - aNum;
+                      return (b.createdAt?.toDate?.() || new Date(0)) - (a.createdAt?.toDate?.() || new Date(0));
+                    }
+                    if (orderSort === 'oldest') {
+                      const aNum = a.orderNumber || 0;
+                      const bNum = b.orderNumber || 0;
+                      if (aNum !== bNum) return aNum - bNum;
+                      return (a.createdAt?.toDate?.() || new Date(0)) - (b.createdAt?.toDate?.() || new Date(0));
+                    }
+                    if (orderSort === 'buyer') {
+                      return (a.buyerFirm || '').localeCompare(b.buyerFirm || '');
+                    }
+                    if (orderSort === 'items') {
+                      const aItem = a.items?.[0]?.productName || '';
+                      const bItem = b.items?.[0]?.productName || '';
+                      return aItem.localeCompare(bItem);
+                    }
+                    if (orderSort === 'amount') {
+                      return (b.totalAmount || 0) - (a.totalAmount || 0);
+                    }
+                    return 0;
+                  });
+                return displayOrders.length === 0 ? (
+                  <div style={{ padding: '80px 0', textAlign: 'center', color: D.textSecondary }}><p style={{ fontSize: 15 }}>No orders yet</p></div>
+                ) : (
+                  displayOrders.map(order => (
                     <SupplierOrderCard key={order.id} order={order} onApprove={handleApprove} onReject={handleReject} />
                   ))
-              )}
+                );
+              })()}
             </div>
           )}
 
