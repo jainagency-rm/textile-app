@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { signOut } from 'firebase/auth';
 import {
@@ -7,6 +7,7 @@ import {
 } from 'firebase/firestore';
 import { ref, uploadBytes, getDownloadURL, deleteObject } from 'firebase/storage';
 import { auth, db, storage } from '../../firebase';
+import { useWindowSize } from '../../hooks/useWindowSize';
 
 import AdminEditUserModal from '../../components/admin/AdminEditUserModal';
 import AdminCategoryModal from '../../components/admin/AdminCategoryModal';
@@ -31,6 +32,8 @@ function AdminDashboard() {
   const [addingCategory, setAddingCategory] = useState(false);
   const [newCategoryForm, setNewCategoryForm] = useState({ name: '', template: 'sets' });
   const [notifications, setNotifications] = useState([]);
+  const [showNotifications, setShowNotifications] = useState(false);
+  const notifRef = useRef(null);
   const [loading, setLoading] = useState(false);
   const [userSearch, setUserSearch] = useState('');
   const [userFilter, setUserFilter] = useState('All');
@@ -46,16 +49,10 @@ function AdminDashboard() {
   const [shippingForm, setShippingForm] = useState({ billNo: '', billDate: '', transport: '', lrNo: '', lrDate: '', dispatchItems: [] });
   const [editingCategory, setEditingCategory] = useState(null);
   const [shareModal, setShareModal] = useState(null);
-  const [isMobile, setIsMobile] = useState(window.innerWidth < 768);
+  const { isMobile, isTablet } = useWindowSize();
 
   const adminId = auth.currentUser?.uid;
   const navigate = useNavigate();
-
-  useEffect(() => {
-    const handleResize = () => setIsMobile(window.innerWidth < 768);
-    window.addEventListener('resize', handleResize);
-    return () => window.removeEventListener('resize', handleResize);
-  }, []);
 
   useEffect(() => {
     if (!adminId) return;
@@ -63,6 +60,15 @@ function AdminDashboard() {
     const unsubscribe = onSnapshot(q, (snap) => setNotifications(snap.docs.map(d => ({ id: d.id, ...d.data() }))));
     return () => unsubscribe();
   }, [adminId]);
+
+  useEffect(() => {
+    const handler = e => {
+      if (notifRef.current && !notifRef.current.contains(e.target))
+        setShowNotifications(false);
+    };
+    document.addEventListener('mousedown', handler);
+    return () => document.removeEventListener('mousedown', handler);
+  }, []);
 
   useEffect(() => {
     const q = query(collection(db, 'orders'), orderBy('createdAt', 'desc'));
@@ -450,7 +456,15 @@ function AdminDashboard() {
     document.body.appendChild(a); a.click(); a.remove();
   };
 
-  void notifications;
+  const markAllRead = async () => {
+    const unread = notifications.filter(n => !n.read);
+    if (!unread.length) return;
+    const batch = writeBatch(db);
+    unread.forEach(n => batch.update(doc(db, 'notifications', n.id), { read: true }));
+    await batch.commit();
+  };
+
+  const unreadCount = notifications.filter(n => !n.read).length;
 
   const navTabs = [
     { id: 'analytics', label: 'Dashboard', icon: '📊' },
@@ -517,6 +531,47 @@ function AdminDashboard() {
             </h1>
           </div>
           <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+            <div ref={notifRef} style={{ position: 'relative' }}>
+              <button
+                onClick={() => { setShowNotifications(!showNotifications); if (!showNotifications) markAllRead(); }}
+                style={{ width: 40, height: 40, borderRadius: 20, border: 'none', backgroundColor: 'transparent', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', position: 'relative' }}
+              >
+                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#031632" strokeWidth="2">
+                  <path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9M13.73 21a2 2 0 0 1-3.46 0"/>
+                </svg>
+                {unreadCount > 0 && (
+                  <span style={{ position: 'absolute', top: 4, right: 4, width: 8, height: 8, borderRadius: '50%', backgroundColor: '#ba1a1a' }} />
+                )}
+              </button>
+              {showNotifications && (
+                <div style={{ position: 'absolute', top: 48, right: 0, width: 300, backgroundColor: 'white', borderRadius: 12, boxShadow: '0 8px 24px rgba(3,22,50,0.12)', zIndex: 100, overflow: 'hidden', border: '1px solid #e7e8e9' }}>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '12px 16px', borderBottom: '1px solid #e7e8e9', backgroundColor: '#f8f9fa' }}>
+                    <span style={{ fontWeight: 700, fontSize: 14, color: '#031632' }}>Notifications</span>
+                    <span style={{ fontSize: 12, color: '#44474d' }}>{notifications.length} total</span>
+                  </div>
+                  {notifications.length === 0 ? (
+                    <div style={{ padding: '30px 16px', textAlign: 'center', color: '#44474d', fontSize: 13 }}>No notifications yet</div>
+                  ) : (
+                    <div style={{ maxHeight: 320, overflowY: 'auto' }}>
+                      {notifications.slice(0, 20).map(n => (
+                        <div key={n.id} style={{ display: 'flex', alignItems: 'flex-start', padding: '12px 16px', borderBottom: '1px solid #e7e8e9', backgroundColor: n.read ? 'white' : '#f0f4ff' }}>
+                          <span style={{ fontSize: 16, marginRight: 10 }}>
+                            {n.type === 'new_order' ? '🛍️' : n.type === 'new_user' ? '👤' : '🔔'}
+                          </span>
+                          <div style={{ flex: 1 }}>
+                            <p style={{ margin: 0, fontSize: 13, color: '#191c1d', lineHeight: 1.4 }}>{n.message}</p>
+                            <p style={{ margin: '3px 0 0', fontSize: 11, color: '#44474d' }}>
+                              {n.createdAt?.toDate?.()?.toLocaleString('en-IN', { day: '2-digit', month: 'short', hour: '2-digit', minute: '2-digit' })}
+                            </p>
+                          </div>
+                          {!n.read && <div style={{ width: 7, height: 7, borderRadius: '50%', backgroundColor: '#031632', flexShrink: 0 }} />}
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                </div>
+              )}
+            </div>
             <button style={styles.iconBtn} onClick={handleLogoutClick} title="Logout">
               <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#475569" strokeWidth="2.5"><path d="M18.36 6.64a9 9 0 1 1-12.73 0"/><line x1="12" y1="2" x2="12" y2="12"/></svg>
             </button>
@@ -601,7 +656,7 @@ function AdminDashboard() {
                       <td style={styles.td}>{product.supplierFirm}</td>
                       <td style={styles.td}>₹{product.price} / {product.moq} {product.unit}</td>
                       <td style={styles.td}>
-                        <span style={{ padding: '3px 8px', borderRadius: 4, fontSize: 12, fontWeight: 700, backgroundColor: product.status === 'approved' ? '#d1fae5' : '#fef9c3', color: product.status === 'approved' ? '#065f46' : '#854d0e' }}>{product.status}</span>
+                        {(() => { const pc = { approved: { bg: '#d1fae5', color: '#065f46' }, pending: { bg: '#fef9c3', color: '#854d0e' }, rejected: { bg: '#fce8e6', color: '#ba1a1a' }, 'Partially Dispatched': { bg: '#fff8e1', color: '#f57f17' } }[product.status] || { bg: '#f5f5f5', color: '#44474d' }; return <span style={{ padding: '3px 8px', borderRadius: 4, fontSize: 12, fontWeight: 700, backgroundColor: pc.bg, color: pc.color }}>{product.status}</span>; })()}
                       </td>
                       <td style={styles.td}>
                         <div style={{ display: 'flex', gap: 4, flexWrap: 'wrap' }}>
