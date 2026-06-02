@@ -12,10 +12,12 @@ import AddProductWizard from '../../components/supplier/AddProductWizard';
 import EditProductModal from '../../components/supplier/EditProductModal';
 import SupplierProfileTab from '../../components/supplier/SupplierProfileTab';
 import SupplierDashboardHome from '../../components/supplier/SupplierDashboardHome';
+import { useInactivityLogout } from '../../hooks/useInactivityLogout';
 
 const D = { navy: '#031632', gold: '#775a19', bg: '#f8f9fa', surface: '#ffffff', textPrimary: '#191c1d', textSecondary: '#44474d', borderLight: '#e7e8e9', error: '#ba1a1a', success: '#1a6b3c', warning: '#7a5200' };
 
 function SupplierDashboard() {
+  useInactivityLogout();
   const { isMobile, isTablet } = useWindowSize();
   const [activeTab, setActiveTab] = useState('home');
   const [products, setProducts] = useState([]);
@@ -164,7 +166,7 @@ function SupplierDashboard() {
   const productGridCols = isMobile ? 'repeat(2, 1fr)' : isTablet ? 'repeat(3, 1fr)' : 'repeat(4, 1fr)';
   const pendingCount = orders.filter(o => o.status === 'Pending').length;
   const unreadCount = notifications.filter(n => !n.read).length;
-  const handleLogout = () => { if (window.confirm('Logout?')) signOut(auth).then(() => navigate('/')); };
+  const handleLogout = () => { signOut(auth).then(() => navigate('/')); };
 
   return (
     <div style={{ display: 'flex', height: '100vh', backgroundColor: D.bg, fontFamily: "'Inter', sans-serif" }}>

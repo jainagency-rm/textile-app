@@ -1,18 +1,18 @@
-import React, { useEffect, Suspense } from 'react';
+import React, { useEffect, lazy, Suspense } from 'react';
 import { BrowserRouter as Router, Routes, Route, useNavigate } from 'react-router-dom';
 
 import Login from './pages/Login';
-import Register from './pages/Register';
-import Pending from './pages/Pending';
 import ProtectedRoute from './components/shared/ProtectedRoute';
 
-const AdminDashboard = React.lazy(() => import('./pages/admin/AdminDashboard'));
-const SupplierDashboard = React.lazy(() => import('./pages/supplier/SupplierDashboard'));
-const BuyerDashboard = React.lazy(() => import('./pages/buyer/BuyerDashboard'));
+const AdminDashboard = lazy(() => import('./pages/admin/AdminDashboard'));
+const SupplierDashboard = lazy(() => import('./pages/supplier/SupplierDashboard'));
+const BuyerDashboard = lazy(() => import('./pages/buyer/BuyerDashboard'));
+const Register = lazy(() => import('./pages/Register'));
+const Pending = lazy(() => import('./pages/Pending'));
 
 const LoadingScreen = () => (
-  <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', height: '100vh', backgroundColor: '#f8f9fa', fontFamily: 'sans-serif' }}>
-    <p style={{ color: '#44474d', fontSize: 14 }}>Loading...</p>
+  <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', height: '100vh', backgroundColor: '#031632', color: 'white', fontSize: 16, fontWeight: 600 }}>
+    Loading...
   </div>
 );
 
@@ -52,35 +52,31 @@ function App() {
   return (
     <Router>
       <GlobalHandlers />
-      <Routes>
-        <Route path="/" element={<Login />} />
-        <Route path="/register" element={<Register />} />
-        <Route path="/pending" element={<Pending />} />
+      <Suspense fallback={<LoadingScreen />}>
+        <Routes>
+          <Route path="/" element={<Login />} />
+          <Route path="/register" element={<Register />} />
+          <Route path="/pending" element={<Pending />} />
 
-        <Route path="/admin" element={
-          <ProtectedRoute requiredRole="admin">
-            <Suspense fallback={<LoadingScreen />}>
+          <Route path="/admin" element={
+            <ProtectedRoute requiredRole="admin">
               <AdminDashboard />
-            </Suspense>
-          </ProtectedRoute>
-        } />
+            </ProtectedRoute>
+          } />
 
-        <Route path="/supplier" element={
-          <ProtectedRoute requiredRole="supplier">
-            <Suspense fallback={<LoadingScreen />}>
+          <Route path="/supplier" element={
+            <ProtectedRoute requiredRole="supplier">
               <SupplierDashboard />
-            </Suspense>
-          </ProtectedRoute>
-        } />
+            </ProtectedRoute>
+          } />
 
-        <Route path="/buyer" element={
-          <ProtectedRoute requiredRole="buyer">
-            <Suspense fallback={<LoadingScreen />}>
+          <Route path="/buyer" element={
+            <ProtectedRoute requiredRole="buyer">
               <BuyerDashboard />
-            </Suspense>
-          </ProtectedRoute>
-        } />
-      </Routes>
+            </ProtectedRoute>
+          } />
+        </Routes>
+      </Suspense>
     </Router>
   );
 }

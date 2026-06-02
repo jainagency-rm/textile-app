@@ -43,9 +43,7 @@ export function useBuyerDashboard() {
   const navigate = useNavigate();
 
   const handleLogoutClick = () => {
-    if (window.confirm('Are you sure you want to logout?')) {
-      signOut(auth).then(() => navigate('/'));
-    }
+    signOut(auth).then(() => navigate('/'));
   };
 
   useEffect(() => {

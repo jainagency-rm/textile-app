@@ -8,6 +8,7 @@ import {
 import { ref, uploadBytes, getDownloadURL, deleteObject } from 'firebase/storage';
 import { auth, db, storage } from '../../firebase';
 import { useWindowSize } from '../../hooks/useWindowSize';
+import { useInactivityLogout } from '../../hooks/useInactivityLogout';
 
 import AdminEditUserModal from '../../components/admin/AdminEditUserModal';
 import AdminCategoryModal from '../../components/admin/AdminCategoryModal';
@@ -17,6 +18,7 @@ import { generateAdminOrderPDF } from '../../utils/adminPdfExport';
 import { PRESET_TRANSPORTERS } from '../../constants/transport';
 
 function AdminDashboard() {
+  useInactivityLogout();
   const [activeTab, setActiveTab] = useState('analytics');
   const [users, setUsers] = useState([]);
   const [products, setProducts] = useState([]);
@@ -110,7 +112,7 @@ function AdminDashboard() {
   };
 
   const handleLogoutClick = () => {
-    if (window.confirm('Are you sure you want to logout?')) signOut(auth).then(() => navigate('/'));
+    signOut(auth).then(() => navigate('/'));
   };
 
   const updateUserStatus = async (userId, newStatus) => {

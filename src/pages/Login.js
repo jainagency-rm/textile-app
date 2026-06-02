@@ -262,7 +262,7 @@ function Login() {
 
 const S = {
   page: { minHeight: '100vh', display: 'flex', alignItems: 'center', justifyContent: 'center', backgroundColor: D.navy, padding: 20, position: 'relative', overflow: 'hidden', fontFamily: "'Inter', -apple-system, sans-serif" },
-  bgPattern: { position: 'absolute', inset: 0, zIndex: 0, backgroundImage: `radial-gradient(circle at 20% 20%, rgba(119,90,25,0.15) 0%, transparent 50%), radial-gradient(circle at 80% 80%, rgba(26,43,72,0.8) 0%, transparent 50%)`, backgroundSize: '100% 100%' },
+  bgPattern: { position: 'absolute', inset: 0, zIndex: 0, width: '100%', height: '100%', backgroundImage: `radial-gradient(circle at 20% 20%, rgba(119,90,25,0.15) 0%, transparent 50%), radial-gradient(circle at 80% 80%, rgba(26,43,72,0.8) 0%, transparent 50%)`, backgroundSize: '100% 100%' },
   card: { position: 'relative', zIndex: 1, backgroundColor: D.surface, borderRadius: 20, padding: '32px 28px', width: '100%', maxWidth: 400, boxShadow: '0 24px 64px rgba(0,0,0,0.4)' },
   logoArea: { display: 'flex', alignItems: 'center', gap: 12, marginBottom: 20 },
   logoMark: { width: 48, height: 48, borderRadius: 12, backgroundColor: D.navy, display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 },
