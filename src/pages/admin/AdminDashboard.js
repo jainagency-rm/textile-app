@@ -23,7 +23,6 @@ function AdminDashboard() {
   const [categories, setCategories] = useState([]);
   const [categoryRequests, setCategoryRequests] = useState([]);
   const [transporters, setTransporters] = useState([]);
-  const [newTransporterName, setNewTransporterName] = useState('');
   const [transporterSearch, setTransporterSearch] = useState('');
   const [editingTransporter, setEditingTransporter] = useState(null);
   const [addingTransporter, setAddingTransporter] = useState(false);
@@ -33,7 +32,6 @@ function AdminDashboard() {
   const [newCategoryForm, setNewCategoryForm] = useState({ name: '', template: 'sets' });
   const [notifications, setNotifications] = useState([]);
   const [loading, setLoading] = useState(false);
-  const [newCategoryName, setNewCategoryName] = useState('');
   const [userSearch, setUserSearch] = useState('');
   const [userFilter, setUserFilter] = useState('All');
   const [selectedUser, setSelectedUser] = useState(null);
@@ -66,20 +64,38 @@ function AdminDashboard() {
     return () => unsubscribe();
   }, [adminId]);
 
+  useEffect(() => {
+    const q = query(collection(db, 'orders'), orderBy('createdAt', 'desc'));
+    const unsubscribe = onSnapshot(q, snap => {
+      setOrders(snap.docs.map(d => ({ id: d.id, ...d.data() })));
+    });
+    return () => unsubscribe();
+  }, []);
+
+  useEffect(() => {
+    const unsubscribe = onSnapshot(collection(db, 'users'), snap => {
+      setUsers(snap.docs.map(d => ({ id: d.id, ...d.data() })));
+    });
+    return () => unsubscribe();
+  }, []);
+
+  useEffect(() => {
+    const unsubscribe = onSnapshot(collection(db, 'products'), snap => {
+      setProducts(snap.docs.map(d => ({ id: d.id, ...d.data() })));
+    });
+    return () => unsubscribe();
+  }, []);
+
   useEffect(() => { fetchAllData(); }, []);
 
   const fetchAllData = async () => {
     setLoading(true);
     try {
-      const [usersSnap, productsSnap, ordersSnap, catsSnap, transportersSnap, catRequestsSnap] = await Promise.all([
-        getDocs(collection(db, 'users')), getDocs(collection(db, 'products')),
-        getDocs(collection(db, 'orders')), getDocs(collection(db, 'categories')),
+      const [catsSnap, transportersSnap, catRequestsSnap] = await Promise.all([
+        getDocs(collection(db, 'categories')),
         getDocs(collection(db, 'transporters')),
         getDocs(query(collection(db, 'categoryRequests'), where('status', '==', 'pending')))
       ]);
-      setUsers(usersSnap.docs.map(d => ({ id: d.id, ...d.data() })));
-      setProducts(productsSnap.docs.map(d => ({ id: d.id, ...d.data() })));
-      setOrders(ordersSnap.docs.map(d => ({ id: d.id, ...d.data() })));
       setCategories(catsSnap.docs.map(d => ({ id: d.id, ...d.data() })));
       setTransporters(transportersSnap.docs.map(d => ({ id: d.id, ...d.data() })).sort((a, b) => a.name.localeCompare(b.name)));
       setCategoryRequests(catRequestsSnap.docs.map(d => ({ id: d.id, ...d.data() })));
@@ -387,11 +403,21 @@ function AdminDashboard() {
     p.supplierFirm?.toLowerCase().includes(productSearch.toLowerCase())
   );
 
-  const filteredOrders = orders.filter(o => {
-    const matchSearch = o.id?.toLowerCase().includes(orderSearch.toLowerCase()) || o.buyerFirm?.toLowerCase().includes(orderSearch.toLowerCase()) || o.supplierFirm?.toLowerCase().includes(orderSearch.toLowerCase());
-    const matchFilter = orderFilter === 'All' ? true : o.status === orderFilter;
-    return matchSearch && matchFilter;
-  });
+  const displayOrders = [...orders]
+    .filter(o => !orderSearch ||
+      o.buyerFirm?.toLowerCase().includes(orderSearch.toLowerCase()) ||
+      o.supplierFirm?.toLowerCase().includes(orderSearch.toLowerCase()) ||
+      String(o.orderNumber || '').includes(orderSearch)
+    )
+    .filter(o => !orderFilter || orderFilter === 'All' || o.status === orderFilter)
+    .sort((a, b) => {
+      const aNum = a.orderNumber || 0;
+      const bNum = b.orderNumber || 0;
+      if (bNum !== aNum) return bNum - aNum;
+      const aTime = a.createdAt?.toDate?.() || new Date(0);
+      const bTime = b.createdAt?.toDate?.() || new Date(0);
+      return bTime - aTime;
+    });
 
   const exportUsersCSV = () => {
     const headers = ['Role', 'Firm Name', 'City', 'State', 'Contact Number', 'Person', 'GST No', 'Status'];
@@ -429,12 +455,12 @@ function AdminDashboard() {
         <div style={styles.modalOverlay} onClick={() => setShareModal(null)}>
           <div style={{ ...styles.modal, maxWidth: 320, textAlign: 'center' }} onClick={e => e.stopPropagation()}>
             <h3 style={{ marginTop: 0, color: '#1e293b' }}>Share Order</h3>
-            <p style={{ color: '#64748b', fontSize: 13, marginBottom: 20 }}>#{shareModal.id.slice(0, 8)}</p>
+            <p style={{ color: '#64748b', fontSize: 13, marginBottom: 20 }}>{shareModal.orderNumber ? `#${shareModal.orderNumber}` : `#${shareModal.id.slice(-6).toUpperCase()}`}</p>
             <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
               <button style={styles.shareMenuBtn} onClick={() => { generateAdminOrderPDF(shareModal); setShareModal(null); }}>📄 Download PDF</button>
               {navigator.share && (
                 <button style={styles.shareMenuBtn} onClick={async () => {
-                  try { await navigator.share({ title: `Order #${shareModal.id.slice(0, 8)}`, text: `Jain Agency Order\nBuyer: ${shareModal.buyerFirm}\nSupplier: ${shareModal.supplierFirm}\nStatus: ${shareModal.status}` }); } catch (e) {}
+                  try { await navigator.share({ title: `Order ${shareModal.orderNumber ? `#${shareModal.orderNumber}` : `#${shareModal.id.slice(-6).toUpperCase()}`}`, text: `Jain Agency Order\nBuyer: ${shareModal.buyerFirm}\nSupplier: ${shareModal.supplierFirm}\nStatus: ${shareModal.status}` }); } catch (e) {}
                   setShareModal(null);
                 }}>📤 Share via App</button>
               )}
@@ -578,12 +604,12 @@ function AdminDashboard() {
             <div style={{ display: 'flex', gap: 10, marginBottom: 15, flexWrap: 'wrap', alignItems: 'center' }}>
               <input style={{ ...styles.inputFull, maxWidth: 280 }} placeholder="Search order, buyer..." value={orderSearch} onChange={e => setOrderSearch(e.target.value)} />
               <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}>
-                {['All', 'Pending', 'Processing', 'Shipped', 'Delivered', 'Cancelled'].map(f => (
+                {['All', 'Pending', 'Processing', 'Shipped', 'Partially Dispatched', 'Delivered', 'Cancelled'].map(f => (
                   <button key={f} onClick={() => setOrderFilter(f)} style={{ padding: '6px 14px', borderRadius: 20, border: 'none', cursor: 'pointer', fontSize: 12, fontWeight: 700, backgroundColor: orderFilter === f ? '#031632' : '#e2e8f0', color: orderFilter === f ? 'white' : '#475569' }}>{f}</button>
                 ))}
               </div>
             </div>
-            {filteredOrders.map(order => {
+            {displayOrders.map(order => {
               const isExpanded = expandedOrder === order.id;
               return (
                 <div key={order.id} style={styles.orderCard}>
@@ -594,7 +620,7 @@ function AdminDashboard() {
                       {order.totalAmount > 0 && <span style={{ fontSize: 12, fontWeight: 700, color: '#031632' }}>₹{order.totalAmount.toLocaleString('en-IN')}</span>}
                     </div>
                     <div style={{ display: 'flex', gap: 6, alignItems: 'center', flexWrap: 'wrap' }}>
-                      <span style={{ padding: '3px 8px', borderRadius: 12, fontSize: 11, fontWeight: 'bold', backgroundColor: '#fef9c3', color: '#854d0e' }}>{order.status || 'Pending'}</span>
+                      {(() => { const statusColor = { 'Pending': { bg: '#fff3e0', color: '#e65100' }, 'Processing': { bg: '#e3f2fd', color: '#1565c0' }, 'Shipped': { bg: '#f3e5f5', color: '#6a1b9a' }, 'Partially Dispatched': { bg: '#fff8e1', color: '#f57f17' }, 'Delivered': { bg: '#e8f5e9', color: '#1a6b3c' }, 'Cancelled': { bg: '#fce8e6', color: '#ba1a1a' } }[order.status] || { bg: '#f5f5f5', color: '#44474d' }; return <span style={{ padding: '3px 8px', borderRadius: 12, fontSize: 11, fontWeight: 'bold', backgroundColor: statusColor.bg, color: statusColor.color }}>{order.status || 'Pending'}</span>; })()}
                       <button style={styles.btnDelivery} onClick={e => { e.stopPropagation(); openDeliveryModal(order); }}>Status</button>
                       <button style={{ ...styles.btnShare, backgroundColor: '#8b5cf6' }} onClick={e => { e.stopPropagation(); setShareModal(order); }}>Share</button>
                       <button style={{ ...styles.btnShare, backgroundColor: '#ef4444' }} onClick={e => { e.stopPropagation(); handleDeleteOrder(order.id); }}>Delete</button>
@@ -780,7 +806,7 @@ function AdminDashboard() {
                           )}
                         </div>
                         <div style={{ display: 'flex', gap: 4 }}>
-                          <button onClick={() => setEditingTransporter({ id: t.id, name: t.name })} style={{ padding: '4px 8px', backgroundColor: '#f1f5f9', color: '#475569', border: 'none', borderRadius: 6, fontSize: 11, fontWeight: 600, cursor: 'pointer' }}>Edit</button>
+                          <button onClick={() => setEditingTransporter({ id: t.id, name: t.name, gst: t.gst || '', phone: t.phone || '' })} style={{ padding: '4px 8px', backgroundColor: '#f1f5f9', color: '#475569', border: 'none', borderRadius: 6, fontSize: 11, fontWeight: 600, cursor: 'pointer' }}>Edit</button>
                           <button onClick={() => handleDeleteTransporter(t.id)} style={{ padding: '4px 8px', backgroundColor: '#fce8e6', color: '#ef4444', border: 'none', borderRadius: 6, fontSize: 11, fontWeight: 600, cursor: 'pointer' }}>Delete</button>
                         </div>
                       </div>
