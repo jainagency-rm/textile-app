@@ -37,11 +37,6 @@ function TransportCheckout({ suppliers, savedTransporters = [], onConfirm, onCan
   const setDeliveryAddress = (sId, val) =>
     setDeliveryAddresses(prev => ({ ...prev, [sId]: val }));
 
-  const handleSelectSaved = (sId, transport) => {
-    setSelections(prev => ({ ...prev, [sId]: { ...prev[sId], transporter: transport } }));
-    setAddingFor(null);
-  };
-
   const handleSelectPreset = (sId, name) => {
     if (name === 'OTHER') { setAddingFor(sId); return; }
     if (!name) return;

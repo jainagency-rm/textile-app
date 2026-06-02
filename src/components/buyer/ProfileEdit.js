@@ -13,12 +13,14 @@ function ProfileEdit({ userProfile, onSave, onCancel, categories }) {
   const [pincodeLoading, setPincodeLoading] = useState(false);
   const [pincodeError, setPincodeError] = useState('');
   const [cityOptions, setCityOptions] = useState([]);
-  const [postOffices, setPostOffices] = useState([]);
+  const [, setPostOffices] = useState([]);
 
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   useEffect(() => {
     const handler = (e) => { if (e.key === 'Escape') { setEditing(false); onCancel?.(); } };
     document.addEventListener('keydown', handler);
     return () => document.removeEventListener('keydown', handler);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   const handleSave = async () => {

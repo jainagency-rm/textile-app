@@ -372,7 +372,6 @@ export function useBuyerDashboard() {
           await updateDoc(doc(db, 'users', user.uid), { transporters: updatedTransporters });
           await fetchProfile();
           // Also add new transporters to master Firestore collection
-          const newOnes = updatedTransporters.filter(t => t._saveToProfile !== false);
           await Promise.all(
             Object.values(transportSelections || {})
               .filter(t => t?._saveToProfile && t?.name?.trim())

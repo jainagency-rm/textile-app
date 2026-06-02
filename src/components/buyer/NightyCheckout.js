@@ -30,6 +30,7 @@ function NightyCheckout({ nightyBySupplier, onConfirm, onCancel }) {
     };
     document.addEventListener('keydown', handler);
     return () => document.removeEventListener('keydown', handler);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [onCancel, packingTypes, allClean]);
 
   const handleConfirm = () => {

@@ -1,7 +1,6 @@
 import React, { useState, useEffect } from 'react';
 
 const navy = '#031632';
-const gold = '#775a19';
 const bg = '#f8f9fa';
 const border = '#e2e8f0';
 const textSecondary = '#64748b';
@@ -26,6 +25,7 @@ export default function AdminDeliveryModal({
 
   useEffect(() => {
     setLocalForm(shippingForm);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [deliveryModal?.id]);
 
   useEffect(() => {

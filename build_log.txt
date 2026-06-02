@@ -1,0 +1,73 @@
+﻿
+> textile-app@0.1.0 build
+> react-scripts build
+
+node.exe : (node:4872) [DEP0176] DeprecationWarning: fs.F_OK is deprecated, use fs.constants.F_OK instead
+At line:1 char:1
++ & "C:\Program Files\nodejs/node.exe" "C:\Program Files\nodejs/node_mo ...
++ ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+    + CategoryInfo          : NotSpecified: ((node:4872) [DE...ts.F_OK instead:String) [], RemoteException
+    + FullyQualifiedErrorId : NativeCommandError
+ 
+(Use `node --trace-deprecation ...` to show where the warning was created)
+
+Creating an optimized production build...
+Compiled with warnings.
+
+[eslint] 
+src\components\admin\AdminDeliveryModal.js
+  Line 4:7:   'gold' is assigned a value but never used                                                                                                                                                                                                                                   no-unused-vars
+  Line 29:6:  React Hook useEffect has a missing dependency: 'shippingForm'. Either include it or remove the dependency array. If 'setLocalForm' needs the current value of 'shippingForm', you can also switch to useReducer instead of useState and read 'shippingForm' in the reducer  react-hooks/exhaustive-deps
+
+src\components\buyer\NightyCheckout.js
+  Line 33:6:  React Hook useEffect has a missing dependency: 'handleConfirm'. Either include it or remove the dependency array  react-hooks/exhaustive-deps
+
+src\components\buyer\ProfileEdit.js
+  Line 16:10:  'postOffices' is assigned a value but never used                                                                                                                                                                                 no-unused-vars
+  Line 22:6:   React Hook useEffect has a missing dependency: 'onCancel'. Either include it or remove the dependency array. If 'onCancel' changes too often, find the parent component that defines it and wrap that definition in useCallback  react-hooks/exhaustive-deps
+
+src\components\buyer\TransportCheckout.js
+  Line 40:9:  'handleSelectSaved' is assigned a value but never used  no-unused-vars
+
+src\components\buyer\hooks\useBuyerDashboard.js
+  Line 375:17:  'newOnes' is assigned a value but never used  no-unused-vars
+
+src\components\buyer\tabs\ProfileTab.js
+  Line 39:10:  'postOffices' is assigned a value but never used  no-unused-vars
+
+src\pages\Register.js
+  Line 95:9:  'handleChange' is assigned a value but never used  no-unused-vars
+
+src\pages\admin\AdminDashboard.js
+  Line 54:21:  'isTablet' is assigned a value but never used  no-unused-vars
+
+Search for the keywords to learn more about each warning.
+To ignore, add // eslint-disable-next-line to the line before.
+
+File sizes after gzip:
+
+  199.64 kB  build\static\js\main.419cdddb.js
+  127.69 kB  build\static\js\396.d9615d0f.chunk.js
+  46.35 kB   build\static\js\239.e7b5c4e4.chunk.js
+  43.32 kB   build\static\js\455.6d2a81bd.chunk.js
+  25.69 kB   build\static\js\981.7592fee9.chunk.js
+  24.15 kB   build\static\js\339.196183de.chunk.js
+  18.02 kB   build\static\js\483.1740134b.chunk.js
+  9.63 kB    build\static\js\977.4f83eaa7.chunk.js
+  5.46 kB    build\static\js\390.b20c2735.chunk.js
+  761 B      build\static\js\564.a687d6be.chunk.js
+  582 B      build\static\css\main.7db807a4.css
+
+The project was built assuming it is hosted at /.
+You can control this with the homepage field in your package.json.
+
+The build folder is ready to be deployed.
+You may serve it with a static server:
+
+  npm install -g serve
+  serve -s build
+
+Find out more about deployment here:
+
+  https://cra.link/deployment
+

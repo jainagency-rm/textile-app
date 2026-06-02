@@ -1,5 +1,5 @@
 import React from 'react';
-import { D, SIZE_ORDER, sortSizes, S } from '../../components/buyer/BuyerDashboardStyles';
+import { D, sortSizes, S } from '../../components/buyer/BuyerDashboardStyles';
 import { useBuyerDashboard } from '../../components/buyer/hooks/useBuyerDashboard';
 import { NIGHTY_CATEGORIES } from '../../constants/product';
 
@@ -49,12 +49,10 @@ function BuyerDashboard() {
     unreadCount,
     categories,
     searchedAndFilteredProducts,
-    nightyCart,
     nonNightyCart,
     nightyBySupplier,
     nonNightyBySupplier,
     cartTotal,
-    nonNightyByProduct,
     moqViolations,
     nightyMoqViolations,
     cartHasMoqError,

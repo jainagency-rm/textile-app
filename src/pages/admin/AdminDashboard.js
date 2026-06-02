@@ -51,7 +51,7 @@ function AdminDashboard() {
   const [shippingForm, setShippingForm] = useState({ billNo: '', billDate: '', transport: '', lrNo: '', lrDate: '', dispatchItems: [] });
   const [editingCategory, setEditingCategory] = useState(null);
   const [shareModal, setShareModal] = useState(null);
-  const { isMobile, isTablet } = useWindowSize();
+  const { isMobile } = useWindowSize();
 
   const adminId = auth.currentUser?.uid;
   const navigate = useNavigate();

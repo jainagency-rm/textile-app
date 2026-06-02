@@ -92,7 +92,6 @@ function Register() {
     pincode: '', city: '', district: '', state: '',
   });
 
-  const handleChange = (e) => setFormData(prev => ({ ...prev, [e.target.name]: e.target.value }));
   const handleFieldChange = (field, val) => setFormData(prev => ({ ...prev, [field]: val }));
 
   const fetchPincodeDetails = async (pin) => {

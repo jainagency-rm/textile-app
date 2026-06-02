@@ -36,7 +36,7 @@ export default function ProfileTab({ userProfile, fetchProfile, categories, S, D
   const [pincodeLoading, setPincodeLoading] = useState(false);
   const [pincodeError, setPincodeError] = useState('');
   const [cityOptions, setCityOptions] = useState([]);
-  const [postOffices, setPostOffices] = useState([]);
+  const [, setPostOffices] = useState([]);
   const fileInputRef = useRef(null);
   const notifRef = useRef(null);
 
