@@ -162,6 +162,24 @@ function AdminDashboard() {
     setProducts(products.map(p => p.id === productId ? { ...p, status: newStatus } : p));
   };
 
+  const handleRejectProduct = async (productId) => {
+    if (!window.confirm('Reject this product?')) return;
+    try {
+      await updateDoc(doc(db, 'products', productId), { status: 'rejected' });
+    } catch (err) {
+      alert('Failed to reject product: ' + err.message);
+    }
+  };
+
+  const handleDeleteProduct = async (productId) => {
+    if (!window.confirm('Permanently delete this product? This cannot be undone.')) return;
+    try {
+      await deleteDoc(doc(db, 'products', productId));
+    } catch (err) {
+      alert('Failed to delete product: ' + err.message);
+    }
+  };
+
   const handleProductImageUpload = async (files) => {
     if (!editingProduct || !files.length) return;
     setUploadingImage(true);
@@ -586,9 +604,13 @@ function AdminDashboard() {
                         <span style={{ padding: '3px 8px', borderRadius: 4, fontSize: 12, fontWeight: 700, backgroundColor: product.status === 'approved' ? '#d1fae5' : '#fef9c3', color: product.status === 'approved' ? '#065f46' : '#854d0e' }}>{product.status}</span>
                       </td>
                       <td style={styles.td}>
-                        <div style={{ display: 'flex', gap: 4 }}>
+                        <div style={{ display: 'flex', gap: 4, flexWrap: 'wrap' }}>
                           <button style={styles.btnEdit} onClick={() => setEditingProduct({ ...product })}>Edit</button>
                           {product.status !== 'approved' && <button style={styles.btnApprove} onClick={() => updateProductStatus(product.id, 'approved')}>Approve</button>}
+                          {product.status === 'pending' && (
+                            <button onClick={() => handleRejectProduct(product.id)} style={{ padding: '6px 14px', fontSize: 12, fontWeight: 600, backgroundColor: '#fce8e6', color: '#ba1a1a', border: '1px solid #f5c2c0', borderRadius: 6, cursor: 'pointer' }}>✕ Reject</button>
+                          )}
+                          <button onClick={() => handleDeleteProduct(product.id)} style={{ padding: '6px 14px', fontSize: 12, fontWeight: 600, backgroundColor: '#f5f5f5', color: '#44474d', border: '1px solid #e0e0e0', borderRadius: 6, cursor: 'pointer' }}>🗑 Delete</button>
                         </div>
                       </td>
                     </tr>
