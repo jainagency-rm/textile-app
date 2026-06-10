@@ -116,12 +116,7 @@ function Login() {
       <div style={S.bgPattern} />
       <div style={S.card}>
         <div style={S.logoArea}>
-          <div style={S.logoMark}>
-            <svg width="28" height="28" viewBox="0 0 24 24" fill="none">
-              <path d="M12 2L2 7l10 5 10-5-10-5z" fill={D.gold}/>
-              <path d="M2 17l10 5 10-5M2 12l10 5 10-5" stroke={D.gold} strokeWidth="1.5" strokeLinecap="round"/>
-            </svg>
-          </div>
+          <img src="/logo192.png" alt="Jain Agency" style={{ width: 48, height: 48, borderRadius: 12, objectFit: 'cover' }} />
           <div>
             <h1 style={S.brandName}>Jain Agency</h1>
             <p style={S.brandTagline}>Textile Marketplace</p>

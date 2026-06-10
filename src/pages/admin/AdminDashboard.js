@@ -8,7 +8,6 @@ import {
 import { ref, uploadBytes, getDownloadURL, deleteObject } from 'firebase/storage';
 import { auth, db, storage } from '../../firebase';
 import { useWindowSize } from '../../hooks/useWindowSize';
-import { useInactivityLogout } from '../../hooks/useInactivityLogout';
 
 import AdminEditUserModal from '../../components/admin/AdminEditUserModal';
 import AdminCategoryModal from '../../components/admin/AdminCategoryModal';
@@ -18,7 +17,6 @@ import { generateAdminOrderPDF } from '../../utils/adminPdfExport';
 import { PRESET_TRANSPORTERS } from '../../constants/transport';
 
 function AdminDashboard() {
-  useInactivityLogout();
   const [searchParams, setSearchParams] = useSearchParams();
   const VALID_TABS = ['analytics', 'users', 'products', 'orders', 'categories'];
   const rawTab = searchParams.get('tab') || 'analytics';
@@ -520,10 +518,6 @@ function AdminDashboard() {
               </button>
             ))}
           </div>
-          <button style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '10px 14px', width: '100%', borderRadius: 8, border: 'none', cursor: 'pointer', backgroundColor: 'transparent', color: 'rgba(255,255,255,0.45)', fontSize: 13, marginTop: 8 }} onClick={handleLogoutClick}>
-            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="rgba(255,255,255,0.45)" strokeWidth="2"><path d="M18.36 6.64a9 9 0 1 1-12.73 0"/><line x1="12" y1="2" x2="12" y2="12"/></svg>
-            Logout
-          </button>
         </div>
       )}
 
@@ -578,9 +572,6 @@ function AdminDashboard() {
                 </div>
               )}
             </div>
-            <button style={styles.iconBtn} onClick={handleLogoutClick} title="Logout">
-              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#475569" strokeWidth="2.5"><path d="M18.36 6.64a9 9 0 1 1-12.73 0"/><line x1="12" y1="2" x2="12" y2="12"/></svg>
-            </button>
           </div>
         </div>
 
@@ -1037,6 +1028,12 @@ function AdminDashboard() {
                   </div>
                 ))}
               </div>
+            </div>
+
+            <div style={{ width: '100%' }}>
+              <button onClick={handleLogoutClick} style={{ display: 'block', width: '100%', padding: '13px', border: '1.5px solid #ba1a1a', background: 'transparent', color: '#ba1a1a', borderRadius: 10, fontSize: 15, fontWeight: 700, cursor: 'pointer', marginTop: 16 }}>
+                Logout
+              </button>
             </div>
 
           </div>

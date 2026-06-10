@@ -1,9 +1,13 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useState, useCallback } from 'react';
 import { Navigate } from 'react-router-dom';
 import { onAuthStateChanged } from 'firebase/auth';
 import { doc, getDoc } from 'firebase/firestore';
 import { auth, db } from '../../firebase';
 import { requestFCMPermission, onForegroundMessage } from '../../utils/fcm';
+import { useInactivityLogout } from '../../hooks/useInactivityLogout';
+import MPINSetup from './MPINSetup';
+import MPINLock from './MPINLock';
+
 
 function showFCMToast(title, body) {
   const existing = document.getElementById('fcm-toast');
@@ -39,58 +43,85 @@ function showFCMToast(title, body) {
 }
 
 function ProtectedRoute({ children, requiredRole }) {
-  const [status, setStatus] = useState('loading');
-  const [userId, setUserId] = useState(null);
+  // screen: 'loading' | 'deny' | 'setup' | 'locked' | 'ok'
+  const [screen, setScreen] = useState('loading');
+  const [uid, setUid] = useState(null);
+  const [userData, setUserData] = useState(null); // { firmName, role }
+
+  const handleLock = useCallback(() => setScreen('locked'), []);
+  useInactivityLogout(screen === 'ok' ? handleLock : null);
+
+  useEffect(() => {
+    if (screen === 'locked' && uid) {
+      localStorage.setItem(`pre_lock_url_${uid}`, window.location.href);
+    }
+  }, [screen, uid]);
 
   useEffect(() => {
     const unsubscribe = onAuthStateChanged(auth, async (user) => {
-      if (!user) {
-        setStatus('deny');
-        return;
-      }
+      if (!user) { setScreen('deny'); return; }
       try {
         const snap = await getDoc(doc(db, 'users', user.uid));
-        if (snap.exists() && snap.data().role === requiredRole) {
-          setUserId(user.uid);
-          setStatus('ok');
-        } else {
-          setStatus('deny');
+        if (!snap.exists() || snap.data().role !== requiredRole) {
+          setScreen('deny');
+          return;
         }
+        const data = snap.data();
+        setUid(user.uid);
+        setUserData({ firmName: data.firmName || data.name || '', role: data.role });
+
+        const secSnap = await getDoc(doc(db, 'users', user.uid, 'private', 'security'));
+        if (!secSnap.exists() || !secSnap.data()?.mpinHash) {
+          setScreen('setup');
+          return;
+        }
+
+        const unlocked = sessionStorage.getItem(`mpin_verified_${user.uid}`);
+        setScreen(unlocked ? 'ok' : 'locked');
       } catch {
-        setStatus('deny');
+        setScreen('deny');
       }
     });
     return () => unsubscribe();
   }, [requiredRole]);
 
   useEffect(() => {
-    if (!userId) return;
-
-    requestFCMPermission(userId);
-
+    if (!uid) return;
+    requestFCMPermission(uid);
     const unsubscribe = onForegroundMessage((payload) => {
       const { title, body } = payload.notification || {};
       if (title) showFCMToast(title, body || '');
     });
-
     return () => { if (typeof unsubscribe === 'function') unsubscribe(); };
-  }, [userId]);
+  }, [uid]);
 
-  if (status === 'loading') {
-    // App.js already resolved auth before rendering routes.
-    // If auth.currentUser exists, suppress the loading screen — role check
-    // completes on the next tick. Returning null prevents the loading flash
-    // on re-mounts and iOS Safari resize-triggered re-renders.
+  if (screen === 'loading') {
     if (auth.currentUser) return null;
     return (
-      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', height: '100vh', backgroundColor: '#f8f9fa', fontFamily: 'sans-serif' }}>
-        <p style={{ color: '#44474d', fontSize: 14 }}>Loading...</p>
+      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', height: '100vh', backgroundColor: '#031632', fontFamily: 'sans-serif' }}>
+        <div style={{ textAlign: 'center' }}>
+          <img src="/logo192.png" alt="Jain Agency" style={{ width: 80, height: 80, borderRadius: 16, marginBottom: 20 }} />
+          <p style={{ color: 'rgba(255,255,255,0.7)', fontSize: 14, margin: 0 }}>Loading...</p>
+        </div>
       </div>
     );
   }
 
-  if (status === 'deny') {
-    return <Navigate to="/" replace />;
+  if (screen === 'deny') return <Navigate to="/" replace />;
+
+  if (screen === 'setup' && uid) {
+    return <MPINSetup uid={uid} onComplete={() => setScreen('ok')} />;
+  }
+
+  if (screen === 'locked' && uid) {
+    return (
+      <MPINLock
+        uid={uid}
+        firmName={userData?.firmName}
+        onUnlock={() => setScreen('ok')}
+        onResetMPIN={() => setScreen('setup')}
+      />
+    );
   }
 
   return children;

@@ -12,12 +12,10 @@ import AddProductWizard from '../../components/supplier/AddProductWizard';
 import EditProductModal from '../../components/supplier/EditProductModal';
 import SupplierProfileTab from '../../components/supplier/SupplierProfileTab';
 import SupplierDashboardHome from '../../components/supplier/SupplierDashboardHome';
-import { useInactivityLogout } from '../../hooks/useInactivityLogout';
 
 const D = { navy: '#031632', gold: '#775a19', bg: '#f8f9fa', surface: '#ffffff', textPrimary: '#191c1d', textSecondary: '#44474d', borderLight: '#e7e8e9', error: '#ba1a1a', success: '#1a6b3c', warning: '#7a5200' };
 
 function SupplierDashboard() {
-  useInactivityLogout();
   const { isMobile, isTablet } = useWindowSize();
   const [searchParams, setSearchParams] = useSearchParams();
   const VALID_TABS = ['home', 'products', 'orders', 'profile'];
@@ -253,9 +251,6 @@ function SupplierDashboard() {
                 </div>
               )}
             </div>
-            <button onClick={handleLogout} title="Logout" style={{ width: 40, height: 40, borderRadius: 20, border: 'none', backgroundColor: 'transparent', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke={D.textSecondary} strokeWidth="2"><path d="M18.36 6.64a9 9 0 1 1-12.73 0"/><line x1="12" y1="2" x2="12" y2="12"/></svg>
-            </button>
           </div>
         </div>
 

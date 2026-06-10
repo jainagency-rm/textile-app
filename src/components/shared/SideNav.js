@@ -49,15 +49,6 @@ function SideNav({ activeTab, setActiveTab, cartCount, userProfile, isTablet, on
         })}
       </nav>
 
-      <div style={{ padding: '12px 8px', borderTop: `1px solid rgba(255,255,255,0.08)` }}>
-        <button onClick={onLogout} style={{
-          display: 'flex', alignItems: 'center', gap: 10, padding: '10px 14px', width: '100%',
-          borderRadius: 8, border: 'none', cursor: 'pointer', backgroundColor: 'transparent', color: 'rgba(255,255,255,0.45)', fontSize: 13, fontWeight: 500,
-        }}>
-          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="rgba(255,255,255,0.45)" strokeWidth="2.5"><path d="M18.36 6.64a9 9 0 1 1-12.73 0"/><line x1="12" y1="2" x2="12" y2="12"/></svg>
-          Logout
-        </button>
-      </div>
     </div>
   );
 }

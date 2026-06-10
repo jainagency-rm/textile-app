@@ -12,10 +12,8 @@ import CartTab from '../../components/buyer/tabs/CartTab';
 import ProfileTab from '../../components/buyer/tabs/ProfileTab';
 import SideNav from '../../components/shared/SideNav';
 import BottomNav from '../../components/shared/BottomNav';
-import { useInactivityLogout } from '../../hooks/useInactivityLogout';
 
 function BuyerDashboard() {
-  useInactivityLogout();
   const {
     isMobile, isTablet,
     activeTab, setActiveTab,
@@ -170,11 +168,6 @@ function BuyerDashboard() {
                 </div>
               )}
             </div>
-            {isMobile && (
-              <button style={S.iconBtn} onClick={handleLogoutClick} title="Logout">
-                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke={D.textSecondary} strokeWidth="2"><path d="M18.36 6.64a9 9 0 1 1-12.73 0" /><line x1="12" y1="2" x2="12" y2="12" /></svg>
-              </button>
-            )}
           </div>
         </div>
 

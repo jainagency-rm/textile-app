@@ -1,4 +1,4 @@
-const CACHE_NAME = 'jain-agency-v2';
+const CACHE_NAME = 'jain-agency-v6';
 
 self.addEventListener('install', event => {
   event.waitUntil(
@@ -14,7 +14,6 @@ self.addEventListener('activate', event => {
       Promise.all(keys.filter(k => k !== CACHE_NAME).map(k => caches.delete(k)))
     )
   );
-  self.clients.claim();
 });
 
 self.addEventListener('fetch', event => {
