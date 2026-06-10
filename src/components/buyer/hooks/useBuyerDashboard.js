@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef, useMemo } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useSearchParams } from 'react-router-dom';
 import { signOut } from 'firebase/auth';
 import { collection, getDocs, query, where, addDoc, doc, getDoc, updateDoc, orderBy, onSnapshot, writeBatch, runTransaction } from 'firebase/firestore';
 import { auth, db } from '../../../firebase';
@@ -10,7 +10,11 @@ import { NIGHTY_CATEGORIES } from '../../../constants/product';
 export function useBuyerDashboard() {
   const { isMobile, isTablet } = useWindowSize();
 
-  const [activeTab, setActiveTab] = useState('browse');
+  const [searchParams, setSearchParams] = useSearchParams();
+  const VALID_TABS = ['browse', 'cart', 'orders', 'profile'];
+  const rawTab = searchParams.get('tab') || 'browse';
+  const activeTab = VALID_TABS.includes(rawTab) ? rawTab : 'browse';
+  const setActiveTab = (tab) => setSearchParams({ tab }, { replace: true });
   const [previousTab, setPreviousTab] = useState('browse');
   const [products, setProducts] = useState([]);
   const [productDesigns, setProductDesigns] = useState({});

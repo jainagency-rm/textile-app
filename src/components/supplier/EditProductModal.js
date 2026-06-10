@@ -30,7 +30,7 @@ function TextInput({ label, value, onChange, type = 'text', placeholder, require
   return (
     <LabelRow label={label} required={required}>
       <input type={type} value={value} min={min} onChange={e => onChange(e.target.value)} placeholder={placeholder || ''}
-        style={{ flex: 1, border: 'none', outline: 'none', fontSize: 14, color: D.textPrimary, backgroundColor: 'transparent', fontFamily: 'inherit' }} />
+        style={{ flex: 1, border: 'none', outline: 'none', fontSize: 16, color: D.textPrimary, backgroundColor: 'transparent', fontFamily: 'inherit' }} />
     </LabelRow>
   );
 }
@@ -358,7 +358,7 @@ export default function EditProductModal({ product, categories = [], onClose, on
 
   // ── RENDER ────────────────────────────────────────────────
   return (
-    <div style={{ position: 'fixed', inset: 0, backgroundColor: 'rgba(3,22,50,0.55)', zIndex: 300, display: 'flex', alignItems: 'center', justifyContent: 'center' }} onClick={onClose}>
+    <div style={{ position: 'fixed', inset: 0, backgroundColor: 'rgba(3,22,50,0.55)', zIndex: 300, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
       <div style={{ backgroundColor: D.bg, borderRadius: 20, width: '94%', maxWidth: 640, maxHeight: '92vh', display: 'flex', flexDirection: 'column', overflow: 'hidden', boxShadow: '0 24px 60px rgba(3,22,50,0.25)' }} onClick={e => e.stopPropagation()}>
 
         {/* Header */}
@@ -394,7 +394,7 @@ export default function EditProductModal({ product, categories = [], onClose, on
 
                 {/* 🌟 Auto Loaded Category */}
                 <LabelRow label="Category" required>
-                  <select style={{ flex: 1, border: 'none', outline: 'none', fontSize: 14, color: D.textPrimary, backgroundColor: 'transparent' }}
+                  <select style={{ flex: 1, border: 'none', outline: 'none', fontSize: 16, color: D.textPrimary, backgroundColor: 'transparent' }}
                     value={info.category || ''} onChange={e => setInfo({ ...info, category: e.target.value })}>
                     <option value="" disabled>Select Category</option>
                     {localCategories.map(c => <option key={c.id || c.name} value={c.name}>{c.name}</option>)}
@@ -404,8 +404,8 @@ export default function EditProductModal({ product, categories = [], onClose, on
                 {/* 🌟 Separate MOQ row with Unit Dropdown */}
                 <LabelRow label="MOQ" required>
                   <div style={{ display: 'flex', flex: 1, alignItems: 'center', gap: 8 }}>
-                    <input type="number" min="1" value={info.moq || ''} onChange={e => setInfo({ ...info, moq: e.target.value })} placeholder="Min order qty" style={{ flex: 1, border: 'none', outline: 'none', fontSize: 14, color: D.textPrimary, backgroundColor: 'transparent', fontFamily: 'inherit' }} />
-                    <select style={{ border: 'none', outline: 'none', fontSize: 14, color: D.navy, fontWeight: 700, backgroundColor: 'transparent', cursor: 'pointer' }}
+                    <input type="number" min="1" value={info.moq || ''} onChange={e => setInfo({ ...info, moq: e.target.value })} placeholder="Min order qty" style={{ flex: 1, border: 'none', outline: 'none', fontSize: 16, color: D.textPrimary, backgroundColor: 'transparent', fontFamily: 'inherit' }} />
+                    <select style={{ border: 'none', outline: 'none', fontSize: 16, color: D.navy, fontWeight: 700, backgroundColor: 'transparent', cursor: 'pointer' }}
                       value={info.moqUnit || 'Piece'} onChange={e => setInfo({ ...info, moqUnit: e.target.value })}>
                       {UNITS.map(u => <option key={u} value={u}>{u}</option>)}
                     </select>
@@ -421,7 +421,7 @@ export default function EditProductModal({ product, categories = [], onClose, on
                           value={info.pcsPerSet || ''}
                           onChange={e => setInfo({ ...info, pcsPerSet: e.target.value })}
                           placeholder="e.g. 6"
-                          style={{ flex: 1, border: 'none', outline: 'none', fontSize: 14,
+                          style={{ flex: 1, border: 'none', outline: 'none', fontSize: 16,
                             color: D.textPrimary, backgroundColor: 'transparent', fontFamily: 'inherit' }}
                         />
                         <span style={{ fontSize: 12, color: D.textSecondary, fontWeight: 600 }}>
@@ -437,7 +437,7 @@ export default function EditProductModal({ product, categories = [], onClose, on
                     <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 8 }}>
                       <p style={{ margin: '0 0 10px', fontSize: 13, color: D.textSecondary, fontWeight: 700 }}>Rate per Cut</p>
                       {/* Price Unit Selector for Nighty */}
-                      <select value={info.priceUnit || 'Piece'} onChange={e => setInfo({ ...info, priceUnit: e.target.value })} style={{ border: 'none', outline: 'none', fontSize: 13, color: D.navy, fontWeight: 700, backgroundColor: 'transparent', cursor: 'pointer' }}>
+                      <select value={info.priceUnit || 'Piece'} onChange={e => setInfo({ ...info, priceUnit: e.target.value })} style={{ border: 'none', outline: 'none', fontSize: 16, color: D.navy, fontWeight: 700, backgroundColor: 'transparent', cursor: 'pointer' }}>
                         {UNITS.map(u => <option key={u} value={u}>Per {u}</option>)}
                       </select>
                     </div>
@@ -447,7 +447,7 @@ export default function EditProductModal({ product, categories = [], onClose, on
                         <span style={{ color: D.textSecondary }}>₹</span>
                         <input type="number" min="0" value={info.cutRates?.[cut] || ''}
                           onChange={e => setInfo({ ...info, cutRates: { ...info.cutRates, [cut]: Number(e.target.value) } })}
-                          style={{ flex: 1, padding: '8px 12px', border: `1px solid ${D.border}`, borderRadius: 8, fontSize: 14, outline: 'none' }} placeholder="Rate" />
+                          style={{ flex: 1, padding: '8px 12px', border: `1px solid ${D.border}`, borderRadius: 8, fontSize: 16, outline: 'none' }} placeholder="Rate" />
                         <span style={{ fontSize: 12, color: D.textSecondary }}>/{info.priceUnit || 'Piece'}</span>
                       </div>
                     ))}
@@ -455,8 +455,8 @@ export default function EditProductModal({ product, categories = [], onClose, on
                 ) : (
                   <LabelRow label="Price (₹)" required>
                     <div style={{ display: 'flex', flex: 1, alignItems: 'center', gap: 8 }}>
-                      <input type="number" min="0" value={info.price || ''} onChange={e => setInfo({ ...info, price: e.target.value })} placeholder="Price" style={{ flex: 1, border: 'none', outline: 'none', fontSize: 14, color: D.textPrimary, backgroundColor: 'transparent', fontFamily: 'inherit' }} />
-                      <select style={{ border: 'none', outline: 'none', fontSize: 14, color: D.navy, fontWeight: 700, backgroundColor: 'transparent', cursor: 'pointer' }}
+                      <input type="number" min="0" value={info.price || ''} onChange={e => setInfo({ ...info, price: e.target.value })} placeholder="Price" style={{ flex: 1, border: 'none', outline: 'none', fontSize: 16, color: D.textPrimary, backgroundColor: 'transparent', fontFamily: 'inherit' }} />
+                      <select style={{ border: 'none', outline: 'none', fontSize: 16, color: D.navy, fontWeight: 700, backgroundColor: 'transparent', cursor: 'pointer' }}
                         value={info.priceUnit || 'Piece'} onChange={e => setInfo({ ...info, priceUnit: e.target.value })}>
                         {UNITS.map(u => <option key={u} value={u}>Per {u}</option>)}
                       </select>
@@ -505,7 +505,7 @@ export default function EditProductModal({ product, categories = [], onClose, on
                 <div style={{ padding: '12px 0 4px' }}>
                   <span style={{ fontSize: 13, color: D.textSecondary, fontWeight: 600, display: 'block', marginBottom: 8 }}>Description</span>
                   <textarea value={info.description || ''} onChange={e => setInfo({ ...info, description: e.target.value })} rows={3}
-                    style={{ width: '100%', border: `1px solid ${D.border}`, borderRadius: 8, padding: '10px 12px', fontSize: 13, resize: 'vertical', outline: 'none', boxSizing: 'border-box' }} />
+                    style={{ width: '100%', border: `1px solid ${D.border}`, borderRadius: 8, padding: '10px 12px', fontSize: 16, resize: 'vertical', outline: 'none', boxSizing: 'border-box' }} />
                 </div>
               </SectionBox>
 
@@ -536,10 +536,10 @@ export default function EditProductModal({ product, categories = [], onClose, on
                               <div><span style={{ fontSize: 10, color: D.textSecondary, fontWeight: 600, display: 'block', marginBottom: 3 }}>Design No</span><span style={{ fontSize: 12, fontWeight: 700, color: D.navy }}>#{design.designNo}</span></div>
                               <div><span style={{ fontSize: 10, color: D.textSecondary, fontWeight: 600, display: 'block', marginBottom: 3 }}>D.No</span>
                                 <input type="text" className="grid-input" onFocus={e => e.target.select()} value={design.dnNumber || ''} onChange={e => handleNightyDesignUpdate(cut.id, design.id, 'dnNumber', e.target.value)}
-                                  style={{ width: '100%', padding: '6px 8px', border: `1px solid ${D.border}`, borderRadius: 6, fontSize: 12, boxSizing: 'border-box' }} placeholder="e.g. 1001" /></div>
+                                  style={{ width: '100%', padding: '6px 8px', border: `1px solid ${D.border}`, borderRadius: 6, fontSize: 16, boxSizing: 'border-box' }} placeholder="e.g. 1001" /></div>
                               <div><span style={{ fontSize: 10, color: D.textSecondary, fontWeight: 600, display: 'block', marginBottom: 3 }}>Sets</span>
                                 <input type="number" min="0" className="grid-input" onFocus={e => e.target.select()} value={design.sets !== undefined ? design.sets : ''} onChange={e => handleNightyDesignUpdate(cut.id, design.id, 'sets', e.target.value === '' ? '' : Number(e.target.value))}
-                                  style={{ width: '100%', padding: '6px 8px', border: `1px solid ${D.border}`, borderRadius: 6, fontSize: 12, boxSizing: 'border-box' }} placeholder="0" /></div>
+                                  style={{ width: '100%', padding: '6px 8px', border: `1px solid ${D.border}`, borderRadius: 6, fontSize: 16, boxSizing: 'border-box' }} placeholder="0" /></div>
                             </div>
                             <button onClick={() => handleNightyDesignDelete(cut.id, design.id, design.photoUrl)}
                               style={{ alignSelf: 'flex-start', background: '#fce8e6', border: 'none', color: D.error, fontSize: 11, fontWeight: 700, cursor: 'pointer', padding: '4px 8px', borderRadius: 4 }}>Delete</button>
@@ -567,7 +567,7 @@ export default function EditProductModal({ product, categories = [], onClose, on
                               <div style={{ marginTop: 6, marginBottom: 10 }}>
                                 <span style={{ fontSize: 10, color: D.textSecondary, fontWeight: 600, display: 'block', marginBottom: 3 }}>D.No</span>
                                 <input type="text" className="grid-input" onFocus={e => e.target.select()} value={design.dnNumber || ''} onChange={e => handleSelectionDesignUpdate(design.id, 'dnNumber', e.target.value)}
-                                  style={{ width: '100%', padding: '8px', border: `1px solid ${D.border}`, borderRadius: 6, fontSize: 12, boxSizing: 'border-box' }} placeholder="e.g. 1001" />
+                                  style={{ width: '100%', padding: '8px', border: `1px solid ${D.border}`, borderRadius: 6, fontSize: 16, boxSizing: 'border-box' }} placeholder="e.g. 1001" />
                               </div>
                               <span style={{ fontSize: 11, color: D.navy, fontWeight: 700, display: 'block', marginBottom: 6 }}>Stock</span>
                               <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8 }}>
@@ -575,13 +575,13 @@ export default function EditProductModal({ product, categories = [], onClose, on
                                   <div key={size} style={{ display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
                                     <span style={{ fontSize: 10, color: D.textSecondary, fontWeight: 600 }}>{size}</span>
                                     <input type="number" min="0" className="grid-input" onFocus={e => e.target.select()} value={design.stock?.[size] !== undefined ? design.stock[size] : ''} onChange={e => handleSelectionDesignUpdate(design.id, size, e.target.value === '' ? '' : Number(e.target.value), true)}
-                                      style={{ width: 44, padding: '4px', border: `1px solid ${D.border}`, borderRadius: 4, textAlign: 'center', fontSize: 12 }} placeholder="0" />
+                                      style={{ width: 44, padding: '4px', border: `1px solid ${D.border}`, borderRadius: 4, textAlign: 'center', fontSize: 16 }} placeholder="0" />
                                   </div>
                                 )) : (
                                   <div style={{ display: 'flex', flexDirection: 'column' }}>
                                     <span style={{ fontSize: 10, color: D.textSecondary, fontWeight: 600 }}>Sets</span>
                                     <input type="number" min="0" className="grid-input" onFocus={e => e.target.select()} value={design.stock?.sets !== undefined ? design.stock.sets : ''} onChange={e => handleSelectionDesignUpdate(design.id, 'sets', e.target.value === '' ? '' : Number(e.target.value), true)}
-                                      style={{ width: 80, padding: '6px', border: `1px solid ${D.border}`, borderRadius: 6, fontSize: 12 }} placeholder="0" />
+                                      style={{ width: 80, padding: '6px', border: `1px solid ${D.border}`, borderRadius: 6, fontSize: 16 }} placeholder="0" />
                                   </div>
                                 )}
                               </div>
@@ -614,7 +614,7 @@ export default function EditProductModal({ product, categories = [], onClose, on
                               <img src={img.url} alt="" style={{ width: '100%', aspectRatio: '1', objectFit: 'cover', borderRadius: 6, marginBottom: 8 }} />
                               {info.designMode === 'fullset' && (
                                 <input type="text" className="grid-input" onFocus={e => e.target.select()} placeholder="D.No" value={img.dnNumber || ''} onChange={e => handleMainPhotoUpdate(idx, e.target.value)}
-                                  style={{ width: '100%', padding: '6px', border: `1px solid ${D.border}`, borderRadius: 4, fontSize: 11, boxSizing: 'border-box', marginBottom: 8 }} />
+                                  style={{ width: '100%', padding: '6px', border: `1px solid ${D.border}`, borderRadius: 4, fontSize: 16, boxSizing: 'border-box', marginBottom: 8 }} />
                               )}
                               <button onClick={() => handleMainPhotoDelete(idx, img.url)}
                                 style={{ width: '100%', padding: '6px', backgroundColor: '#fce8e6', color: D.error, border: 'none', borderRadius: 4, fontSize: 11, fontWeight: 700, cursor: 'pointer' }}>Remove</button>
@@ -634,7 +634,7 @@ export default function EditProductModal({ product, categories = [], onClose, on
                               <div key={size} style={{ display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
                                 <span style={{ fontSize: 13, fontWeight: 700, color: D.navy, marginBottom: 4 }}>{size}</span>
                                 <input type="number" min="0" className="grid-input" onFocus={e => e.target.select()} value={pendingStock[size] !== undefined ? pendingStock[size] : ''} onChange={e => handleFullsetStockChange(size, e.target.value === '' ? '' : Number(e.target.value))}
-                                  style={{ width: 60, padding: '8px', border: `1px solid ${D.border}`, borderRadius: 6, textAlign: 'center', fontSize: 14, fontWeight: 700 }} placeholder="0" />
+                                  style={{ width: 60, padding: '8px', border: `1px solid ${D.border}`, borderRadius: 6, textAlign: 'center', fontSize: 16, fontWeight: 700 }} placeholder="0" />
                               </div>
                             )) : (
                               <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>

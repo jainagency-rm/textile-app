@@ -43,7 +43,7 @@ export default function AdminDeliveryModal({
   };
 
   return (
-    <div style={{ position: 'fixed', inset: 0, backgroundColor: 'rgba(3,22,50,0.6)', backdropFilter: 'blur(4px)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 2000, padding: 16 }} onClick={onCancel}>
+    <div style={{ position: 'fixed', inset: 0, backgroundColor: 'rgba(3,22,50,0.6)', backdropFilter: 'blur(4px)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 2000, padding: 16 }}>
       <div style={{ backgroundColor: 'white', borderRadius: 16, width: '100%', maxWidth: 480, maxHeight: '90vh', overflowY: 'auto', boxShadow: '0 25px 60px rgba(3,22,50,0.25)', boxSizing: 'border-box' }} onClick={e => e.stopPropagation()}>
 
         {/* Header */}

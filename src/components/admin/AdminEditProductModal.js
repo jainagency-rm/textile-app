@@ -24,7 +24,7 @@ export default function AdminEditProductModal({
   };
 
   return (
-    <div style={styles.modalOverlay} onClick={onCancel}>
+    <div style={styles.modalOverlay}>
       <div style={styles.modal} onClick={e => e.stopPropagation()}>
         <h3 style={{ marginTop: 0, color: D.navy }}>Edit — {editingProduct.name}</h3>
 
@@ -110,7 +110,7 @@ const styles = {
   modalOverlay: { position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, backgroundColor: 'rgba(15,23,42,0.6)', backdropFilter: 'blur(4px)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 2000 },
   modal: { backgroundColor: 'white', padding: 25, borderRadius: 16, width: '90%', maxWidth: 540, boxShadow: '0 25px 50px -12px rgba(0,0,0,0.25)', maxHeight: '90vh', overflowY: 'auto' },
   label: { fontSize: 12, color: '#64748b', fontWeight: 700, display: 'block', marginBottom: 4, marginTop: 10 },
-  inputFull: { padding: '10px 14px', border: '1px solid #cbd5e1', borderRadius: 8, width: '100%', boxSizing: 'border-box', fontSize: 14, outline: 'none' },
+  inputFull: { padding: '10px 14px', border: '1px solid #cbd5e1', borderRadius: 8, width: '100%', boxSizing: 'border-box', fontSize: 16, outline: 'none' },
   btnApprove: { backgroundColor: '#10b981', color: 'white', border: 'none', padding: '12px 16px', borderRadius: 8, cursor: 'pointer', fontSize: 14, fontWeight: 700, flex: 1 },
   btnEdit: { backgroundColor: '#64748b', color: 'white', border: 'none', padding: '12px 16px', borderRadius: 8, cursor: 'pointer', fontSize: 14, fontWeight: 700, flex: 1 },
 };

@@ -63,7 +63,7 @@ function NightyCheckout({ nightyBySupplier, onConfirm, onCancel }) {
   };
 
   return (
-    <div style={S.overlay} onClick={onCancel}>
+    <div style={S.overlay}>
       <div style={S.modal} onClick={e => e.stopPropagation()}>
         <div style={S.handle} />
         <h3 style={{ margin: '0 0 8px', fontSize: 20, fontWeight: 800, color: D.navy }}>Select Bale Packing</h3>

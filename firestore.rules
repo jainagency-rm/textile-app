@@ -24,8 +24,11 @@ service cloud.firestore {
     // Read: koi bhi logged-in user (admin ko sab dekhna padta hai, buyers profile dekhte hain)
     // Write: sirf khud ka data (self-edit) ya admin
     match /users/{userId} {
-      allow read: if isAuthenticated();
-      allow write: if request.auth.uid == userId || isAdmin();
+      allow create: if request.auth != null && request.auth.uid == userId;
+      allow read: if request.auth != null && (request.auth.uid == userId || isAdmin());
+      allow update: if request.auth != null && (request.auth.uid == userId || isAdmin());
+      allow delete: if request.auth != null && (request.auth.uid == userId || isAdmin());
+      allow list: if request.auth != null;
     }
 
     // ── Products Collection ──────────────────────────────────────────────────

@@ -17,7 +17,6 @@ function OrderCard({ order, onCancel, onReorder }) {
   const shipments = order.shipments || [];
   const hasDispatchData = shipments.length > 0;
   const totalItems = order.items?.length || 0;
-  const firstItem = order.items?.[0];
 
   useEffect(() => {
     const handler = (e) => { if (e.key === 'Escape') setShowDispatch(false); };
@@ -68,7 +67,7 @@ function OrderCard({ order, onCancel, onReorder }) {
   return (
     <>
       {showDispatch && (
-        <div style={S.overlay} onClick={() => setShowDispatch(false)}>
+        <div style={S.overlay}>
           <div style={S.modal} onClick={e => e.stopPropagation()}>
             <div style={S.handle} />
             <h3 style={{ margin: '0 0 16px', fontSize: 18, fontWeight: 700, color: D.navy }}>Dispatch Details</h3>

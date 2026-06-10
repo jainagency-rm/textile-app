@@ -227,7 +227,7 @@ function TransportCheckout({ suppliers, savedTransporters = [], onConfirm, onCan
   };
 
   return (
-    <div style={S.overlay} onClick={onCancel}>
+    <div style={S.overlay}>
       <div style={S.sheet} onClick={e => e.stopPropagation()}>
 
         {/* Header */}

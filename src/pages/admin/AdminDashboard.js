@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useSearchParams } from 'react-router-dom';
 import { signOut } from 'firebase/auth';
 import {
   collection, getDocs, doc, updateDoc, addDoc,
@@ -19,7 +19,11 @@ import { PRESET_TRANSPORTERS } from '../../constants/transport';
 
 function AdminDashboard() {
   useInactivityLogout();
-  const [activeTab, setActiveTab] = useState('analytics');
+  const [searchParams, setSearchParams] = useSearchParams();
+  const VALID_TABS = ['analytics', 'users', 'products', 'orders', 'categories'];
+  const rawTab = searchParams.get('tab') || 'analytics';
+  const activeTab = VALID_TABS.includes(rawTab) ? rawTab : 'analytics';
+  const setActiveTab = (tab) => setSearchParams({ tab }, { replace: true });
   const [users, setUsers] = useState([]);
   const [products, setProducts] = useState([]);
   const [orders, setOrders] = useState([]);
@@ -486,7 +490,7 @@ function AdminDashboard() {
       <AdminDeliveryModal deliveryModal={deliveryModal} deliveryStatus={deliveryStatus} setDeliveryStatus={setDeliveryStatus} shippingForm={shippingForm} setShippingForm={setShippingForm} onSave={saveDelivery} onCancel={() => setDeliveryModal(null)} users={users} transporters={transporters} onAddTransporter={async (name) => { const upper = name.toUpperCase(); if (!transporters.find(t => t.name.toUpperCase() === upper)) { const ref = await addDoc(collection(db, 'transporters'), { name: upper }); setTransporters(prev => [...prev, { id: ref.id, name: upper }].sort((a, b) => a.name.localeCompare(b.name))); } }} />
 
       {shareModal && (
-        <div style={styles.modalOverlay} onClick={() => setShareModal(null)}>
+        <div style={styles.modalOverlay}>
           <div style={{ ...styles.modal, maxWidth: 320, textAlign: 'center' }} onClick={e => e.stopPropagation()}>
             <h3 style={{ marginTop: 0, color: '#1e293b' }}>Share Order</h3>
             <p style={{ color: '#64748b', fontSize: 13, marginBottom: 20 }}>{shareModal.orderNumber ? `#${shareModal.orderNumber}` : `#${shareModal.id.slice(-6).toUpperCase()}`}</p>
@@ -1078,7 +1082,7 @@ function AdminDashboard() {
 }
 
 const styles = {
-  container: { display: 'flex', height: '100vh', width: '100vw', backgroundColor: '#f4f7f6', fontFamily: 'sans-serif', overflow: 'hidden' },
+  container: { display: 'flex', height: '100vh', width: '100%', backgroundColor: '#f4f7f6', fontFamily: 'sans-serif', overflow: 'hidden' },
   sidebar: { width: 220, backgroundColor: '#031632', padding: 20, display: 'flex', flexDirection: 'column', flexShrink: 0, height: '100vh', boxSizing: 'border-box' },
   tab: { padding: '11px 14px', backgroundColor: 'transparent', color: '#94a3b8', border: 'none', borderRadius: 6, cursor: 'pointer', textAlign: 'left', fontSize: 13, marginBottom: 4, display: 'flex', alignItems: 'center', width: '100%' },
   activeTab: { padding: '11px 14px', backgroundColor: '#3b82f6', color: 'white', border: 'none', borderRadius: 6, cursor: 'pointer', textAlign: 'left', fontSize: 13, fontWeight: 'bold', marginBottom: 4, display: 'flex', alignItems: 'center', width: '100%' },
@@ -1107,7 +1111,7 @@ const styles = {
   shareMenuBtn: { width: '100%', padding: 12, backgroundColor: 'white', border: '1px solid #cbd5e1', borderRadius: 8, color: '#1e293b', fontSize: 14, fontWeight: 600, cursor: 'pointer' },
   modalOverlay: { position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, backgroundColor: 'rgba(15,23,42,0.6)', backdropFilter: 'blur(4px)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 2000 },
   modal: { backgroundColor: 'white', padding: 25, borderRadius: 16, width: '90%', boxShadow: '0 25px 50px -12px rgba(0,0,0,0.25)', maxHeight: '90vh', overflowY: 'auto' },
-  inputFull: { padding: '10px 14px', border: '1px solid #cbd5e1', borderRadius: 8, width: '100%', boxSizing: 'border-box', fontSize: 14, outline: 'none' },
+  inputFull: { padding: '10px 14px', border: '1px solid #cbd5e1', borderRadius: 8, width: '100%', boxSizing: 'border-box', fontSize: 16, outline: 'none' },
 };
 
 export default AdminDashboard;

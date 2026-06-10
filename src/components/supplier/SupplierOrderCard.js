@@ -106,7 +106,7 @@ function SupplierOrderCard({ order, onApprove, onReject }) {
     <>
       {/* Dispatch Details Modal */}
       {showDispatch && (
-        <div style={{ position: 'fixed', inset: 0, backgroundColor: 'rgba(3,22,50,0.5)', zIndex: 200, display: 'flex', alignItems: 'center', justifyContent: 'center' }} onClick={() => setShowDispatch(false)}>
+        <div style={{ position: 'fixed', inset: 0, backgroundColor: 'rgba(3,22,50,0.5)', zIndex: 200, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
           <div style={{ backgroundColor: D.surface, borderRadius: 16, padding: '16px 20px 28px', width: '90%', maxWidth: 500, maxHeight: '85vh', overflowY: 'auto' }} onClick={e => e.stopPropagation()}>
             <div style={{ width: 36, height: 4, backgroundColor: D.border, borderRadius: 2, margin: '0 auto 16px' }} />
             <h3 style={{ margin: '0 0 14px', fontSize: 17, fontWeight: 700, color: D.navy }}>Dispatch Details</h3>

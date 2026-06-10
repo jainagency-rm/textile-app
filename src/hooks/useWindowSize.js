@@ -8,9 +8,9 @@ export const useWindowSize = () => {
 
   useEffect(() => {
     const handleResize = () => {
-      setWindowSize({
-        width: window.innerWidth,
-      });
+      setWindowSize((prev) =>
+        prev.width === window.innerWidth ? prev : { width: window.innerWidth }
+      );
     };
 
     window.addEventListener('resize', handleResize);

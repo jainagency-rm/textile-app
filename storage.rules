@@ -29,11 +29,10 @@ service firebase.storage {
       allow delete: if isAuthenticated();
     }
 
-    // 3. Designs folder (YE MISSING THA - EditProductModal yahan photos bhejta hai)
-    match /designs/{userId}/{fileName=**} {
+    // 3. Designs folder — allow read/write for any authenticated user
+    match /designs/{allPaths=**} {
       allow read: if isAuthenticated();
-      allow create, update: if isAuthenticated() && request.auth.uid == userId && isImageOrPdf();
-      allow delete: if isAuthenticated() && request.auth.uid == userId;
+      allow write: if isAuthenticated();
     }
 
     // 4. Default Deny (Baaki sab locked)

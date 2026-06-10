@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef, useCallback } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useSearchParams } from 'react-router-dom';
 import { signOut } from 'firebase/auth';
 import { collection, getDocs, query, where, doc, getDoc, updateDoc, writeBatch, onSnapshot, orderBy } from 'firebase/firestore';
 import { auth, db } from '../../firebase';
@@ -19,7 +19,11 @@ const D = { navy: '#031632', gold: '#775a19', bg: '#f8f9fa', surface: '#ffffff',
 function SupplierDashboard() {
   useInactivityLogout();
   const { isMobile, isTablet } = useWindowSize();
-  const [activeTab, setActiveTab] = useState('home');
+  const [searchParams, setSearchParams] = useSearchParams();
+  const VALID_TABS = ['home', 'products', 'orders', 'profile'];
+  const rawTab = searchParams.get('tab') || 'home';
+  const activeTab = VALID_TABS.includes(rawTab) ? rawTab : 'home';
+  const setActiveTab = (tab) => setSearchParams({ tab }, { replace: true });
   const [products, setProducts] = useState([]);
   const [categories, setCategories] = useState([]);
   const [orders, setOrders] = useState([]);

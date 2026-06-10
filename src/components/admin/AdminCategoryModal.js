@@ -13,7 +13,7 @@ export default function AdminCategoryModal({ editingCategory, setEditingCategory
   ];
 
   return (
-    <div style={styles.modalOverlay} onClick={onCancel}>
+    <div style={styles.modalOverlay}>
       <div style={styles.modal} onClick={e => e.stopPropagation()}>
         <h3 style={{ marginTop: 0, color: D.navy }}>Edit Category</h3>
 

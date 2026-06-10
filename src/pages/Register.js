@@ -72,10 +72,11 @@ function SmartSelect({ label, value, onChange, options, placeholder, required })
 
 function Register() {
   const [searchParams] = useSearchParams();
-  const role = searchParams.get('role') || 'buyer';
+  const roleParam = searchParams.get('role');
   const navigate = useNavigate();
 
-  const [step, setStep] = useState(1);
+  const [role, setRole] = useState(roleParam || '');
+  const [step, setStep] = useState(roleParam ? 1 : 0);
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [showPass, setShowPass] = useState(false);
@@ -172,20 +173,21 @@ function Register() {
     e.preventDefault();
     setLoading(true); setError('');
     try {
-      // ✅ Duplicate GST check
+      const userCred = await createUserWithEmailAndPassword(auth, email, password);
+
+      // GST duplicate check (now authenticated)
       if (formData.gstNumber.trim()) {
         const gstSnap = await getDocs(query(
           collection(db, 'users'),
           where('gstNumber', '==', formData.gstNumber.trim().toUpperCase())
         ));
         if (!gstSnap.empty) {
+          await userCred.user.delete();
           setError('This GST number is already registered. Please login or use a different GST number.');
-          setLoading(false);
           return;
         }
       }
 
-      const userCred = await createUserWithEmailAndPassword(auth, email, password);
       const address = [formData.addressLine1, formData.addressLine2].filter(Boolean).join(', ');
       await setDoc(doc(db, 'users', userCred.user.uid), {
         uid: userCred.user.uid, email, role, status: 'pending', createdAt: new Date(),
@@ -199,15 +201,22 @@ function Register() {
         state: formData.state.toUpperCase(),
         pincode: formData.pincode,
       });
-      const adminSnap = await getDocs(query(collection(db, 'users'), where('role', '==', 'admin')));
-      const adminId = adminSnap.docs[0]?.id;
-      if (adminId) await notifyNewUser(adminId, formData.firmName, role);
+      try {
+        const adminSnap = await getDocs(query(collection(db, 'users'), where('role', '==', 'admin')));
+        const adminId = adminSnap.docs[0]?.id;
+        if (adminId) await notifyNewUser(adminId, formData.firmName, role);
+      } catch (_) {}
       navigate('/pending');
     } catch (err) {
+      console.error('Registration error:', err);
       if (err.code === 'auth/email-already-in-use') setError('This email is already registered. Please login.');
-      else if (!err.message?.includes('GST')) setError('Something went wrong. Try again.');
+      else if (err.code === 'auth/weak-password') setError('Password must be at least 6 characters.');
+      else if (err.code === 'auth/invalid-email') setError('Invalid email address.');
+      else if (err.code === 'auth/network-request-failed') setError('Network error. Check your connection and try again.');
+      else setError('Something went wrong. Try again.');
+    } finally {
+      setLoading(false);
     }
-    setLoading(false);
   };
 
   return (
@@ -230,31 +239,56 @@ function Register() {
 
         <div style={S.divider} />
 
-        <div style={S.roleBadge}>
-          <span style={{ fontSize: 16 }}>{role === 'buyer' ? '🛍️' : '🏭'}</span>
-          <span>{role === 'buyer' ? 'Buyer' : 'Supplier'} Registration</span>
-        </div>
+        {step >= 1 && (
+          <>
+            <div style={S.roleBadge}>
+              <span style={{ fontSize: 16 }}>{role === 'buyer' ? '🛍️' : '🏭'}</span>
+              <span>{role === 'buyer' ? 'Buyer' : 'Supplier'} Registration</span>
+            </div>
 
-        <div style={S.stepRow}>
-          <div style={{ ...S.stepDot, backgroundColor: D.navy }}>
-            {step > 1
-              ? <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="3"><polyline points="20 6 9 17 4 12"/></svg>
-              : <span style={{ color: 'white', fontSize: 11, fontWeight: 700 }}>1</span>}
+            <div style={S.stepRow}>
+              <div style={{ ...S.stepDot, backgroundColor: D.navy }}>
+                {step > 1
+                  ? <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="3"><polyline points="20 6 9 17 4 12"/></svg>
+                  : <span style={{ color: 'white', fontSize: 11, fontWeight: 700 }}>1</span>}
+              </div>
+              <div style={{ flex: 1, height: 2, borderRadius: 1, backgroundColor: step > 1 ? D.navy : D.border }} />
+              <div style={{ ...S.stepDot, backgroundColor: step >= 2 ? D.navy : D.border }}>
+                <span style={{ color: 'white', fontSize: 11, fontWeight: 700 }}>2</span>
+              </div>
+              <div style={{ flex: 1, height: 2, borderRadius: 1, backgroundColor: D.border }} />
+              <div style={{ ...S.stepDot, backgroundColor: D.border }}>
+                <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="2"><polyline points="9 11 12 14 22 4"/><path d="M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11"/></svg>
+              </div>
+            </div>
+            <div style={S.stepLabels}>
+              <span style={S.stepLabel}>Account</span>
+              <span style={S.stepLabel}>Business</span>
+              <span style={S.stepLabel}>Done</span>
+            </div>
+          </>
+        )}
+
+        {step === 0 && (
+          <div>
+            <h2 style={S.formTitle}>Join Jain Agency</h2>
+            <p style={S.formSubtitle}>Choose how you'd like to register</p>
+            <div style={{ display: 'flex', gap: 12, marginBottom: 20 }}>
+              <button type="button" style={S.roleCard} onClick={() => { setRole('buyer'); setStep(1); }}>
+                <span style={{ fontSize: 28, marginBottom: 8, display: 'block' }}>🛍️</span>
+                <div style={S.roleCardTitle}>Buyer</div>
+                <div style={S.roleCardDesc}>Browse and purchase textiles</div>
+              </button>
+              <button type="button" style={S.roleCard} onClick={() => { setRole('supplier'); setStep(1); }}>
+                <span style={{ fontSize: 28, marginBottom: 8, display: 'block' }}>🏭</span>
+                <div style={S.roleCardTitle}>Supplier</div>
+                <div style={S.roleCardDesc}>List and sell your products</div>
+              </button>
+            </div>
+            <p style={{ ...S.loginText, margin: 0 }}>Already registered? <Link to="/" style={S.linkText}>Sign in</Link></p>
+            <Link to="/" style={{ textAlign: 'center', fontSize: 13, color: D.textSecondary, textDecoration: 'none', display: 'block', marginTop: 10 }}>← Back to Login</Link>
           </div>
-          <div style={{ flex: 1, height: 2, borderRadius: 1, backgroundColor: step > 1 ? D.navy : D.border }} />
-          <div style={{ ...S.stepDot, backgroundColor: step >= 2 ? D.navy : D.border }}>
-            <span style={{ color: 'white', fontSize: 11, fontWeight: 700 }}>2</span>
-          </div>
-          <div style={{ flex: 1, height: 2, borderRadius: 1, backgroundColor: D.border }} />
-          <div style={{ ...S.stepDot, backgroundColor: D.border }}>
-            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="2"><polyline points="9 11 12 14 22 4"/><path d="M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11"/></svg>
-          </div>
-        </div>
-        <div style={S.stepLabels}>
-          <span style={S.stepLabel}>Account</span>
-          <span style={S.stepLabel}>Business</span>
-          <span style={S.stepLabel}>Done</span>
-        </div>
+        )}
 
         {step === 1 && (
           <div>
@@ -289,7 +323,10 @@ function Register() {
             </form>
             <div style={{ display: 'flex', flexDirection: 'column', gap: 10, marginTop: 16 }}>
               <p style={{ ...S.loginText, margin: 0 }}>Already registered? <Link to="/" style={S.linkText}>Sign in</Link></p>
-              <Link to="/" style={{ textAlign: 'center', fontSize: 13, color: D.textSecondary, textDecoration: 'none', display: 'block' }}>← Back to Login</Link>
+              {roleParam
+                ? <Link to="/" style={{ textAlign: 'center', fontSize: 13, color: D.textSecondary, textDecoration: 'none', display: 'block' }}>← Back to Login</Link>
+                : <button style={{ ...S.ghostBtn, marginTop: 0 }} type="button" onClick={() => { setStep(0); setError(''); }}>← Back</button>
+              }
             </div>
           </div>
         )}
@@ -429,12 +466,15 @@ const S = {
   formSubtitle: { margin: '0 0 16px', fontSize: 13, color: D.textSecondary },
   fieldGroup: { marginBottom: 12 },
   label: { display: 'block', fontSize: 11, fontWeight: 600, color: D.textSecondary, marginBottom: 5, textTransform: 'uppercase', letterSpacing: '0.05em' },
-  input: { display: 'block', width: '100%', padding: '11px 13px', border: `1.5px solid ${D.border}`, borderRadius: 8, fontSize: 14, color: D.textPrimary, outline: 'none', boxSizing: 'border-box', backgroundColor: D.bg, fontFamily: 'inherit' },
+  input: { display: 'block', width: '100%', padding: '11px 13px', border: `1.5px solid ${D.border}`, borderRadius: 8, fontSize: 16, color: D.textPrimary, outline: 'none', boxSizing: 'border-box', backgroundColor: D.bg, fontFamily: 'inherit' },
   passWrap: { position: 'relative' },
   eyeBtn: { position: 'absolute', right: 12, top: '50%', transform: 'translateY(-50%)', background: 'none', border: 'none', cursor: 'pointer', padding: 4, display: 'flex', alignItems: 'center', justifyContent: 'center' },
   primaryBtn: { display: 'block', width: '100%', padding: '13px', backgroundColor: D.navy, color: 'white', border: 'none', borderRadius: 10, fontSize: 15, fontWeight: 700, cursor: 'pointer', marginTop: 12, letterSpacing: '-0.01em', fontFamily: 'inherit' },
   ghostBtn: { display: 'block', width: '100%', padding: '11px', backgroundColor: 'transparent', color: D.textSecondary, border: `1.5px solid ${D.border}`, borderRadius: 10, fontSize: 14, fontWeight: 600, cursor: 'pointer', marginTop: 10, fontFamily: 'inherit' },
   errorMsg: { fontSize: 13, color: D.error, margin: '8px 0 0', fontWeight: 500 },
+  roleCard: { flex: 1, padding: '18px 12px', border: `1.5px solid ${D.border}`, borderRadius: 12, backgroundColor: D.bg, cursor: 'pointer', textAlign: 'center', fontFamily: 'inherit' },
+  roleCardTitle: { fontSize: 15, fontWeight: 700, color: D.navy, marginBottom: 4 },
+  roleCardDesc: { fontSize: 12, color: D.textSecondary, lineHeight: 1.4 },
   loginText: { textAlign: 'center', fontSize: 13, color: D.textSecondary, marginTop: 18, marginBottom: 0 },
   linkText: { color: D.gold, textDecoration: 'none', fontWeight: 700 },
   footerText: { textAlign: 'center', fontSize: 11, color: D.border, marginTop: 20, marginBottom: 0 },

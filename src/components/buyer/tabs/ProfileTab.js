@@ -168,7 +168,7 @@ export default function ProfileTab({ userProfile, fetchProfile, categories, S, D
       : `${notifPrefs.slice(0, 2).join(', ')} +${notifPrefs.length - 2}`;
 
   const initial = userProfile.firmName?.[0]?.toUpperCase() || '?';
-  const inputStyle = { display: 'block', width: '100%', padding: '11px 14px', border: `1px solid ${DC.border}`, borderRadius: 8, fontSize: 14, color: DC.textPrimary, outline: 'none', boxSizing: 'border-box', marginBottom: 10, backgroundColor: DC.surface };
+  const inputStyle = { display: 'block', width: '100%', padding: '11px 14px', border: `1px solid ${DC.border}`, borderRadius: 8, fontSize: 16, color: DC.textPrimary, outline: 'none', boxSizing: 'border-box', marginBottom: 10, backgroundColor: DC.surface };
 
   // ── EDIT MODE ──
   if (editing) {

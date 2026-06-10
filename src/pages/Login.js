@@ -249,7 +249,7 @@ function Login() {
 
             <p style={S.registerText}>
               New to Jain Agency?{' '}
-              <Link to={`/register?role=${role || 'buyer'}`} style={S.linkText}>Create account</Link>
+              <Link to="/register" style={S.linkText}>Create account</Link>
             </p>
           </div>
         )}
@@ -278,7 +278,7 @@ const S = {
   roleActive: { flex: 1, padding: '12px 10px', border: `1.5px solid ${D.navy}`, borderRadius: 10, backgroundColor: D.navy, cursor: 'pointer', fontSize: 14, fontWeight: 600, color: 'white', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8 },
   fieldGroup: { marginBottom: 16 },
   label: { display: 'block', fontSize: 12, fontWeight: 600, color: D.textSecondary, marginBottom: 6, textTransform: 'uppercase', letterSpacing: '0.05em' },
-  input: { display: 'block', width: '100%', padding: '12px 14px', border: `1.5px solid ${D.border}`, borderRadius: 10, fontSize: 14, color: D.textPrimary, outline: 'none', boxSizing: 'border-box', backgroundColor: D.bg, transition: 'border-color 0.15s', fontFamily: 'inherit' },
+  input: { display: 'block', width: '100%', padding: '12px 14px', border: `1.5px solid ${D.border}`, borderRadius: 10, fontSize: 16, color: D.textPrimary, outline: 'none', boxSizing: 'border-box', backgroundColor: D.bg, transition: 'border-color 0.15s', fontFamily: 'inherit' },
   passWrap: { position: 'relative' },
   eyeBtn: { position: 'absolute', right: 12, top: '50%', transform: 'translateY(-50%)', background: 'none', border: 'none', cursor: 'pointer', padding: 4, display: 'flex', alignItems: 'center', justifyContent: 'center' },
   forgotLink: { fontSize: 12, color: D.gold, cursor: 'pointer', fontWeight: 600 },

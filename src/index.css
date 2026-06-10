@@ -1,24 +1,29 @@
 /* ── 1. Global Reset & Responsive Foundation ── */
 *, *::before, *::after {
-  box-sizing: border-box;
+  box-sizing: border-box !important;
 }
 
 html, body {
+  position: fixed;
+  top: 0;
+  left: 0;
   width: 100%;
-  height: 100%; /* Mobile viewport issue rokne ke liye 100vh ki jagah 100% */
+  height: 100%;
   margin: 0;
   padding: 0;
-  overflow: hidden; /* Browser ka default scroll aur bounce lock karega */
-  overscroll-behavior-y: none; /* Rubber-band/bounce effect ko bilkul band kar dega */
-  background-color: #f9fafb; /* App ka base background color */
+  overflow: hidden !important;
+  overscroll-behavior: none;
+  touch-action: pan-y;
+  background-color: #f9fafb;
 }
 
 #root {
-  width: 100%;
-  height: 100%;
-  overflow-y: auto; /* Scroll sirf app ke andar hoga (native app feel) */
-  overflow-x: hidden; /* Horizontal scrolling ko rokega */
-  -webkit-overflow-scrolling: touch; /* iOS Safari me smooth scrolling ke liye */
+  height: 100dvh;
+  width: 100vw;
+  overflow-y: auto;
+  overscroll-behavior-y: contain;
+  overflow-x: hidden;
+  -webkit-overflow-scrolling: touch;
 }
 
 body {
@@ -75,5 +80,11 @@ code {
 @media (min-width: 1025px) {
   .sup-main {
     padding: 32px !important;
+  }
+}
+
+@supports (-webkit-touch-callout: none) {
+  input, select, textarea {
+    font-size: 16px !important;
   }
 }

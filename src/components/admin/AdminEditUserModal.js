@@ -6,7 +6,7 @@ export default function AdminEditUserModal({ selectedUser, setSelectedUser, onSa
   if (!selectedUser) return null;
 
   return (
-    <div style={styles.modalOverlay} onClick={onCancel}>
+    <div style={styles.modalOverlay}>
       <div style={styles.modal} onClick={e => e.stopPropagation()}>
         <h3 style={{ marginTop: 0, color: D.navy }}>Edit User — {selectedUser.firmName}</h3>
         

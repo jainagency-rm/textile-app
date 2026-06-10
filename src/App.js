@@ -1,5 +1,7 @@
-import React, { useEffect, lazy, Suspense } from 'react';
-import { BrowserRouter as Router, Routes, Route, useNavigate } from 'react-router-dom';
+import React, { useEffect, useState, lazy, Suspense } from 'react';
+import { HashRouter as Router, Routes, Route, useNavigate } from 'react-router-dom';
+import { onAuthStateChanged } from 'firebase/auth';
+import { auth } from './firebase';
 
 import Login from './pages/Login';
 import ProtectedRoute from './components/shared/ProtectedRoute';
@@ -26,22 +28,23 @@ function GlobalHandlers() {
         window.dispatchEvent(new CustomEvent('closeModal'));
       }
     };
+    document.addEventListener('keydown', handleKeyDown);
 
-    let touchStartX = 0;
-    const handleTouchStart = (e) => { touchStartX = e.touches[0].clientX; };
-    const handleTouchEnd = (e) => {
-      const diff = e.changedTouches[0].clientX - touchStartX;
-      if (diff > 80) navigate(-1);
+    // --- SAFARI SWIPE-BACK TRAP ---
+    // Push an initial dummy state so there's always something in the stack
+    window.history.pushState(null, null, window.location.href);
+
+    const handlePopState = () => {
+      // When iOS swipe-back is triggered, instantly push the current URL
+      // back into history, completely neutralizing the back navigation.
+      window.history.pushState(null, null, window.location.href);
     };
 
-    document.addEventListener('keydown', handleKeyDown);
-    document.addEventListener('touchstart', handleTouchStart);
-    document.addEventListener('touchend', handleTouchEnd);
+    window.addEventListener('popstate', handlePopState);
 
     return () => {
       document.removeEventListener('keydown', handleKeyDown);
-      document.removeEventListener('touchstart', handleTouchStart);
-      document.removeEventListener('touchend', handleTouchEnd);
+      window.removeEventListener('popstate', handlePopState);
     };
   }, [navigate]);
 
@@ -49,6 +52,15 @@ function GlobalHandlers() {
 }
 
 function App() {
+  const [authReady, setAuthReady] = useState(false);
+
+  useEffect(() => {
+    const unsubscribe = onAuthStateChanged(auth, () => setAuthReady(true));
+    return () => unsubscribe();
+  }, []);
+
+  if (!authReady) return <LoadingScreen />;
+
   return (
     <Router>
       <GlobalHandlers />

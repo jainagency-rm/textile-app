@@ -68,7 +68,7 @@ function SupplierDashboardHome({ orders, products, userProfile, setActiveTab }) 
       </div>
 
       {/* Stats grid */}
-      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 12, marginBottom: 24 }}>
+      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(100px, 1fr))', gap: 12, marginBottom: 24 }}>
         <StatCard label="Pending Orders"   value={pendingCount}   emoji="⏳" />
         <StatCard label="Today's Orders"   value={todayCount}     emoji="📦" />
         <StatCard label="Active Products"  value={activeProducts} emoji="🏷️" />

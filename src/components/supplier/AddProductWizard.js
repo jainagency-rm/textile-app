@@ -45,7 +45,7 @@ function LabelRow({ label, required, children }) {
 function TextInput({ label, value, onChange, type = 'text', placeholder, required }) {
   return (
     <LabelRow label={label} required={required}>
-      <input type={type} value={value} onChange={e => onChange(e.target.value)} placeholder={placeholder || ''} style={{ flex: 1, border: 'none', outline: 'none', fontSize: 14, color: D.textPrimary, backgroundColor: 'transparent', fontFamily: 'inherit' }} />
+      <input type={type} value={value} onChange={e => onChange(e.target.value)} placeholder={placeholder || ''} style={{ flex: 1, border: 'none', outline: 'none', fontSize: 16, color: D.textPrimary, backgroundColor: 'transparent', fontFamily: 'inherit' }} />
     </LabelRow>
   );
 }
@@ -279,7 +279,7 @@ function AddProductWizard({ categories, onDone, onCancel }) {
             {form.sizes.map(sz => (
               <div key={sz} style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 2 }}>
                 <span style={{ fontSize: 9, color: D.textSecondary, fontWeight: 700 }}>{sz}</span>
-                <input type="number" min="0" className="grid-input" value={design.stock?.[sz] !== undefined ? design.stock[sz] : ''} onFocus={e => e.target.select()} onChange={e => updateDesignStock(idx, sz, e.target.value === '' ? '' : Number(e.target.value))} style={{ width: 42, padding: '3px', border: `1px solid ${D.border}`, borderRadius: 4, textAlign: 'center', fontSize: 11 }} placeholder="0" />
+                <input type="number" min="0" className="grid-input" value={design.stock?.[sz] !== undefined ? design.stock[sz] : ''} onFocus={e => e.target.select()} onChange={e => updateDesignStock(idx, sz, e.target.value === '' ? '' : Number(e.target.value))} style={{ width: 42, padding: '3px', border: `1px solid ${D.border}`, borderRadius: 4, textAlign: 'center', fontSize: 16, boxSizing: 'border-box' }} placeholder="0" />
               </div>
             ))}
           </div>
@@ -288,14 +288,14 @@ function AddProductWizard({ categories, onDone, onCancel }) {
     }
     return (
       <div style={{ marginTop: 4 }}>
-        <input type="number" min="0" className="grid-input" value={design.stock?.sets !== undefined ? design.stock.sets : ''} onFocus={e => e.target.select()} onChange={e => updateDesignStock(idx, 'sets', e.target.value === '' ? '' : Number(e.target.value))} style={{ width: '100%', padding: '5px 8px', border: `1px solid ${D.border}`, borderRadius: 6, fontSize: 12 }} placeholder="Sets in stock" />
+        <input type="number" min="0" className="grid-input" value={design.stock?.sets !== undefined ? design.stock.sets : ''} onFocus={e => e.target.select()} onChange={e => updateDesignStock(idx, 'sets', e.target.value === '' ? '' : Number(e.target.value))} style={{ width: '100%', padding: '5px 8px', border: `1px solid ${D.border}`, borderRadius: 6, fontSize: 16, boxSizing: 'border-box' }} placeholder="Sets in stock" />
       </div>
     );
   };
 
   return (
-    <div style={{ position: 'fixed', inset: 0, backgroundColor: 'rgba(3,22,50,0.55)', zIndex: 300, display: 'flex', alignItems: 'center', justifyContent: 'center' }} onClick={handleClose}>
-      <div style={{ backgroundColor: D.surface, borderRadius: 20, width: '94%', maxWidth: 640, maxHeight: '92vh', display: 'flex', flexDirection: 'column', padding: '20px 20px 16px', boxSizing: 'border-box', boxShadow: '0 24px 60px rgba(3,22,50,0.25)' }} onClick={e => e.stopPropagation()}>
+    <div style={{ position: 'fixed', inset: 0, backgroundColor: 'rgba(3,22,50,0.55)', zIndex: 300, display: 'flex', alignItems: 'center', justifyContent: 'center', width: '100%', overflowX: 'hidden', boxSizing: 'border-box' }}>
+      <div style={{ backgroundColor: D.surface, borderRadius: 20, width: '100%', maxWidth: 400, maxHeight: '92vh', display: 'flex', flexDirection: 'column', padding: '20px 20px 16px', boxSizing: 'border-box', boxShadow: '0 24px 60px rgba(3,22,50,0.25)' }} onClick={e => e.stopPropagation()}>
         <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginBottom: 18 }}>
           <button onClick={step === 1 ? handleClose : () => setStep(step - 1)} style={{ width: 36, height: 36, borderRadius: 10, border: `1px solid ${D.borderLight}`, cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', backgroundColor: D.surface, flexShrink: 0 }}>
             <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke={D.navy} strokeWidth="2.5"><path d="M19 12H5M12 5l-7 7 7 7"/></svg>
@@ -314,7 +314,7 @@ function AddProductWizard({ categories, onDone, onCancel }) {
           {step === 1 && (
             <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
               <SectionBox title="Category" required>
-                <select style={{ width: '100%', padding: '10px 12px', border: `1px solid ${D.border}`, borderRadius: 8, fontSize: 14, color: D.textPrimary, outline: 'none', backgroundColor: D.surface }} value={form.categoryId} onChange={e => {
+                <select style={{ width: '100%', padding: '10px 12px', border: `1px solid ${D.border}`, borderRadius: 8, fontSize: 16, color: D.textPrimary, outline: 'none', backgroundColor: D.surface }} value={form.categoryId} onChange={e => {
                   const catId = e.target.value; const cat = categories.find(c => c.id === catId); const tmpl = cat?.template || '';
                   const autoStitched = tmpl === 'stitched' ? true : tmpl === 'unstitched' ? false : null;
                   setForm(prev => ({ ...prev, categoryId: catId, cuts: [], designs: [], sizes: [], isStitched: autoStitched, designMode: null, fullSetStock: {}, runningPhotos: [] }));
@@ -344,7 +344,7 @@ function AddProductWizard({ categories, onDone, onCancel }) {
                     <>
                       <p style={{ margin: '0 0 8px', fontSize: 12, fontWeight: 700, color: D.navy }}>Request New Category</p>
                       <input
-                        style={{ width: '100%', padding: '9px 12px', border: `1.5px solid #c7d2fe`, borderRadius: 8, fontSize: 13, outline: 'none', boxSizing: 'border-box', marginBottom: 8 }}
+                        style={{ width: '100%', padding: '9px 12px', border: `1.5px solid #c7d2fe`, borderRadius: 8, fontSize: 16, outline: 'none', boxSizing: 'border-box', marginBottom: 8 }}
                         placeholder="Category name (e.g. Palazzo, Sharara)"
                         value={requestCategoryName}
                         onChange={e => setRequestCategoryName(e.target.value)}
@@ -371,7 +371,7 @@ function AddProductWizard({ categories, onDone, onCancel }) {
                     ))}
                   </div>
                   <div style={{ display: 'flex', gap: 8 }}>
-                    <input value={form.customCutInput} onChange={e => f('customCutInput', e.target.value)} onKeyDown={e => e.key === 'Enter' && addCustomCut()} placeholder="Custom cut (e.g. 3/50)" style={{ flex: 1, padding: '8px 12px', border: `1px solid ${D.border}`, borderRadius: 8, fontSize: 13, outline: 'none' }} />
+                    <input value={form.customCutInput} onChange={e => f('customCutInput', e.target.value)} onKeyDown={e => e.key === 'Enter' && addCustomCut()} placeholder="Custom cut (e.g. 3/50)" style={{ flex: 1, padding: '8px 12px', border: `1px solid ${D.border}`, borderRadius: 8, fontSize: 16, outline: 'none' }} />
                     <button onClick={addCustomCut} style={{ padding: '8px 14px', backgroundColor: D.navy, color: 'white', border: 'none', borderRadius: 8, cursor: 'pointer', fontWeight: 700, fontSize: 13 }}>+ Add</button>
                   </div>
                 </SectionBox>
@@ -385,7 +385,7 @@ function AddProductWizard({ categories, onDone, onCancel }) {
                   </div>
                   {form.width === 'custom' && (
                     <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-                      <input type="number" value={form.customWidth} onChange={e => f('customWidth', e.target.value)} placeholder='e.g. 66' style={{ flex: 1, padding: '8px 12px', border: `1px solid ${D.border}`, borderRadius: 8, fontSize: 14, outline: 'none' }} />
+                      <input type="number" value={form.customWidth} onChange={e => f('customWidth', e.target.value)} placeholder='e.g. 66' style={{ flex: 1, padding: '8px 12px', border: `1px solid ${D.border}`, borderRadius: 8, fontSize: 16, outline: 'none' }} />
                       <span style={{ fontSize: 16, fontWeight: 700, color: D.navy }}>"</span>
                     </div>
                   )}
@@ -450,8 +450,8 @@ function AddProductWizard({ categories, onDone, onCancel }) {
                         <img src={d.url} style={{ width: '100%', aspectRatio: '1', objectFit: 'cover' }} alt="" />
                         <button onClick={(e) => { e.stopPropagation(); const cuts = [...form.cuts]; cuts[cIdx] = { ...cuts[cIdx], designs: cuts[cIdx].designs.filter((_, i) => i !== dIdx) }; f('cuts', cuts); }} style={{ position: 'absolute', top: 4, right: 4, width: 20, height: 20, borderRadius: '50%', backgroundColor: 'rgba(186,26,26,0.85)', color: 'white', border: 'none', cursor: 'pointer', fontSize: 12, fontWeight: 700, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>✕</button>
                         <div style={{ padding: '5px 6px 7px' }}>
-                          <input className="grid-input" placeholder="DN No." value={d.dnNumber} onFocus={e => e.target.select()} onChange={e => updateNightyCutDesign(cIdx, dIdx, 'dnNumber', e.target.value)} style={{ width: '100%', fontSize: 10, border: `1px solid ${D.borderLight}`, borderRadius: 4, padding: '2px 4px', boxSizing: 'border-box', marginBottom: 3 }} />
-                          <input type="number" min="0" className="grid-input" value={d.sets !== undefined ? d.sets : ''} onFocus={e => e.target.select()} onChange={e => updateNightyCutDesign(cIdx, dIdx, 'sets', e.target.value === '' ? '' : Number(e.target.value))} style={{ width: '100%', fontSize: 10, border: `1px solid ${D.borderLight}`, borderRadius: 4, padding: '2px 4px', boxSizing: 'border-box' }} placeholder="Sets" />
+                          <input className="grid-input" placeholder="DN No." value={d.dnNumber} onFocus={e => e.target.select()} onChange={e => updateNightyCutDesign(cIdx, dIdx, 'dnNumber', e.target.value)} style={{ width: '100%', fontSize: 16, border: `1px solid ${D.borderLight}`, borderRadius: 4, padding: '2px 4px', boxSizing: 'border-box', marginBottom: 3 }} />
+                          <input type="number" min="0" className="grid-input" value={d.sets !== undefined ? d.sets : ''} onFocus={e => e.target.select()} onChange={e => updateNightyCutDesign(cIdx, dIdx, 'sets', e.target.value === '' ? '' : Number(e.target.value))} style={{ width: '100%', fontSize: 16, border: `1px solid ${D.borderLight}`, borderRadius: 4, padding: '2px 4px', boxSizing: 'border-box' }} placeholder="Sets" />
                         </div>
                       </div>
                     ))}
@@ -508,7 +508,7 @@ function AddProductWizard({ categories, onDone, onCancel }) {
                         {form.sizes.map(sz => (
                           <div key={sz} style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 4 }}>
                             <span style={{ fontSize: 13, fontWeight: 700, color: D.navy }}>{sz}</span>
-                            <input type="number" min="0" className="grid-input" value={form.fullSetStock[sz] !== undefined ? form.fullSetStock[sz] : ''} onFocus={e => e.target.select()} onChange={e => updateFullSetStock(sz, e.target.value === '' ? '' : Number(e.target.value))} style={{ width: 56, padding: '7px', border: `1px solid ${D.border}`, borderRadius: 6, textAlign: 'center', fontSize: 14, fontWeight: 700 }} placeholder="0" />
+                            <input type="number" min="0" className="grid-input" value={form.fullSetStock[sz] !== undefined ? form.fullSetStock[sz] : ''} onFocus={e => e.target.select()} onChange={e => updateFullSetStock(sz, e.target.value === '' ? '' : Number(e.target.value))} style={{ width: 56, padding: '7px', border: `1px solid ${D.border}`, borderRadius: 6, textAlign: 'center', fontSize: 16, fontWeight: 700, boxSizing: 'border-box' }} placeholder="0" />
                           </div>
                         ))}
                       </div>
@@ -534,7 +534,7 @@ function AddProductWizard({ categories, onDone, onCancel }) {
                         style={{ display: 'flex', gap: 10, backgroundColor: D.surface, borderRadius: 10, padding: 10, border: `1px solid ${D.borderLight}`, cursor: 'grab', opacity: dragPhoto.ctx === 'designs_dw' && dragPhoto.idx === idx ? 0.4 : 1 }}>
                         <img src={d.url} style={{ width: 64, height: 64, objectFit: 'cover', borderRadius: 8, flexShrink: 0 }} alt="" />
                         <div style={{ flex: 1, minWidth: 0 }}>
-                          <input className="grid-input" placeholder="DN Number (optional)" value={d.dnNumber} onFocus={e => e.target.select()} onChange={e => { const ds = [...form.designs]; ds[idx].dnNumber = e.target.value; f('designs', ds); }} style={{ width: '100%', fontSize: 12, border: `1px solid ${D.borderLight}`, borderRadius: 6, padding: '5px 8px', boxSizing: 'border-box', marginBottom: 6 }} />
+                          <input className="grid-input" placeholder="DN Number (optional)" value={d.dnNumber} onFocus={e => e.target.select()} onChange={e => { const ds = [...form.designs]; ds[idx].dnNumber = e.target.value; f('designs', ds); }} style={{ width: '100%', fontSize: 16, border: `1px solid ${D.borderLight}`, borderRadius: 6, padding: '5px 8px', boxSizing: 'border-box', marginBottom: 6 }} />
                           {renderDesignStock(d, idx)}
                         </div>
                         <button onClick={() => f('designs', form.designs.filter((_, i) => i !== idx))} style={{ width: 24, height: 24, borderRadius: '50%', border: 'none', backgroundColor: '#fce8e6', color: D.error, cursor: 'pointer', fontSize: 13, fontWeight: 700, flexShrink: 0, alignSelf: 'flex-start' }}>✕</button>
@@ -558,7 +558,7 @@ function AddProductWizard({ categories, onDone, onCancel }) {
                 <div style={{ padding: '9px 0', borderBottom: `1px solid ${D.borderLight}` }}>
                   <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 8 }}>
                     <p style={{ margin: 0, fontSize: 13, color: D.textSecondary, fontWeight: 600 }}>Rate per Cut <span style={{ color: D.error }}>*</span></p>
-                    <select value={form.priceUnit} onChange={e => f('priceUnit', e.target.value)} style={{ border: 'none', outline: 'none', fontSize: 13, color: D.navy, fontWeight: 700, backgroundColor: 'transparent', cursor: 'pointer' }}>
+                    <select value={form.priceUnit} onChange={e => f('priceUnit', e.target.value)} style={{ border: 'none', outline: 'none', fontSize: 16, color: D.navy, fontWeight: 700, backgroundColor: 'transparent', cursor: 'pointer' }}>
                       {UNITS.map(u => <option key={u} value={u}>Per {u}</option>)}
                     </select>
                   </div>
@@ -566,7 +566,7 @@ function AddProductWizard({ categories, onDone, onCancel }) {
                     <div key={cut.label} style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '6px 0' }}>
                       <span style={{ fontSize: 13, fontWeight: 700, color: D.navy, minWidth: 50 }}>{cut.label}</span>
                       <span style={{ color: D.textSecondary }}>₹</span>
-                      <input type="number" value={cut.rate} onFocus={e => e.target.select()} onChange={e => updateCutRate(cIdx, e.target.value)} style={{ flex: 1, padding: '7px 10px', border: `1px solid ${D.border}`, borderRadius: 6, fontSize: 14, outline: 'none' }} placeholder="Rate" />
+                      <input type="number" value={cut.rate} onFocus={e => e.target.select()} onChange={e => updateCutRate(cIdx, e.target.value)} style={{ flex: 1, padding: '7px 10px', border: `1px solid ${D.border}`, borderRadius: 6, fontSize: 16, outline: 'none' }} placeholder="Rate" />
                       <span style={{ fontSize: 12, color: D.textSecondary }}>/{form.priceUnit}</span>
                     </div>
                   ))}
@@ -575,7 +575,7 @@ function AddProductWizard({ categories, onDone, onCancel }) {
                 <div style={{ padding: '9px 0', borderBottom: `1px solid ${D.borderLight}` }}>
                   <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 8 }}>
                     <p style={{ margin: 0, fontSize: 13, color: D.textSecondary, fontWeight: 600 }}>Rate per Size (₹) <span style={{ color: D.error }}>*</span></p>
-                    <select value={form.priceUnit} onChange={e => f('priceUnit', e.target.value)} style={{ border: 'none', outline: 'none', fontSize: 13, color: D.navy, fontWeight: 700, backgroundColor: 'transparent', cursor: 'pointer' }}>
+                    <select value={form.priceUnit} onChange={e => f('priceUnit', e.target.value)} style={{ border: 'none', outline: 'none', fontSize: 16, color: D.navy, fontWeight: 700, backgroundColor: 'transparent', cursor: 'pointer' }}>
                       {UNITS.map(u => <option key={u} value={u}>Per {u}</option>)}
                     </select>
                   </div>
@@ -583,7 +583,7 @@ function AddProductWizard({ categories, onDone, onCancel }) {
                     <div key={sz} style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '6px 0' }}>
                       <span style={{ fontSize: 13, fontWeight: 700, color: D.navy, minWidth: 40 }}>{sz}</span>
                       <span style={{ color: D.textSecondary }}>₹</span>
-                      <input type="number" value={form.sizePrices[sz] || ''} onFocus={e => e.target.select()} onChange={e => updateSizePrice(sz, e.target.value)} style={{ flex: 1, padding: '7px 10px', border: `1px solid ${D.border}`, borderRadius: 6, fontSize: 14, outline: 'none' }} placeholder={`Price for ${sz}`} />
+                      <input type="number" value={form.sizePrices[sz] || ''} onFocus={e => e.target.select()} onChange={e => updateSizePrice(sz, e.target.value)} style={{ flex: 1, padding: '7px 10px', border: `1px solid ${D.border}`, borderRadius: 6, fontSize: 16, outline: 'none' }} placeholder={`Price for ${sz}`} />
                       <span style={{ fontSize: 12, color: D.textSecondary }}>/{form.priceUnit}</span>
                     </div>
                   ))}
@@ -591,8 +591,8 @@ function AddProductWizard({ categories, onDone, onCancel }) {
               ) : (
                 <LabelRow label="Price (₹)" required>
                   <div style={{ display: 'flex', flex: 1, alignItems: 'center', gap: 8 }}>
-                    <input type="number" value={form.price} onFocus={e => e.target.select()} onChange={e => f('price', e.target.value)} placeholder="Price" style={{ flex: 1, border: 'none', outline: 'none', fontSize: 14, color: D.textPrimary, backgroundColor: 'transparent', fontFamily: 'inherit' }} />
-                    <select value={form.priceUnit} onChange={e => f('priceUnit', e.target.value)} style={{ border: 'none', outline: 'none', fontSize: 14, color: D.navy, fontWeight: 700, backgroundColor: 'transparent', cursor: 'pointer' }}>
+                    <input type="number" value={form.price} onFocus={e => e.target.select()} onChange={e => f('price', e.target.value)} placeholder="Price" style={{ flex: 1, border: 'none', outline: 'none', fontSize: 16, color: D.textPrimary, backgroundColor: 'transparent', fontFamily: 'inherit' }} />
+                    <select value={form.priceUnit} onChange={e => f('priceUnit', e.target.value)} style={{ border: 'none', outline: 'none', fontSize: 16, color: D.navy, fontWeight: 700, backgroundColor: 'transparent', cursor: 'pointer' }}>
                       {UNITS.map(u => <option key={u} value={u}>Per {u}</option>)}
                     </select>
                   </div>
@@ -601,9 +601,9 @@ function AddProductWizard({ categories, onDone, onCancel }) {
 
               {/* MOQ row */}
               <LabelRow label="MOQ" required>
-                <div style={{ display: 'flex', flex: 1, alignItems: 'center', gap: 8 }}>
-                  <input type="number" value={form.moq} onFocus={e => e.target.select()} onChange={e => f('moq', e.target.value)} placeholder="Min order qty" style={{ flex: 1, border: 'none', outline: 'none', fontSize: 14, color: D.textPrimary, backgroundColor: 'transparent', fontFamily: 'inherit' }} />
-                  <select value={form.moqUnit} onChange={e => f('moqUnit', e.target.value)} style={{ border: 'none', outline: 'none', fontSize: 14, color: D.navy, fontWeight: 700, backgroundColor: 'transparent', cursor: 'pointer' }}>
+                <div style={{ display: 'flex', flex: 1, alignItems: 'center', gap: 8, minWidth: 0 }}>
+                  <input type="number" value={form.moq} onFocus={e => e.target.select()} onChange={e => f('moq', e.target.value)} placeholder="Min order qty" style={{ flex: 1, minWidth: 0, border: 'none', outline: 'none', fontSize: 16, color: D.textPrimary, backgroundColor: 'transparent', fontFamily: 'inherit' }} />
+                  <select value={form.moqUnit} onChange={e => f('moqUnit', e.target.value)} style={{ minWidth: 0, border: 'none', outline: 'none', fontSize: 16, color: D.navy, fontWeight: 700, backgroundColor: 'transparent', cursor: 'pointer' }}>
                     {UNITS.map(u => <option key={u} value={u}>{u}</option>)}
                   </select>
                 </div>
@@ -620,7 +620,7 @@ function AddProductWizard({ categories, onDone, onCancel }) {
                       onFocus={e => e.target.select()}
                       onChange={e => f('pcsPerSet', e.target.value)}
                       placeholder="e.g. 6"
-                      style={{ flex: 1, border: 'none', outline: 'none', fontSize: 14, color: D.textPrimary, backgroundColor: 'transparent', fontFamily: 'inherit' }}
+                      style={{ flex: 1, border: 'none', outline: 'none', fontSize: 16, color: D.textPrimary, backgroundColor: 'transparent', fontFamily: 'inherit' }}
                     />
                     <span style={{ fontSize: 12, color: D.textSecondary, fontWeight: 600 }}>Pieces per Set</span>
                   </div>
@@ -633,7 +633,7 @@ function AddProductWizard({ categories, onDone, onCancel }) {
 
               <div style={{ padding: '9px 0' }}>
                 <span style={{ fontSize: 13, color: D.textSecondary, fontWeight: 600, display: 'block', marginBottom: 6 }}>Description</span>
-                <textarea value={form.description} onChange={e => f('description', e.target.value)} rows={3} placeholder="Optional" style={{ width: '100%', border: `1px solid ${D.border}`, borderRadius: 8, padding: '8px 10px', fontSize: 13, resize: 'vertical', outline: 'none', boxSizing: 'border-box' }} />
+                <textarea value={form.description} onChange={e => f('description', e.target.value)} rows={3} placeholder="Optional" style={{ width: '100%', border: `1px solid ${D.border}`, borderRadius: 8, padding: '8px 10px', fontSize: 16, resize: 'vertical', outline: 'none', boxSizing: 'border-box' }} />
               </div>
             </SectionBox>
           )}
