@@ -204,7 +204,7 @@ function Register() {
       try {
         const adminSnap = await getDocs(query(collection(db, 'users'), where('role', '==', 'admin')));
         const adminId = adminSnap.docs[0]?.id;
-        if (adminId) await notifyNewUser(adminId, formData.firmName, role);
+        if (adminId) await notifyNewUser(adminId, formData.firmName, role, userCred.user.uid);
       } catch (_) {}
       navigate('/pending');
     } catch (err) {

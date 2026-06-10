@@ -4,6 +4,7 @@ import { signOut } from 'firebase/auth';
 import { collection, getDocs, query, where, doc, getDoc, updateDoc, writeBatch, onSnapshot, orderBy } from 'firebase/firestore';
 import { auth, db } from '../../firebase';
 import { useWindowSize } from '../../hooks/useWindowSize';
+import { notifyOrderStatusChange } from '../../utils/notifications';
 
 import SupplierSideNav from '../../components/supplier/SupplierSideNav';
 import SupplierBottomNav from '../../components/supplier/SupplierBottomNav';
@@ -115,6 +116,7 @@ function SupplierDashboard() {
   const handleApprove = async (order) => {
     await updateDoc(doc(db, 'orders', order.id), { status: 'Processing' });
     setOrders(orders.map(o => o.id === order.id ? { ...o, status: 'Processing' } : o));
+    if (order.buyerId) { try { await notifyOrderStatusChange(order.buyerId, order.orderNumber, 'Processing', order.id); } catch (e) {} }
   };
 
   const handleReject = async (order) => {
@@ -162,6 +164,7 @@ function SupplierDashboard() {
       }
       await batch.commit();
       setOrders(orders.map(o => o.id === order.id ? { ...o, status: 'Cancelled' } : o));
+      if (order.buyerId) { try { await notifyOrderStatusChange(order.buyerId, order.orderNumber, 'Cancelled', order.id); } catch (e) {} }
     } catch (err) { console.error('Reject error', err); }
   };
 

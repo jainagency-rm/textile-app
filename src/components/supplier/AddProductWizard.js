@@ -1,7 +1,8 @@
 import React, { useState } from 'react';
-import { collection, addDoc, getDoc, doc } from 'firebase/firestore';
+import { collection, addDoc, getDoc, doc, getDocs, query, where } from 'firebase/firestore';
 import { ref, uploadBytes, getDownloadURL } from 'firebase/storage';
 import { auth, db, storage } from '../../firebase';
+import { notifyNewProduct } from '../../utils/notifications';
 import { NIGHTY_CATEGORIES } from '../../constants/product';
 
 const SIZES = ['XS', 'S', 'M', 'L', 'XL', '2XL', '3XL', '4XL', '5XL'];
@@ -181,6 +182,12 @@ function AddProductWizard({ categories, onDone, onCancel }) {
       const userSnap = await getDoc(doc(db, 'users', user.uid));
       const profile = userSnap.data();
 
+      let adminId = null;
+      try {
+        const adminSnap = await getDocs(query(collection(db, 'users'), where('role', '==', 'admin')));
+        adminId = adminSnap.docs[0]?.id || null;
+      } catch (_) {}
+
       const base = {
         name: form.name, categoryId: form.categoryId, category: selectedCat.name, template,
         moq: Number(form.moq),
@@ -207,6 +214,7 @@ function AddProductWizard({ categories, onDone, onCancel }) {
             await addDoc(collection(db, 'products', productRef.id, 'cuts', cutRef.id, 'designs'), { designNo: i + 1, dnNumber: d.dnNumber || '', sets: Number(d.sets || 0), photoUrl: d.url, addedAt: new Date() });
           }
         }
+        if (adminId) { try { await notifyNewProduct(adminId, base.name, base.supplierFirm, productRef.id); } catch (e) {} }
       } else if (isRunning) {
         const width = form.width === 'custom' ? form.customWidth : form.width;
         base.price = Number(form.price);
@@ -215,7 +223,8 @@ function AddProductWizard({ categories, onDone, onCancel }) {
         base.imageUrl = form.runningPhotos[0] || '';
         base.imageUrls = form.runningPhotos.map(u => ({ url: u }));
         base.designMode = 'running';
-        await addDoc(collection(db, 'products'), base);
+        const productRef = await addDoc(collection(db, 'products'), base);
+        if (adminId) { try { await notifyNewProduct(adminId, base.name, base.supplierFirm, productRef.id); } catch (e) {} }
       } else {
         base.isStitched = form.isStitched;
         base.designMode = form.designMode;
@@ -230,7 +239,8 @@ function AddProductWizard({ categories, onDone, onCancel }) {
           base.fullSetStock = Object.fromEntries(Object.entries(form.fullSetStock).map(([k, v]) => [k, Number(v || 0)]));
           base.imageUrl = form.designs[0]?.url || '';
           base.imageUrls = form.designs.map(d => ({ url: d.url, dnNumber: d.dnNumber || '' }));
-          await addDoc(collection(db, 'products'), base);
+          const productRef = await addDoc(collection(db, 'products'), base);
+          if (adminId) { try { await notifyNewProduct(adminId, base.name, base.supplierFirm, productRef.id); } catch (e) {} }
         } else {
           base.imageUrl = form.designs[0]?.url || '';
           const productRef = await addDoc(collection(db, 'products'), base);
@@ -239,6 +249,7 @@ function AddProductWizard({ categories, onDone, onCancel }) {
             const cleanStock = Object.fromEntries(Object.entries(d.stock || {}).map(([k, v]) => [k, Number(v || 0)]));
             await addDoc(collection(db, 'products', productRef.id, 'designs'), { designNo: i + 1, dnNumber: d.dnNumber || '', stock: cleanStock, photoUrl: d.url, addedAt: new Date() });
           }
+          if (adminId) { try { await notifyNewProduct(adminId, base.name, base.supplierFirm, productRef.id); } catch (e) {} }
         }
       }
       setForm(initialFormState); setStep(1); onDone(false);

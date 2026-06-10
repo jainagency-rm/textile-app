@@ -399,7 +399,7 @@ export function useBuyerDashboard() {
 
       for (const supplierId of Object.keys(groupedNonNighty)) {
         const sc = groupedNonNighty[supplierId];
-        await addDoc(collection(db, 'orders'), {
+        const orderRef = await addDoc(collection(db, 'orders'), {
           orderNumber: orderNumber,
           buyerId: user.uid, buyerFirm: userProfile?.firmName || 'Unknown Firm',
           supplierId: supplierId || 'Unknown', supplierFirm: sc.supplierFirm || 'Unknown Supplier',
@@ -426,13 +426,13 @@ export function useBuyerDashboard() {
           }, 0),
           status: 'Pending', createdAt: new Date()
         });
-        if (adminId) { try { await notifyNewOrder(adminId, supplierId, userProfile?.firmName || ''); } catch (e) {} }
+        if (adminId) { try { await notifyNewOrder(adminId, supplierId, userProfile?.firmName || '', orderRef.id); } catch (e) {} }
       }
 
       for (const supplierId of Object.keys(groupedNighty)) {
         const sc = groupedNighty[supplierId];
         const currentBaleDetail = tempNightyDetails ? tempNightyDetails[supplierId] : null;
-        await addDoc(collection(db, 'orders'), {
+        const orderRef = await addDoc(collection(db, 'orders'), {
           orderNumber: orderNumber,
           buyerId: user.uid, buyerFirm: userProfile?.firmName || 'Unknown Firm',
           supplierId: supplierId || 'Unknown', supplierFirm: sc.supplierFirm || 'Unknown Supplier',
@@ -454,7 +454,7 @@ export function useBuyerDashboard() {
           }, 0),
           status: 'Pending', createdAt: new Date()
         });
-        if (adminId) { try { await notifyNewOrder(adminId, supplierId, userProfile?.firmName || ''); } catch (e) {} }
+        if (adminId) { try { await notifyNewOrder(adminId, supplierId, userProfile?.firmName || '', orderRef.id); } catch (e) {} }
 
         try {
           for (const item of sc.items) {

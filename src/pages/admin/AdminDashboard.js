@@ -8,6 +8,7 @@ import {
 import { ref, uploadBytes, getDownloadURL, deleteObject } from 'firebase/storage';
 import { auth, db, storage } from '../../firebase';
 import { useWindowSize } from '../../hooks/useWindowSize';
+import { notifyOrderStatusChange } from '../../utils/notifications';
 
 import AdminEditUserModal from '../../components/admin/AdminEditUserModal';
 import AdminCategoryModal from '../../components/admin/AdminCategoryModal';
@@ -306,9 +307,11 @@ function AdminDashboard() {
       };
       await updateDoc(doc(db, 'orders', deliveryModal.id), updateData);
       setOrders(orders.map(o => o.id === deliveryModal.id ? { ...o, ...updateData } : o));
+      if (deliveryModal.buyerId) { try { await notifyOrderStatusChange(deliveryModal.buyerId, deliveryModal.orderNumber, finalStatus, deliveryModal.id); } catch (e) {} }
     } else {
       await updateDoc(doc(db, 'orders', deliveryModal.id), { status: finalStatus });
       setOrders(orders.map(o => o.id === deliveryModal.id ? { ...o, status: finalStatus } : o));
+      if (deliveryModal.buyerId) { try { await notifyOrderStatusChange(deliveryModal.buyerId, deliveryModal.orderNumber, finalStatus, deliveryModal.id); } catch (e) {} }
     }
     setDeliveryModal(null);
   };
