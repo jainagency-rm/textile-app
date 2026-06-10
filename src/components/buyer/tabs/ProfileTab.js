@@ -1,4 +1,6 @@
 import React, { useState, useRef, useEffect } from 'react';
+import { useNavigate } from 'react-router-dom';
+import { signOut } from 'firebase/auth';
 import { ref, uploadBytes, getDownloadURL } from 'firebase/storage';
 import { doc, updateDoc } from 'firebase/firestore';
 import { auth, db, storage } from '../../../firebase';
@@ -28,6 +30,7 @@ function SectionCard({ title, children }) {
 }
 
 export default function ProfileTab({ userProfile, fetchProfile, categories, S, D }) {
+  const navigate = useNavigate();
   const [editing, setEditing] = useState(false);
   const [uploading, setUploading] = useState(false);
   const [saving, setSaving] = useState(false);
@@ -316,6 +319,10 @@ export default function ProfileTab({ userProfile, fetchProfile, categories, S, D
 
         <button onClick={startEditing} style={{ display: 'block', width: '100%', padding: '14px', backgroundColor: DC.navy, color: 'white', border: 'none', borderRadius: 10, fontSize: 15, fontWeight: 700, cursor: 'pointer', letterSpacing: '-0.01em' }}>
           Edit Profile
+        </button>
+
+        <button onClick={() => signOut(auth).then(() => navigate('/'))} style={{ display: 'block', width: '100%', padding: '13px', border: '1.5px solid #ba1a1a', background: 'transparent', color: '#ba1a1a', borderRadius: 10, fontSize: 15, fontWeight: 700, cursor: 'pointer', marginTop: 16 }}>
+          Logout
         </button>
       </div>
 

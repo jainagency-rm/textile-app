@@ -54,10 +54,15 @@ function showUpdateToast(registration) {
 }
 
 export function register() {
-  if ('serviceWorker' in navigator) {
+  if (process.env.NODE_ENV === 'production' && 'serviceWorker' in navigator) {
     window.addEventListener('load', () => {
       const swUrl = `${process.env.PUBLIC_URL}/service-worker.js`;
       navigator.serviceWorker.register(swUrl).then(registration => {
+        // SW already waiting from a previous page load — show toast immediately
+        if (registration.waiting) {
+          showUpdateToast(registration);
+        }
+
         registration.onupdatefound = () => {
           const installingWorker = registration.installing;
           if (!installingWorker) return;
