@@ -54,6 +54,8 @@ function AdminDashboard() {
   const [shippingForm, setShippingForm] = useState({ billNo: '', billDate: '', transport: '', lrNo: '', lrDate: '', dispatchItems: [] });
   const [editingCategory, setEditingCategory] = useState(null);
   const [shareModal, setShareModal] = useState(null);
+  const [highlightId, setHighlightId] = useState(null);
+  const [highlightTrigger, setHighlightTrigger] = useState(0);
   const { isMobile } = useWindowSize();
 
   const adminId = auth.currentUser?.uid;
@@ -96,6 +98,45 @@ function AdminDashboard() {
     });
     return () => unsubscribe();
   }, []);
+
+  useEffect(() => {
+    if (activeTab !== 'orders') return;
+    const id = sessionStorage.getItem('highlight_id');
+    if (!id) return;
+    setHighlightId(id);
+    setTimeout(() => {
+      document.getElementById(`row-${id}`)?.scrollIntoView({ behavior: 'smooth', block: 'center' });
+    }, 100);
+    sessionStorage.removeItem('highlight_id');
+    const timer = setTimeout(() => setHighlightId(null), 2000);
+    return () => clearTimeout(timer);
+  }, [activeTab, orders, highlightTrigger]);
+
+  useEffect(() => {
+    if (activeTab !== 'users') return;
+    const id = sessionStorage.getItem('highlight_id');
+    if (!id) return;
+    setHighlightId(id);
+    setTimeout(() => {
+      document.getElementById(`row-${id}`)?.scrollIntoView({ behavior: 'smooth', block: 'center' });
+    }, 100);
+    sessionStorage.removeItem('highlight_id');
+    const timer = setTimeout(() => setHighlightId(null), 2000);
+    return () => clearTimeout(timer);
+  }, [activeTab, users, highlightTrigger]);
+
+  useEffect(() => {
+    if (activeTab !== 'products') return;
+    const id = sessionStorage.getItem('highlight_id');
+    if (!id) return;
+    setHighlightId(id);
+    setTimeout(() => {
+      document.getElementById(`row-${id}`)?.scrollIntoView({ behavior: 'smooth', block: 'center' });
+    }, 100);
+    sessionStorage.removeItem('highlight_id');
+    const timer = setTimeout(() => setHighlightId(null), 2000);
+    return () => clearTimeout(timer);
+  }, [activeTab, products, highlightTrigger]);
 
   useEffect(() => { fetchAllData(); }, []);
 
@@ -557,7 +598,21 @@ function AdminDashboard() {
                   ) : (
                     <div style={{ maxHeight: 320, overflowY: 'auto' }}>
                       {notifications.slice(0, 20).map(n => (
-                        <div key={n.id} style={{ display: 'flex', alignItems: 'flex-start', padding: '12px 16px', borderBottom: '1px solid #e7e8e9', backgroundColor: n.read ? 'white' : '#f0f4ff' }}>
+                        <div
+                          key={n.id}
+                          onClick={() => {
+                            if (n.refId) {
+                              sessionStorage.setItem('highlight_id', n.refId);
+                              setHighlightTrigger(t => t + 1);
+                            }
+                            setShowNotifications(false);
+                            if (n.type === 'new_order') navigate('/admin?tab=orders');
+                            else if (n.type === 'new_user') navigate('/admin?tab=users');
+                            else if (n.type === 'new_product') navigate('/admin?tab=products');
+                            else if (n.type === 'order_status') navigate('/admin?tab=orders');
+                          }}
+                          style={{ display: 'flex', alignItems: 'flex-start', padding: '12px 16px', borderBottom: '1px solid #e7e8e9', backgroundColor: n.read ? 'white' : '#f0f4ff', cursor: 'pointer' }}
+                        >
                           <span style={{ fontSize: 16, marginRight: 10 }}>
                             {n.type === 'new_order' ? '🛍️' : n.type === 'new_user' ? '👤' : '🔔'}
                           </span>
@@ -647,7 +702,7 @@ function AdminDashboard() {
                 <thead><tr>{['Role', 'Firm Name', 'City', 'Mobile', 'Status', 'Actions'].map(h => <th key={h} style={styles.th}>{h}</th>)}</tr></thead>
                 <tbody>
                   {sortedAndFilteredUsers.map(user => (
-                    <tr key={user.id} style={styles.tr}>
+                    <tr key={user.id} id={`row-${user.id}`} style={user.id === highlightId ? { ...styles.tr, backgroundColor: '#fff9c4' } : styles.tr}>
                       <td style={styles.td}>{user.role?.toUpperCase()}</td>
                       <td style={styles.td}><b>{user.firmName}</b></td>
                       <td style={styles.td}>{user.city}</td>
@@ -679,7 +734,7 @@ function AdminDashboard() {
                 <thead><tr>{['Product', 'Supplier', 'Price/MOQ', 'Status', 'Actions'].map(h => <th key={h} style={styles.th}>{h}</th>)}</tr></thead>
                 <tbody>
                   {filteredProducts.map(product => (
-                    <tr key={product.id} style={styles.tr}>
+                    <tr key={product.id} id={`row-${product.id}`} style={product.id === highlightId ? { ...styles.tr, backgroundColor: '#fff9c4' } : styles.tr}>
                       <td style={styles.td}>
                         <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
                           {getProductImages(product).length > 0 && <img src={getProductImages(product)[0]} alt="" style={{ width: 38, height: 38, objectFit: 'cover', borderRadius: 6 }} />}
@@ -720,7 +775,7 @@ function AdminDashboard() {
               </div>
             </div>
             {displayOrders.map(order => (
-              <div key={order.id} style={{ backgroundColor: 'white', borderRadius: 12, padding: '14px 16px', marginBottom: 10, boxShadow: '0 1px 6px rgba(3,22,50,0.06)', border: '1px solid #e7e8e9' }}>
+              <div key={order.id} id={`row-${order.id}`} style={{ backgroundColor: order.id === highlightId ? '#fff9c4' : 'white', borderRadius: 12, padding: '14px 16px', marginBottom: 10, boxShadow: '0 1px 6px rgba(3,22,50,0.06)', border: '1px solid #e7e8e9' }}>
                 {/* Header row */}
                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 8 }}>
                   <span style={{ fontSize: 14, fontWeight: 800, color: '#031632' }}>

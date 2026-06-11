@@ -35,6 +35,7 @@ function SupplierDashboard() {
   const [editingProduct, setEditingProduct] = useState(null);
   const [userProfile, setUserProfile] = useState(null);
   const [supplierId, setSupplierId] = useState(null);
+  const [highlightId, setHighlightId] = useState(null);
 
   const notifRef = useRef(null);
   const navigate = useNavigate();
@@ -100,10 +101,28 @@ function SupplierDashboard() {
   }, []);
 
   useEffect(() => {
+    const id = sessionStorage.getItem('highlight_id');
+    if (!id) return;
+    if (activeTab !== 'orders' || orders.length === 0) return;
+    setHighlightId(id);
+    sessionStorage.removeItem('highlight_id');
+    setTimeout(() => {
+      document.getElementById(`row-${id}`)?.scrollIntoView({ behavior: 'smooth', block: 'center' });
+    }, 150);
+    setTimeout(() => setHighlightId(null), 2500);
+  }, [activeTab, orders]);
+
+  useEffect(() => {
     const handleClickOutside = e => { if (notifRef.current && !notifRef.current.contains(e.target)) setShowNotifications(false); };
     document.addEventListener('mousedown', handleClickOutside);
     return () => document.removeEventListener('mousedown', handleClickOutside);
   }, []);
+
+  const handleNotificationClick = (n) => {
+    if (n.refId) sessionStorage.setItem('highlight_id', n.refId);
+    setShowNotifications(false);
+    if (n.type === 'new_order') navigate('/supplier?tab=orders');
+  };
 
   const markAllRead = async () => {
     const unread = notifications.filter(n => !n.read);
@@ -240,7 +259,7 @@ function SupplierDashboard() {
                   ) : (
                     <div style={{ maxHeight: 300, overflowY: 'auto' }}>
                       {notifications.slice(0, 20).map(n => (
-                        <div key={n.id} style={{ display: 'flex', alignItems: 'flex-start', padding: '12px 16px', borderBottom: `1px solid ${D.borderLight}`, backgroundColor: n.read ? D.surface : '#f0f4ff' }}>
+                        <div key={n.id} onClick={() => handleNotificationClick(n)} style={{ display: 'flex', alignItems: 'flex-start', padding: '12px 16px', borderBottom: `1px solid ${D.borderLight}`, backgroundColor: n.read ? D.surface : '#f0f4ff', cursor: 'pointer' }}>
                           <span style={{ fontSize: 16, marginRight: 10 }}>{n.type === 'new_order' ? '🛒' : '🔔'}</span>
                           <div style={{ flex: 1 }}>
                             <p style={{ margin: 0, fontSize: 13, color: D.textPrimary, lineHeight: 1.4 }}>{n.message}</p>
@@ -404,7 +423,7 @@ function SupplierDashboard() {
                   <div style={{ padding: '80px 0', textAlign: 'center', color: D.textSecondary }}><p style={{ fontSize: 15 }}>No orders yet</p></div>
                 ) : (
                   displayOrders.map(order => (
-                    <SupplierOrderCard key={order.id} order={order} onApprove={handleApprove} onReject={handleReject} />
+                    <SupplierOrderCard key={order.id} order={order} onApprove={handleApprove} onReject={handleReject} highlightId={highlightId} />
                   ))
                 );
               })()}

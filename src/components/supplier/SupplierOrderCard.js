@@ -83,7 +83,7 @@ async function exportOrderPDF(order) {
   pdf.save(`Order_${order.orderNumber || order.id.slice(-6).toUpperCase()}.pdf`);
 }
 
-function SupplierOrderCard({ order, onApprove, onReject }) {
+function SupplierOrderCard({ order, onApprove, onReject, highlightId }) {
   const [expanded, setExpanded] = useState(false);
   const [showDispatch, setShowDispatch] = useState(false);
   const [actioning, setActioning] = useState(false);
@@ -144,7 +144,7 @@ function SupplierOrderCard({ order, onApprove, onReject }) {
         </div>
       )}
 
-      <div style={{ backgroundColor: D.surface, borderRadius: 12, marginBottom: 10, boxShadow: '0 1px 6px rgba(3,22,50,0.07)', border: `1px solid ${D.borderLight}`, overflow: 'hidden' }}>
+      <div id={`row-${order.id}`} style={{ backgroundColor: order.id === highlightId ? '#fff9c4' : D.surface, borderRadius: 12, marginBottom: 10, boxShadow: '0 1px 6px rgba(3,22,50,0.07)', border: `1px solid ${D.borderLight}`, overflow: 'hidden' }}>
 
         {/* Header Row */}
         <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '10px 14px', borderBottom: `1px solid ${D.borderLight}` }}>

@@ -21,7 +21,7 @@ function formatDateTime(createdAt) {
     ', ' + date.toLocaleTimeString('en-IN', { hour: '2-digit', minute: '2-digit', hour12: true });
 }
 
-function OrderListCard({ order, onCancel, onReorder, onEdit }) {
+function OrderListCard({ order, onCancel, onReorder, onEdit, highlightId }) {
   const [expanded, setExpanded] = useState(false);
   const status = order.status || 'Pending';
   const ss = getStatusStyle(status);
@@ -31,7 +31,7 @@ function OrderListCard({ order, onCancel, onReorder, onEdit }) {
   const deliveryCity = order.transportDetails?.deliveryAddress || '';
 
   return (
-    <div style={{ backgroundColor: D.surface, borderRadius: 12, marginBottom: 10, boxShadow: '0 1px 6px rgba(3,22,50,0.07)', border: `1px solid ${D.borderLight}`, overflow: 'hidden' }}>
+    <div id={`row-${order.id}`} style={{ backgroundColor: order.id === highlightId ? '#fff9c4' : D.surface, borderRadius: 12, marginBottom: 10, boxShadow: '0 1px 6px rgba(3,22,50,0.07)', border: `1px solid ${D.borderLight}`, overflow: 'hidden' }}>
 
       {/* Header Row */}
       <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '10px 14px', borderBottom: `1px solid ${D.borderLight}` }}>
@@ -131,7 +131,7 @@ function OrderListCard({ order, onCancel, onReorder, onEdit }) {
   );
 }
 
-function OrdersTab({ orders, onCancel, onReorder, onEdit }) {
+function OrdersTab({ orders, onCancel, onReorder, onEdit, highlightId }) {
   const sorted = [...orders].sort((a, b) => {
     const aNum = a.orderNumber;
     const bNum = b.orderNumber;
@@ -157,6 +157,7 @@ function OrdersTab({ orders, onCancel, onReorder, onEdit }) {
             onCancel={onCancel}
             onReorder={onReorder}
             onEdit={onEdit}
+            highlightId={highlightId}
           />
         ))
       )}

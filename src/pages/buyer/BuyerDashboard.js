@@ -42,6 +42,7 @@ function BuyerDashboard() {
     cartAdded, setCartAdded,
     isAddingMore, setIsAddingMore,
     nightyDesigns,
+    highlightId,
     notifRef,
     filteredNotifications,
     unreadCount,
@@ -60,6 +61,7 @@ function BuyerDashboard() {
     cleanSavedTransporters,
     cartSuppliers,
     handleLogoutClick,
+    handleNotificationClick,
     fetchProfile,
     markAllRead,
     getProductDesignsList,
@@ -152,7 +154,7 @@ function BuyerDashboard() {
                   ) : (
                     <div style={{ maxHeight: 320, overflowY: 'auto' }}>
                       {filteredNotifications.slice(0, 20).map(n => (
-                        <div key={n.id} style={{ ...S.notifItem, backgroundColor: n.read ? D.surface : '#f0f4ff' }}>
+                        <div key={n.id} onClick={() => handleNotificationClick(n)} style={{ ...S.notifItem, backgroundColor: n.read ? D.surface : '#f0f4ff', cursor: 'pointer' }}>
                           <span style={{ fontSize: 16, marginRight: 10 }}>{n.type === 'new_product' ? '📦' : '🔔'}</span>
                           <div style={{ flex: 1 }}>
                             <p style={{ margin: 0, fontSize: 13, color: D.textPrimary, lineHeight: 1.4 }}>{n.message}</p>
@@ -194,6 +196,7 @@ function BuyerDashboard() {
               isMobile={isMobile}
               productGridCols={productGridCols}
               S={S} D={D}
+              highlightId={highlightId}
             />
           )}
 
@@ -225,7 +228,7 @@ function BuyerDashboard() {
 
           {/* ORDERS TAB */}
           {activeTab === 'orders' && (
-            <OrdersTab orders={orders} onCancel={handleCancelOrder} onReorder={handleReorder} onEdit={handleEditOrder} />
+            <OrdersTab orders={orders} onCancel={handleCancelOrder} onReorder={handleReorder} onEdit={handleEditOrder} highlightId={highlightId} />
           )}
 
           {/* PROFILE TAB */}

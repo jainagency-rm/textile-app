@@ -41,6 +41,7 @@ export function useBuyerDashboard() {
   const [cartAdded, setCartAdded] = useState(false);
   const [isAddingMore, setIsAddingMore] = useState(false);
   const [nightyDesigns, setNightyDesigns] = useState({});
+  const [highlightId, setHighlightId] = useState(null);
 
   const notifRef = useRef(null);
   const buyerId = auth.currentUser?.uid;
@@ -48,6 +49,13 @@ export function useBuyerDashboard() {
 
   const handleLogoutClick = () => {
     signOut(auth).then(() => navigate('/'));
+  };
+
+  const handleNotificationClick = (n) => {
+    if (n.refId) sessionStorage.setItem('highlight_id', n.refId);
+    setShowNotifications(false);
+    if (n.type === 'new_product') navigate('/buyer?tab=browse');
+    else if (n.type === 'order_status') navigate('/buyer?tab=orders');
   };
 
   useEffect(() => {
@@ -72,6 +80,19 @@ export function useBuyerDashboard() {
     const unsubscribe = onSnapshot(q, snap => setNotifications(snap.docs.map(d => ({ id: d.id, ...d.data() }))));
     return () => unsubscribe();
   }, [buyerId]);
+
+  useEffect(() => {
+    const id = sessionStorage.getItem('highlight_id');
+    if (!id) return;
+    if (activeTab === 'orders' && orders.length === 0) return;
+    if (activeTab === 'browse' && products.length === 0) return;
+    setHighlightId(id);
+    sessionStorage.removeItem('highlight_id');
+    setTimeout(() => {
+      document.getElementById(`row-${id}`)?.scrollIntoView({ behavior: 'smooth', block: 'center' });
+    }, 150);
+    setTimeout(() => setHighlightId(null), 2500);
+  }, [activeTab, orders, products]);
 
   useEffect(() => {
     const handleClickOutside = e => {
@@ -629,6 +650,7 @@ export function useBuyerDashboard() {
     cartAdded, setCartAdded,
     isAddingMore, setIsAddingMore,
     nightyDesigns,
+    highlightId,
     // refs
     notifRef,
     // derived
@@ -652,6 +674,7 @@ export function useBuyerDashboard() {
     cartSuppliers,
     // functions
     handleLogoutClick,
+    handleNotificationClick,
     fetchProfile,
     markAllRead,
     getProductDesignsList,

@@ -19,6 +19,7 @@ export default function BrowseTab({
   isMobile,
   productGridCols,
   S, D,
+  highlightId,
 }) {
   return (
     <div>
@@ -49,7 +50,7 @@ export default function BrowseTab({
             const idx = cardDesignIndices[product.id] || 0;
             const img = designs[idx]?.photoUrl || 'https://via.placeholder.com/200';
             return (
-              <div key={product.id} style={S.productCard} onClick={() => {
+              <div key={product.id} id={`row-${product.id}`} style={{ ...S.productCard, ...(product.id === highlightId ? { backgroundColor: '#fff9c4' } : {}) }} onClick={() => {
                 setSelectedProductDetails(product);
                 setModalDesignIdx(idx);
                 // ✅ Pre-fill existing cart quantities for this product
